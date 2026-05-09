@@ -1,0 +1,27 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "ShieldX (Chrome)",
+      "request": "launch",
+      "type": "dart",
+      "args": [
+        "--web-browser-flag=--user-data-dir=.vscode/chrome-profile"
+      ]
+    },
+    {
+      "name": "ShieldX (Edge)",
+      "request": "launch",
+      "type": "dart",
+      "args": [
+        "--web-browser-flag=--user-data-dir=.vscode/edge-profile"
+      ]
+    },
+    {
+      "name": "ShieldX (Windows)",
+      "request": "launch",
+      "type": "dart",
+      "deviceId": "windows"
+    }
+  ]
+}
