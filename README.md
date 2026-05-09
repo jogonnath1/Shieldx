@@ -2,7 +2,7 @@
 
 ![ShieldX Banner](assets/images/banner.png)
 
-**ShieldX** is a sophisticated, AI-enhanced **Crime Report Portal Management** platform built with Flutter. It empowers citizens to report incidents, locate emergency services, and provides authorities with a robust system to manage and track reports securely and efficiently.
+**ShieldX** is a sophisticated **Crime Report Portal Management** platform built with Flutter. It empowers citizens to report incidents, locate emergency services, and provides authorities with a robust system to manage and track reports securely and efficiently.
 
 ## ✨ Features
 
