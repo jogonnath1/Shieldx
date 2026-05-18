@@ -178,7 +178,10 @@ class StationMapNotifier extends StateNotifier<StationMapState> {
     state = state.copyWith(isLoading: true, clearError: true);
 
     try {
-      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      final serviceEnabled = await Future.any([
+        Geolocator.isLocationServiceEnabled(),
+        Future.delayed(const Duration(seconds: 3), () => true) // assume true if hangs
+      ]);
       if (!serviceEnabled) {
         await _handleLocationFailure(
           'Location services are disabled. Defaulting to Sylhet city centre.',
@@ -187,7 +190,11 @@ class StationMapNotifier extends StateNotifier<StationMapState> {
         return;
       }
 
-      LocationPermission permission = await Geolocator.checkPermission();
+      LocationPermission permission = await Future.any([
+        Geolocator.checkPermission(),
+        Future.delayed(const Duration(seconds: 3), () => LocationPermission.denied)
+      ]);
+      
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
       }
@@ -203,12 +210,27 @@ class StationMapNotifier extends StateNotifier<StationMapState> {
         return;
       }
 
-      final position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          timeLimit: Duration(seconds: 15),
-        ),
-      );
+      Position? position;
+      try {
+        position = await Future.any([
+          Geolocator.getCurrentPosition(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.high,
+            ),
+          ),
+          Future.delayed(
+            const Duration(seconds: 6),
+            () => throw Exception('GPS Timeout'),
+          ),
+        ]);
+      } catch (_) {
+        // Fallback to last known position if live location hangs or times out
+        position = await Geolocator.getLastKnownPosition();
+      }
+
+      if (position == null) {
+        throw Exception('Location is null');
+      }
 
       final loc = LatLng(position.latitude, position.longitude);
       state = state.copyWith(userLocation: loc);
