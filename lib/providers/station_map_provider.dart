@@ -95,21 +95,41 @@ class StationMapNotifier extends StateNotifier<StationMapState> {
   // Sylhet city centre — fallback when GPS is unavailable
   static const LatLng _sylhetCentre = LatLng(24.8949, 91.8687);
 
+  // Prevent concurrent init calls
+  bool _isInitializing = false;
+
   StationMapNotifier() : super(const StationMapState());
 
-  void reset() => state = const StationMapState(isLoading: false);
-  
+  void reset() {
+    _isInitializing = false;
+    state = const StationMapState(isLoading: false);
+  }
+
   void resetPanFlag() {
     if (state.shouldPanToStation) {
       state = state.copyWith(shouldPanToStation: false);
     }
   }
 
-  Future<void> init() async => _acquireLocationAndLoad();
+  Future<void> init() async {
+    if (_isInitializing) return;
+    _isInitializing = true;
+    try {
+      await _acquireLocationAndLoad();
+    } finally {
+      _isInitializing = false;
+    }
+  }
 
   Future<void> refreshLocation() async {
+    if (_isInitializing) return;
     state = state.copyWith(isLoading: true, clearError: true);
-    await _acquireLocationAndLoad();
+    _isInitializing = true;
+    try {
+      await _acquireLocationAndLoad();
+    } finally {
+      _isInitializing = false;
+    }
   }
 
   void updateUserLocation(LatLng loc) {
@@ -172,92 +192,111 @@ class StationMapNotifier extends StateNotifier<StationMapState> {
   }
 
   // ---------------------------------------------------------------------------
-  // Step 1 — Acquire GPS
+  // Step 1 — Acquire GPS with full timeout protection on every single call
   // ---------------------------------------------------------------------------
   Future<void> _acquireLocationAndLoad() async {
     state = state.copyWith(isLoading: true, clearError: true);
 
     try {
-      final serviceEnabled = await Future.any([
-        Geolocator.isLocationServiceEnabled(),
-        Future.delayed(const Duration(seconds: 3), () => true) // assume true if hangs
-      ]);
+      // ── 1a. Check if location service is enabled (3-second hard timeout) ──
+      var serviceEnabled = true;
+      try {
+        serviceEnabled = await Future.any([
+          Geolocator.isLocationServiceEnabled(),
+          Future.delayed(const Duration(seconds: 3), () => true),
+        ]);
+      } catch (_) {
+        serviceEnabled = true; // assume enabled on exception
+      }
+
       if (!serviceEnabled) {
-        await _handleLocationFailure(
-          'Location services are disabled. Defaulting to Sylhet city centre.',
-          permissionDenied: false,
-        );
+        await _loadSmpStations(_sylhetCentre, silentLoad: true);
+        state = state.copyWith(isLoading: false);
         return;
       }
 
-      LocationPermission permission = await Future.any([
-        Geolocator.checkPermission(),
-        Future.delayed(const Duration(seconds: 3), () => LocationPermission.denied)
-      ]);
-      
+      // ── 1b. Check permission (3-second hard timeout) ──
+      LocationPermission permission;
+      try {
+        permission = await Future.any([
+          Geolocator.checkPermission(),
+          Future.delayed(const Duration(seconds: 3), () => LocationPermission.denied),
+        ]);
+      } catch (_) {
+        permission = LocationPermission.denied;
+      }
+
+      // ── 1c. Request permission only if denied (5-second timeout) ──
       if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
+        try {
+          permission = await Future.any([
+            Geolocator.requestPermission(),
+            Future.delayed(const Duration(seconds: 5), () => LocationPermission.denied),
+          ]);
+        } catch (_) {
+          permission = LocationPermission.denied;
+        }
       }
 
-      if (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
-        await _handleLocationFailure(
-          permission == LocationPermission.deniedForever
-              ? 'Location permission permanently denied. Open Settings to allow access.'
-              : 'Location permission denied. Tap "Retry" to grant access.',
-          permissionDenied: true,
+      // ── 1d. If permanently denied → load with fallback location ──
+      if (permission == LocationPermission.deniedForever ||
+          permission == LocationPermission.denied) {
+        await _loadSmpStations(_sylhetCentre, silentLoad: true);
+        state = state.copyWith(
+          isLoading: false,
+          isPermissionDenied: permission == LocationPermission.deniedForever,
         );
         return;
       }
 
+      // ── 1e. Fetch live GPS (6-second timeout) ──
       Position? position;
       try {
         position = await Future.any([
           Geolocator.getCurrentPosition(
             locationSettings: const LocationSettings(
-              accuracy: LocationAccuracy.high,
+              accuracy: LocationAccuracy.medium, // lighter than high — less CPU
             ),
           ),
-          Future.delayed(
-            const Duration(seconds: 6),
-            () => throw Exception('GPS Timeout'),
-          ),
+          Future.delayed(const Duration(seconds: 6), () => null),
         ]);
       } catch (_) {
-        // Fallback to last known position if live location hangs or times out
-        position = await Geolocator.getLastKnownPosition();
+        position = null;
       }
 
+      // ── 1f. Fallback: try last known position (2-second timeout) ──
       if (position == null) {
-        throw Exception('Location is null');
+        try {
+          position = await Future.any([
+            Geolocator.getLastKnownPosition(),
+            Future.delayed(const Duration(seconds: 2), () => null),
+          ]);
+        } catch (_) {
+          position = null;
+        }
       }
 
-      final loc = LatLng(position.latitude, position.longitude);
+      // ── 1g. Final fallback: Sylhet city centre ──
+      final loc = position != null
+          ? LatLng(position.latitude, position.longitude)
+          : _sylhetCentre;
+
       state = state.copyWith(userLocation: loc);
       await _loadSmpStations(loc);
-    } catch (_) {
-      await _handleLocationFailure(
-        'Could not determine your location. Defaulting to Sylhet city centre.',
-        permissionDenied: false,
-      );
+    } catch (e) {
+      // Absolute last-resort fallback — map will always load
+      if (mounted) {
+        state = state.copyWith(userLocation: _sylhetCentre, isLoading: false);
+        await _loadSmpStations(_sylhetCentre, silentLoad: true);
+      }
     }
-  }
-
-  Future<void> _handleLocationFailure(
-      String message, {required bool permissionDenied}) async {
-    state = state.copyWith(
-      isLoading: false,
-      errorMessage: message,
-      isPermissionDenied: permissionDenied,
-      userLocation: _sylhetCentre,
-    );
-    await _loadSmpStations(_sylhetCentre, silentLoad: true);
   }
 
   // ---------------------------------------------------------------------------
   // Step 2 — Load SMP stations and auto-select based on GPS
   // ---------------------------------------------------------------------------
   Future<void> _loadSmpStations(LatLng loc, {bool silentLoad = false}) async {
+    if (!mounted) return;
     if (!silentLoad) state = state.copyWith(isLoading: true);
 
     // Always use the 6 fixed SMP stations — sorted by distance from user
@@ -283,8 +322,7 @@ class StationMapNotifier extends StateNotifier<StationMapState> {
 
     autoSelected ??= updatedStations.first.copyWith(isAutoSelected: true);
 
-    // Try to also get jurisdiction name from Overpass (best-effort, non-blocking)
-    _fetchJurisdictionInBackground(loc);
+    if (!mounted) return;
 
     state = state.copyWith(
       stations: updatedStations,
@@ -292,24 +330,29 @@ class StationMapNotifier extends StateNotifier<StationMapState> {
       selectionSource: SelectionSource.jurisdiction,
       activeThana: detectedThana,
       isLoading: false,
+      clearError: true,
     );
+
+    // Try to fetch jurisdiction info — best-effort, never blocks UI
+    _fetchJurisdictionInBackground(loc);
   }
 
   void _fetchJurisdictionInBackground(LatLng loc) async {
     try {
-      final jurInfo = await _mapService.getJurisdictionInfo(loc);
-      if (mounted && jurInfo != null) {
-        state = state.copyWith(jurisdictionName: jurInfo['name'] as String?);
-        final id = jurInfo['id'];
-        if (id != null) {
-          final polygon = await _mapService.getAreaPolygon(id as int);
-          if (mounted && polygon != null) {
-            state = state.copyWith(jurisdictionPolygon: polygon);
-          }
+      final jurInfo = await _mapService.getJurisdictionInfo(loc)
+          .timeout(const Duration(seconds: 8));
+      if (!mounted || jurInfo == null) return;
+      state = state.copyWith(jurisdictionName: jurInfo['name'] as String?);
+      final id = jurInfo['id'];
+      if (id != null) {
+        final polygon = await _mapService.getAreaPolygon(id as int)
+            .timeout(const Duration(seconds: 8));
+        if (mounted && polygon != null) {
+          state = state.copyWith(jurisdictionPolygon: polygon);
         }
       }
     } catch (_) {
-      // purely cosmetic — silently ignore
+      // purely cosmetic — silently ignore timeouts and errors
     }
   }
 }

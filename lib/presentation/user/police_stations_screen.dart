@@ -28,12 +28,13 @@ class PoliceStationsScreen extends ConsumerStatefulWidget {
 
 class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
   final MapController _mapController = MapController();
-  // Stream that tells CurrentLocationLayer to re-center on the GPS dot
-  final _alignPositionStreamController = StreamController<double?>();
+  // Broadcast stream: safe to add events even when no one is listening
+  final _alignPositionStreamController = StreamController<double>.broadcast();
   // Position stream initialized once permissions are granted
   Stream<LocationMarkerPosition?>? _positionStream;
   bool _isMapReady = false;
   bool _isUserLocationHighlighted = false;
+  bool _isLocating = false;
 
   LatLng? _searchPinLocation;
   String? _searchPinName;
@@ -52,34 +53,27 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
   }
 
   Future<void> _checkAndInit() async {
-    // 1. Reset stale state so re-entry doesn't race with onMapReady
+    // Reset stale state so re-entry is always clean
     ref.read(stationMapProvider.notifier).reset();
-    // 2. Initialize the provider (requests permissions)
+    // Initialize the provider (handles all permission + GPS internally)
     await ref.read(stationMapProvider.notifier).init();
-
-    // 2. If granted, initialize the stream for the blue dot
-    final status = await Future.any([
-      Geolocator.checkPermission(),
-      Future.delayed(const Duration(seconds: 3), () => LocationPermission.denied)
-    ]);
-    if (status == LocationPermission.whileInUse ||
-        status == LocationPermission.always) {
-      _initPositionStream();
-    }
+    // Start the blue-dot live stream
+    if (mounted) _initPositionStream();
   }
 
   void _initPositionStream() {
+    // Guard: only create stream once per screen lifecycle
     if (!mounted || _positionStream != null) return;
     final stream =
         const LocationMarkerDataStreamFactory().fromGeolocatorPositionStream(
       stream: Geolocator.getPositionStream(
         locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-          distanceFilter: 5,
+          // medium accuracy: less CPU drain, still accurate enough for city-level
+          accuracy: LocationAccuracy.medium,
+          distanceFilter: 10, // only update when moved 10m — reduces UI rebuilds
         ),
       ),
     );
-    // Only call setState if still mounted (safe after async gaps)
     if (mounted) {
       setState(() => _positionStream = stream);
     }
@@ -87,6 +81,7 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
 
   @override
   void dispose() {
+    _positionStream = null; // allow re-creation on next screen entry
     _alignPositionStreamController.close();
     _mapController.dispose();
     super.dispose();
@@ -103,61 +98,64 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
     }
   }
 
-  bool _isLocating = false;
+
 
   Future<void> _goToMyLocation() async {
     if (_isLocating) return;
     setState(() => _isLocating = true);
-    
+
     try {
       // Push a zoom level into the stream — CurrentLocationLayer will center the map
       _alignPositionStreamController.add(16.0);
 
-    // Fetch the live location to ensure the highlight marker is perfectly synced
-    Position? pos;
-    try {
-      pos = await Future.any([
-        Geolocator.getCurrentPosition(
-          locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
-        ),
-        Future.delayed(
-          const Duration(seconds: 10),
-          () => throw Exception('GPS Timeout'),
-        ),
-      ]);
-    } catch (_) {
+      // Fetch the live location to ensure the highlight marker is perfectly synced
+      Position? pos;
       try {
         pos = await Future.any([
-          Geolocator.getLastKnownPosition(),
-          Future.delayed(const Duration(seconds: 2), () => null)
+          Geolocator.getCurrentPosition(
+            locationSettings:
+                const LocationSettings(accuracy: LocationAccuracy.high),
+          ),
+          Future.delayed(
+            const Duration(seconds: 10),
+            () => throw Exception('GPS Timeout'),
+          ),
         ]);
-      } catch (_) {}
-    }
-
-    LatLng? liveLoc;
-    if (pos != null) {
-      liveLoc = LatLng(pos.latitude, pos.longitude);
-    } else {
-      // If all GPS requests fail, gracefully fallback to the map provider's cached location!
-      liveLoc = ref.read(stationMapProvider).userLocation;
-    }
-
-    if (liveLoc == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not fetch location. Please check your device GPS settings.')),
-        );
+      } catch (_) {
+        try {
+          pos = await Future.any([
+            Geolocator.getLastKnownPosition(),
+            Future.delayed(const Duration(seconds: 2), () => null)
+          ]);
+        } catch (_) {}
       }
-      return;
-    }
-    
-    if (mounted) {
-      ref.read(stationMapProvider.notifier).updateUserLocation(liveLoc);
-      setState(() => _isUserLocationHighlighted = true);
-      Future.delayed(const Duration(seconds: 4), () {
-        if (mounted) setState(() => _isUserLocationHighlighted = false);
-      });
-    }
+
+      LatLng? liveLoc;
+      if (pos != null) {
+        liveLoc = LatLng(pos.latitude, pos.longitude);
+      } else {
+        // If all GPS requests fail, gracefully fallback to the map provider's cached location!
+        liveLoc = ref.read(stationMapProvider).userLocation;
+      }
+
+      if (liveLoc == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+                content: Text(
+                    'Could not fetch location. Please check your device GPS settings.')),
+          );
+        }
+        return;
+      }
+
+      if (mounted) {
+        ref.read(stationMapProvider.notifier).updateUserLocation(liveLoc);
+        setState(() => _isUserLocationHighlighted = true);
+        Future.delayed(const Duration(seconds: 4), () {
+          if (mounted) setState(() => _isUserLocationHighlighted = false);
+        });
+      }
     } finally {
       if (mounted) {
         setState(() => _isLocating = false);
@@ -214,7 +212,8 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
                 if (!mounted || !_isMapReady) return;
                 try {
                   final bounds = LatLngBounds.fromPoints([from, ...points, to]);
-                  if (from.latitude != to.latitude || from.longitude != to.longitude) {
+                  if (from.latitude != to.latitude ||
+                      from.longitude != to.longitude) {
                     _mapController.fitCamera(
                       CameraFit.bounds(
                         bounds: bounds,
@@ -238,7 +237,8 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Failed to calculate route. Please check your connection.'),
+            content: Text(
+                'Failed to calculate route. Please check your connection.'),
             duration: Duration(seconds: 3),
           ),
         );
@@ -272,12 +272,12 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
     final notifier = ref.read(stationMapProvider.notifier);
 
     // Auto-pan and initialize stream when permission/location becomes available
-    // All side-effects are deferred to post-frame to avoid setState-during-build errors
+    // Using Future.microtask instead of addPostFrameCallback to avoid accumulation
     ref.listen(stationMapProvider, (prev, next) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+      Future.microtask(() {
         if (!mounted) return;
 
-        // If permission was previously denied and now it's granted, start the stream
+        // If permission was previously denied and now granted, start the stream
         if ((prev == null || prev.isPermissionDenied) &&
             !next.isPermissionDenied) {
           _initPositionStream();
@@ -285,38 +285,36 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
 
         // Pan to station if the flag is set, or if it's the initial auto-selection
         if (next.selectedStation != null) {
+          final stationChanged =
+              prev?.selectedStation?.id != next.selectedStation?.id;
           final isInitialLoad =
-              prev?.selectedStation?.id != next.selectedStation?.id &&
-                  next.selectionSource != SelectionSource.manual;
+              stationChanged && next.selectionSource != SelectionSource.manual;
 
           if (isInitialLoad || next.shouldPanToStation) {
             Future.delayed(const Duration(milliseconds: 300), () {
-              if (mounted) _moveMap(next.selectedStation!.location, 14.5);
+              if (mounted && _isMapReady) {
+                _moveMap(next.selectedStation!.location, 14.5);
+              }
             });
-            // Reset the pan flag so we don't pan on every state rebuild
             if (next.shouldPanToStation) {
-              Future.microtask(
-                  () => ref.read(stationMapProvider.notifier).resetPanFlag());
+              ref.read(stationMapProvider.notifier).resetPanFlag();
             }
           }
-          // Fetch route whenever selected station changes and user loc is known
-          final stationChanged =
-              prev?.selectedStation?.id != next.selectedStation?.id;
+
+          // Fetch route only when station actually changes
           if (stationChanged && next.userLocation != null) {
             _fetchRoute(next.userLocation!, next.selectedStation!.location);
           } else if (stationChanged) {
             _clearRoute();
           }
         } else {
-          // Station deselected — clear route
           if (prev?.selectedStation != null) _clearRoute();
         }
 
-        // Pan to user location the first time it becomes available;
-        // also fetch route if a station is already selected
+        // Pan to user location the first time it becomes available
         if (prev?.userLocation == null && next.userLocation != null) {
           Future.delayed(const Duration(milliseconds: 300), () {
-            if (mounted) _moveMap(next.userLocation!, 14.0);
+            if (mounted && _isMapReady) _moveMap(next.userLocation!, 14.0);
           });
           if (next.selectedStation != null) {
             _fetchRoute(next.userLocation!, next.selectedStation!.location);
@@ -342,7 +340,6 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
           if (state.hasStations) _buildStationList(state, notifier),
           _buildZoomControls(state),
           if (state.selectedStation != null) _buildStationDetailCard(state),
-
         ],
       ),
     );
@@ -1478,7 +1475,7 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
   Widget _buildZoomControls(StationMapState state) {
     // Offset the zoom buttons so they sit above the Thana chips and Station list
     final bottomOffset = state.selectedStation != null ? 215.0 : 16.0;
-    
+
     return AnimatedPositioned(
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeInOut,
@@ -1495,8 +1492,7 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
             onPressed: () {
               if (_isMapReady) {
                 final currentZoom = _mapController.camera.zoom;
-                _mapController.move(
-                    _mapController.camera.center,
+                _mapController.move(_mapController.camera.center,
                     (currentZoom + 1.0).clamp(3.0, 18.0));
               }
             },
@@ -1511,8 +1507,7 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
             onPressed: () {
               if (_isMapReady) {
                 final currentZoom = _mapController.camera.zoom;
-                _mapController.move(
-                    _mapController.camera.center,
+                _mapController.move(_mapController.camera.center,
                     (currentZoom - 1.0).clamp(3.0, 18.0));
               }
             },
