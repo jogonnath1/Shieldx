@@ -42,6 +42,8 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
   // ─── Route state ────────────────────────────────────────────────────────────
   List<LatLng> _routePoints = [];
   bool _isFetchingRoute = false;
+  // Debounce tap events to prevent double-tap from firing two state changes
+  Timer? _tapDebounce;
 
   @override
   void initState() {
@@ -81,6 +83,7 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
 
   @override
   void dispose() {
+    _tapDebounce?.cancel();
     _positionStream = null; // allow re-creation on next screen entry
     _alignPositionStreamController.close();
     _mapController.dispose();
@@ -623,12 +626,17 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
           });
         },
         onTap: (tapPos, latLng) {
-          // On map tap: auto-detect thana from tapped coordinates
-          setState(() {
-            _searchPinLocation = null;
-            _searchPinName = null;
+          // Debounce: ignore rapid taps (e.g. double-tap) to prevent
+          // state-change collisions during map zoom animation
+          _tapDebounce?.cancel();
+          _tapDebounce = Timer(const Duration(milliseconds: 300), () {
+            if (!mounted) return;
+            setState(() {
+              _searchPinLocation = null;
+              _searchPinName = null;
+            });
+            notifier.onMapTap(latLng);
           });
-          notifier.onMapTap(latLng);
         },
       ),
       children: [
