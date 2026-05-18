@@ -197,7 +197,7 @@ class _EditComplaintScreenState extends ConsumerState<EditComplaintScreen> {
                       // Category dropdown
                       GlassCard(
                         child: DropdownButtonFormField<String>(
-                          value: _selectedCategory,
+                          initialValue: _selectedCategory,
                           decoration: const InputDecoration(
                             labelText: 'Crime Category',
                             prefixIcon: Icon(Icons.category_outlined),

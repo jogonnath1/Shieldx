@@ -275,7 +275,7 @@ class _DetailsTab extends StatelessWidget {
                     icon: Icons.calendar_today_outlined,
                     label: 'Filed On',
                     value: complaint.createdAt != null
-                        ? DateFormat('dd MMM yyyy, HH:mm').format(complaint.createdAt!)
+                        ? DateFormat('dd MMM yyyy, hh:mm a').format(complaint.createdAt!)
                         : 'Unknown'),
               ],
             ),
@@ -324,7 +324,7 @@ class _ManageTab extends StatelessWidget {
                         ?.copyWith(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 14),
                 DropdownButtonFormField<String>(
-                  value: selectedStatus,
+                  initialValue: selectedStatus,
                   dropdownColor: AppColors.card,
                   decoration: const InputDecoration(labelText: 'Status'),
                   items: AppConstants.complaintStatuses
@@ -336,7 +336,7 @@ class _ManageTab extends StatelessWidget {
                 const SizedBox(height: 12),
                 if (officers.isNotEmpty)
                   DropdownButtonFormField<String>(
-                    value: selectedOfficerId,
+                    initialValue: selectedOfficerId,
                     dropdownColor: AppColors.card,
                     decoration: const InputDecoration(labelText: 'Assign Officer'),
                     items: [
@@ -427,7 +427,7 @@ class _TimelineTab extends StatelessWidget {
                       const SizedBox(height: 6),
                       Text(
                         h.changedAt != null
-                            ? DateFormat('dd MMM yyyy, HH:mm')
+                            ? DateFormat('dd MMM yyyy, hh:mm a')
                                 .format(h.changedAt!)
                             : '',
                         style: GoogleFonts.inter(

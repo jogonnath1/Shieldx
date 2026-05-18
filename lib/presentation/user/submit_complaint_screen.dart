@@ -194,12 +194,18 @@ class _SubmitComplaintScreenState
             child: Stepper(
               currentStep: _currentStep,
               onStepContinue: () {
-                if (_currentStep < 2) setState(() => _currentStep++);
-                else _submit();
+                if (_currentStep < 2) {
+                  setState(() => _currentStep++);
+                } else {
+                  _submit();
+                }
               },
               onStepCancel: () {
-                if (_currentStep > 0) setState(() => _currentStep--);
-                else context.go('/home');
+                if (_currentStep > 0) {
+                  setState(() => _currentStep--);
+                } else {
+                  context.go('/home');
+                }
               },
               controlsBuilder: (ctx, details) => Padding(
                 padding: const EdgeInsets.only(top: 16),
@@ -365,7 +371,7 @@ class _PersonalInfoStep extends StatelessWidget {
               Switch(
                 value: isAnonymous,
                 onChanged: onAnonymousChanged,
-                activeColor: AppColors.primary,
+                activeThumbColor: AppColors.primary,
               ),
             ],
           ),
@@ -483,7 +489,7 @@ class _IncidentStep extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         DropdownButtonFormField<String>(
-          value: selectedCategory,
+          initialValue: selectedCategory,
           dropdownColor: AppColors.card,
           decoration: const InputDecoration(
             labelText: 'Crime Category',
@@ -668,7 +674,7 @@ class _EvidenceStep extends StatelessWidget {
                     onTap: () => onRemove(i),
                     child: Container(
                       padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
+                      decoration: const BoxDecoration(
                         color: AppColors.error,
                         shape: BoxShape.circle,
                       ),
@@ -695,7 +701,7 @@ class _EvidenceStep extends StatelessWidget {
             ),
             child: Column(
               children: [
-                Icon(Icons.add_photo_alternate_outlined,
+                const Icon(Icons.add_photo_alternate_outlined,
                     color: AppColors.primary, size: 36),
                 const SizedBox(height: 8),
                 Text('Tap to add photos',

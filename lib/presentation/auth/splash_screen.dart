@@ -74,7 +74,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                 ),
               ).animate().fadeIn(delay: 400.ms, duration: 500.ms).slideY(begin: 0.3),
               const SizedBox(height: 8),
-              Text(
+              const Text(
                 'Crime Reporting Portal',
                 style: TextStyle(
                   fontSize: 15,
@@ -83,7 +83,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
                 ),
               ).animate().fadeIn(delay: 600.ms, duration: 500.ms),
               const SizedBox(height: 60),
-              SizedBox(
+              const SizedBox(
                 width: 36,
                 height: 36,
                 child: CircularProgressIndicator(

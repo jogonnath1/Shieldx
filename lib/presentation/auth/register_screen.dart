@@ -19,15 +19,19 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _nameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
+  final _otpCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
   bool _isLoading = false;
+  bool _isOtpSent = false;
+  bool _isPhoneVerified = false;
 
   @override
   void dispose() {
     _nameCtrl.dispose();
     _emailCtrl.dispose();
     _phoneCtrl.dispose();
+    _otpCtrl.dispose();
     _passwordCtrl.dispose();
     _confirmCtrl.dispose();
     super.dispose();
@@ -35,20 +39,24 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
+    if (!_isPhoneVerified) {
+      _showError('Please verify your phone number first');
+      return;
+    }
     setState(() => _isLoading = true);
     try {
       final notifier = ref.read(authNotifierProvider.notifier);
-      final ok = await notifier.signUp(
+      final ok = await notifier.completeRegistration(
         email: _emailCtrl.text.trim(),
         password: _passwordCtrl.text.trim(),
         name: _nameCtrl.text.trim(),
-        phone: _phoneCtrl.text.trim(),
+        phone: '+88${_phoneCtrl.text.trim()}',
       );
       if (!mounted) return;
       if (ok) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('🎉 Account created! You can now log in.'),
+            content: Text('🎉 Account created successfully!'),
             backgroundColor: AppColors.success,
             duration: Duration(seconds: 3),
           ),
@@ -126,41 +134,130 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       const SizedBox(height: 14),
                       CustomTextField(
                         label: 'Phone Number',
-                        hint: '+880 1XXX-XXXXXX',
+                        hint: '01XXXXXXXXX',
                         controller: _phoneCtrl,
                         keyboardType: TextInputType.phone,
                         prefixIcon: Icons.phone_outlined,
                         textInputAction: TextInputAction.next,
+                        readOnly: _isPhoneVerified,
+                        validator: (v) {
+                          if (v == null || v.isEmpty) return 'Phone number is required';
+                          if (v.length != 11) return 'Must be exactly 11 digits';
+                          return null;
+                        },
+                        suffix: _isPhoneVerified
+                            ? const Padding(
+                                padding: EdgeInsets.only(right: 12.0),
+                                child: Icon(Icons.check_circle, color: AppColors.success),
+                              )
+                            : Padding(
+                                padding: const EdgeInsets.only(right: 8.0),
+                                child: TextButton(
+                                  onPressed: () async {
+                                    if (_phoneCtrl.text.trim().length == 11) {
+                                      setState(() => _isLoading = true);
+                                      try {
+                                        final notifier = ref.read(authNotifierProvider.notifier);
+                                        await notifier.sendPhoneOtp('+88${_phoneCtrl.text.trim()}');
+                                        if (!mounted) return;
+                                        setState(() {
+                                          _isOtpSent = true;
+                                          _isLoading = false;
+                                        });
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('OTP sent to your phone!'),
+                                            backgroundColor: AppColors.success,
+                                          ),
+                                        );
+                                      } catch (e) {
+                                        if (!mounted) return;
+                                        setState(() => _isLoading = false);
+                                        _showError(e.toString().replaceAll('AuthException: ', ''));
+                                      }
+                                    } else {
+                                      _showError('Enter exactly 11 digits first');
+                                    }
+                                  },
+                                  child: const Text('Verify'),
+                                ),
+                              ),
                       ).animate().fadeIn(delay: 250.ms).slideY(begin: 0.2),
-                      const SizedBox(height: 14),
-                      CustomTextField(
-                        label: 'Password',
-                        hint: '••••••••',
-                        controller: _passwordCtrl,
-                        obscureText: true,
-                        prefixIcon: Icons.lock_outline,
-                        textInputAction: TextInputAction.next,
-                        validator: (v) {
-                          if (v == null || v.isEmpty) return 'Password is required';
-                          if (v.length < 6) return 'Min 6 characters';
-                          return null;
-                        },
-                      ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2),
-                      const SizedBox(height: 14),
-                      CustomTextField(
-                        label: 'Confirm Password',
-                        hint: '••••••••',
-                        controller: _confirmCtrl,
-                        obscureText: true,
-                        prefixIcon: Icons.lock_outline,
-                        textInputAction: TextInputAction.done,
-                        onFieldSubmitted: (_) => _register(),
-                        validator: (v) {
-                          if (v != _passwordCtrl.text)
-                            return 'Passwords do not match';
-                          return null;
-                        },
-                      ).animate().fadeIn(delay: 350.ms).slideY(begin: 0.2),
+                      if (_isOtpSent && !_isPhoneVerified) ...[
+                        const SizedBox(height: 14),
+                        CustomTextField(
+                          label: 'Enter OTP',
+                          hint: '123456',
+                          controller: _otpCtrl,
+                          keyboardType: TextInputType.number,
+                          prefixIcon: Icons.message_outlined,
+                          textInputAction: TextInputAction.next,
+                          suffix: Padding(
+                            padding: const EdgeInsets.only(right: 8.0),
+                            child: TextButton(
+                              onPressed: () async {
+                                if (_otpCtrl.text.trim().isNotEmpty) {
+                                  setState(() => _isLoading = true);
+                                  try {
+                                    final notifier = ref.read(authNotifierProvider.notifier);
+                                    await notifier.verifyPhoneOtp('+88${_phoneCtrl.text.trim()}', _otpCtrl.text.trim());
+                                    if (!mounted) return;
+                                    setState(() {
+                                      _isPhoneVerified = true;
+                                      _isLoading = false;
+                                    });
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Phone verified! You can now set your password.'),
+                                        backgroundColor: AppColors.success,
+                                      ),
+                                    );
+                                  } catch (e) {
+                                    if (!mounted) return;
+                                    setState(() => _isLoading = false);
+                                    _showError('Invalid OTP or verification failed.');
+                                  }
+                                } else {
+                                  _showError('Please enter the OTP');
+                                }
+                              },
+                              child: const Text('Confirm'),
+                            ),
+                          ),
+                        ).animate().fadeIn().slideY(begin: 0.2),
+                      ],
+                      if (_isPhoneVerified) ...[
+                        const SizedBox(height: 14),
+                        CustomTextField(
+                          label: 'Password',
+                          hint: '••••••••',
+                          controller: _passwordCtrl,
+                          obscureText: true,
+                          prefixIcon: Icons.lock_outline,
+                          textInputAction: TextInputAction.next,
+                          validator: (v) {
+                            if (v == null || v.isEmpty) return 'Password is required';
+                            if (v.length < 6) return 'Min 6 characters';
+                            return null;
+                          },
+                        ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2),
+                        const SizedBox(height: 14),
+                        CustomTextField(
+                          label: 'Confirm Password',
+                          hint: '••••••••',
+                          controller: _confirmCtrl,
+                          obscureText: true,
+                          prefixIcon: Icons.lock_outline,
+                          textInputAction: TextInputAction.done,
+                          onFieldSubmitted: (_) => _register(),
+                          validator: (v) {
+                            if (v != _passwordCtrl.text) {
+                              return 'Passwords do not match';
+                            }
+                            return null;
+                          },
+                        ).animate().fadeIn(delay: 350.ms).slideY(begin: 0.2),
+                      ],
                       const SizedBox(height: 28),
                       GradientButton(
                         label: 'Create Account',

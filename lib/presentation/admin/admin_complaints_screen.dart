@@ -58,8 +58,7 @@ class AdminComplaintsScreen extends ConsumerWidget {
                     itemBuilder: (ctx, i) {
                       final c = list[i];
                       return GlassCard(
-                        onTap: () =>
-                            context.push('/admin/complaints/${c.id}'),
+                        onTap: () => context.push('/admin/complaints/${c.id}'),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -114,11 +113,28 @@ class AdminComplaintsScreen extends ConsumerWidget {
                                 const SizedBox(width: 4),
                                 Text(
                                   c.createdAt != null
-                                      ? DateFormat('dd MMM yyyy')
-                                          .format(c.createdAt!)
+                                      ? DateFormat('dd MMM yyyy, hh:mm a').format(c.createdAt!)
                                       : '',
                                   style: GoogleFonts.inter(
                                       fontSize: 12, color: AppColors.textHint),
+                                ),
+                                const SizedBox(width: 8),
+                                // ── Delete button ──────────────────────────
+                                GestureDetector(
+                                  onTap: () => _confirmDelete(
+                                      context, ref, c.id, c.caseId),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.error.withOpacity(0.12),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Icon(
+                                      Icons.delete_outline_rounded,
+                                      size: 16,
+                                      color: AppColors.error,
+                                    ),
+                                  ),
                                 ),
                               ],
                             ),
@@ -141,6 +157,113 @@ class AdminComplaintsScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _confirmDelete(
+      BuildContext context, WidgetRef ref, String id, String caseId) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A2540),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.error.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.delete_forever_rounded,
+                  color: AppColors.error, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Text('Delete Case',
+                style: GoogleFonts.inter(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 17)),
+          ],
+        ),
+        content: RichText(
+          text: TextSpan(
+            style: GoogleFonts.inter(
+                color: AppColors.textSecondary, fontSize: 14, height: 1.5),
+            children: [
+              const TextSpan(
+                  text: 'Are you sure you want to permanently delete '),
+              TextSpan(
+                text: 'Case #$caseId',
+                style: GoogleFonts.inter(
+                    color: AppColors.primaryLight,
+                    fontWeight: FontWeight.w700),
+              ),
+              const TextSpan(text: '? This action cannot be undone.'),
+            ],
+          ),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [
+          OutlinedButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.textSecondary,
+              side: const BorderSide(color: AppColors.cardBorder),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            ),
+            child: Text('Cancel', style: GoogleFonts.inter(fontSize: 13)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            ),
+            child: Text('Delete',
+                style: GoogleFonts.inter(
+                    fontSize: 13, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && context.mounted) {
+      try {
+        await ref.read(complaintServiceProvider).deleteComplaint(id);
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Case #$caseId deleted successfully.',
+                  style: GoogleFonts.inter(fontSize: 13)),
+              backgroundColor: const Color(0xFF1E7E34),
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to delete: $e',
+                  style: GoogleFonts.inter(fontSize: 13)),
+              backgroundColor: AppColors.error,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+          );
+        }
+      }
+    }
   }
 }
 

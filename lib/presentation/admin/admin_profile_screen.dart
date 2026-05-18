@@ -78,7 +78,7 @@ class AdminProfileScreen extends ConsumerWidget {
                     if (profile.profession != null)
                       InfoTile(icon: Icons.work_outline, label: 'Profession', value: profile.profession!, iconColor: AppColors.warning),
                     if (profile.createdAt != null)
-                      InfoTile(icon: Icons.calendar_today_outlined, label: 'Member Since', value: DateFormat('dd MMM yyyy').format(profile.createdAt!), iconColor: AppColors.textHint),
+                      InfoTile(icon: Icons.calendar_today_outlined, label: 'Member Since', value: DateFormat('dd MMM yyyy, hh:mm a').format(profile.createdAt!), iconColor: AppColors.textHint),
                   ],
                 ),
               ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),

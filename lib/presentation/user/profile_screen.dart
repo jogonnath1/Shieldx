@@ -125,7 +125,7 @@ class ProfileScreen extends ConsumerWidget {
                         InfoTile(
                           icon: Icons.calendar_today_outlined,
                           label: 'Member Since',
-                          value: DateFormat('dd MMM yyyy').format(profile.createdAt!),
+                          value: DateFormat('dd MMM yyyy, hh:mm a').format(profile.createdAt!),
                           iconColor: AppColors.textHint,
                         ),
                     ],

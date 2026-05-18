@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/complaint_provider.dart';
@@ -50,7 +49,7 @@ class HomeScreen extends ConsumerWidget {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  DateFormat('EEEE, dd MMMM yyyy')
+                                  DateFormat('EEEE, dd MMMM yyyy, hh:mm a')
                                       .format(DateTime.now()),
                                   style: GoogleFonts.inter(
                                     fontSize: 13,
@@ -108,7 +107,7 @@ class HomeScreen extends ConsumerWidget {
                                 shape: BoxShape.circle,
                                 boxShadow: [
                                   BoxShadow(
-                                    color: AppColors.primary.withOpacity(0.4),
+                                    color: AppColors.primary.withValues(alpha: 0.4),
                                     blurRadius: 12,
                                   )
                                 ],
@@ -233,14 +232,7 @@ class HomeScreen extends ConsumerWidget {
                                   icon: Icons.local_police_rounded,
                                   label: 'Stations Map',
                                   color: const Color(0xFF1565C0),
-                                  onTap: () async {
-                                    final url = Uri.parse(
-                                        'https://www.google.com/maps/search/police+station/');
-                                    if (await canLaunchUrl(url)) {
-                                      await launchUrl(url,
-                                          mode: LaunchMode.externalApplication);
-                                    }
-                                  },
+                                  onTap: () => context.push('/police-stations'),
                                 ),
                               ),
                             ],
@@ -296,9 +288,9 @@ class HomeScreen extends ConsumerWidget {
                     ),
                   );
                 },
-                loading: () => SliverToBoxAdapter(
+                loading: () => const SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.all(40),
+                    padding: EdgeInsets.all(40),
                     child: Center(
                       child:
                           CircularProgressIndicator(color: AppColors.primary),

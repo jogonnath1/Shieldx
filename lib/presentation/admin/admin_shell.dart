@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../core/constants/app_colors.dart';
 
 class AdminShell extends ConsumerWidget {
@@ -52,30 +51,30 @@ class AdminShell extends ConsumerWidget {
                 break;
             }
           },
-          destinations: [
+          destinations: const [
             NavigationDestination(
-              icon: const Icon(Icons.dashboard_outlined, color: AppColors.textHint),
-              selectedIcon: const Icon(Icons.dashboard_rounded, color: AppColors.primaryLight),
+              icon: Icon(Icons.dashboard_outlined, color: AppColors.textHint),
+              selectedIcon: Icon(Icons.dashboard_rounded, color: AppColors.primaryLight),
               label: 'Dashboard',
             ),
             NavigationDestination(
-              icon: const Icon(Icons.folder_outlined, color: AppColors.textHint),
-              selectedIcon: const Icon(Icons.folder_rounded, color: AppColors.primaryLight),
+              icon: Icon(Icons.folder_outlined, color: AppColors.textHint),
+              selectedIcon: Icon(Icons.folder_rounded, color: AppColors.primaryLight),
               label: 'Cases',
             ),
             NavigationDestination(
-              icon: const Icon(Icons.people_outline, color: AppColors.textHint),
-              selectedIcon: const Icon(Icons.people_rounded, color: AppColors.primaryLight),
+              icon: Icon(Icons.people_outline, color: AppColors.textHint),
+              selectedIcon: Icon(Icons.people_rounded, color: AppColors.primaryLight),
               label: 'Users',
             ),
             NavigationDestination(
-              icon: const Icon(Icons.badge_outlined, color: AppColors.textHint),
-              selectedIcon: const Icon(Icons.badge_rounded, color: AppColors.primaryLight),
+              icon: Icon(Icons.badge_outlined, color: AppColors.textHint),
+              selectedIcon: Icon(Icons.badge_rounded, color: AppColors.primaryLight),
               label: 'Officers',
             ),
             NavigationDestination(
-              icon: const Icon(Icons.admin_panel_settings_outlined, color: AppColors.textHint),
-              selectedIcon: const Icon(Icons.admin_panel_settings_rounded, color: AppColors.primaryLight),
+              icon: Icon(Icons.admin_panel_settings_outlined, color: AppColors.textHint),
+              selectedIcon: Icon(Icons.admin_panel_settings_rounded, color: AppColors.primaryLight),
               label: 'Profile',
             ),
           ],

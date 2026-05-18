@@ -247,7 +247,7 @@ class _TimelineItem extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   history.changedAt != null
-                      ? DateFormat('dd MMM yyyy, HH:mm')
+                      ? DateFormat('dd MMM yyyy, hh:mm a')
                           .format(history.changedAt!)
                       : '',
                   style: GoogleFonts.inter(

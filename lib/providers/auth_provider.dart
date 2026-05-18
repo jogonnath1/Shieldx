@@ -92,6 +92,47 @@ class AuthNotifier extends StateNotifier<AsyncValue<ProfileModel?>> {
     }
   }
 
+  Future<void> sendPhoneOtp(String phone) async {
+    try {
+      await _service.sendPhoneOtp(phone);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<bool> verifyPhoneOtp(String phone, String token) async {
+    try {
+      await _service.verifyPhoneOtp(phone, token);
+      return true;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<bool> completeRegistration({
+    required String email,
+    required String password,
+    required String name,
+    required String phone,
+  }) async {
+    state = const AsyncValue.loading();
+    try {
+      await _service.completeRegistrationWithEmailPassword(
+        email: email,
+        password: password,
+        name: name,
+        phone: phone,
+      );
+      
+      final profile = await _service.getCurrentProfile();
+      state = AsyncValue.data(profile);
+      return true;
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
+
   Future<void> signOut() async {
     await _service.signOut();
     state = const AsyncValue.data(null);

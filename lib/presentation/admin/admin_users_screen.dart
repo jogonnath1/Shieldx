@@ -164,7 +164,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                                               style: GoogleFonts.inter(
                                                   fontSize: 12, color: AppColors.textSecondary)),
                                           if (u.createdAt != null)
-                                            Text('Joined ${DateFormat('dd MMM yyyy').format(u.createdAt!)}',
+                                            Text('Joined ${DateFormat('dd MMM yyyy, hh:mm a').format(u.createdAt!)}',
                                                 style: GoogleFonts.inter(
                                                     fontSize: 11, color: AppColors.textHint)),
                                         ],

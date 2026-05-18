@@ -25,6 +25,33 @@ class AuthService {
     return response;
   }
 
+  Future<void> sendPhoneOtp(String phone) async {
+    await _client.auth.signInWithOtp(phone: phone);
+  }
+
+  Future<AuthResponse> verifyPhoneOtp(String phone, String token) async {
+    return await _client.auth.verifyOTP(
+      type: OtpType.sms,
+      token: token,
+      phone: phone,
+    );
+  }
+
+  Future<UserResponse> completeRegistrationWithEmailPassword({
+    required String email,
+    required String password,
+    required String name,
+    required String phone,
+  }) async {
+    return await _client.auth.updateUser(
+      UserAttributes(
+        email: email,
+        password: password,
+        data: {'name': name, 'phone': phone},
+      ),
+    );
+  }
+
   Future<AuthResponse> signIn({
     required String email,
     required String password,

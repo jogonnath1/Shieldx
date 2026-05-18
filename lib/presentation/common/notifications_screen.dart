@@ -7,7 +7,7 @@ import '../../providers/notification_provider.dart';
 import '../../providers/auth_provider.dart';
 
 class NotificationsScreen extends ConsumerWidget {
-  const NotificationsScreen({Key? key}) : super(key: key);
+  const NotificationsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -76,7 +76,7 @@ class NotificationsScreen extends ConsumerWidget {
                       Text(notification.message),
                       const SizedBox(height: 4),
                       Text(
-                        DateFormat.yMMMd().add_jm().format(notification.createdAt.toLocal()),
+                        DateFormat('dd MMM yyyy, hh:mm a').format(notification.createdAt.toLocal()),
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.grey.shade600,
