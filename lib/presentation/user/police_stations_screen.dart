@@ -58,7 +58,10 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
     await ref.read(stationMapProvider.notifier).init();
 
     // 2. If granted, initialize the stream for the blue dot
-    final status = await Geolocator.checkPermission();
+    final status = await Future.any([
+      Geolocator.checkPermission(),
+      Future.delayed(const Duration(seconds: 3), () => LocationPermission.denied)
+    ]);
     if (status == LocationPermission.whileInUse ||
         status == LocationPermission.always) {
       _initPositionStream();
@@ -105,29 +108,50 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
     _alignPositionStreamController.add(16.0);
 
     // Fetch the live location to ensure the highlight marker is perfectly synced
+    Position? pos;
     try {
-      final pos = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.high, timeLimit: Duration(seconds: 3)),
-      );
-      final liveLoc = LatLng(pos.latitude, pos.longitude);
+      pos = await Future.any([
+        Geolocator.getCurrentPosition(
+          locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+        ),
+        Future.delayed(
+          const Duration(seconds: 10),
+          () => throw Exception('GPS Timeout'),
+        ),
+      ]);
+    } catch (_) {
+      try {
+        pos = await Future.any([
+          Geolocator.getLastKnownPosition(),
+          Future.delayed(const Duration(seconds: 2), () => null)
+        ]);
+      } catch (_) {}
+    }
+
+    LatLng? liveLoc;
+    if (pos != null) {
+      liveLoc = LatLng(pos.latitude, pos.longitude);
+    } else {
+      // If all GPS requests fail, gracefully fallback to the map provider's cached location!
+      liveLoc = ref.read(stationMapProvider).userLocation;
+    }
+
+    if (liveLoc == null) {
       if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not fetch location. Please check your device GPS settings.')),
+        );
+      }
+      return;
+    }
+    
+    if (mounted) {
         ref.read(stationMapProvider.notifier).updateUserLocation(liveLoc);
         setState(() => _isUserLocationHighlighted = true);
         Future.delayed(const Duration(seconds: 4), () {
           if (mounted) setState(() => _isUserLocationHighlighted = false);
         });
       }
-    } catch (_) {
-      // Fallback if live location fails
-      final userLoc = ref.read(stationMapProvider).userLocation;
-      if (userLoc != null && mounted) {
-        setState(() => _isUserLocationHighlighted = true);
-        Future.delayed(const Duration(seconds: 4), () {
-          if (mounted) setState(() => _isUserLocationHighlighted = false);
-        });
-      }
-    }
   }
 
   String _distLabel(LatLng? userLoc, LatLng stationLoc) {
@@ -677,7 +701,7 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
                 width: 120,
                 height: 120,
                 alignment: Alignment.center,
-                child: _UserLocationHighlightMarker(),
+                child: const _UserLocationHighlightMarker(),
               ),
             ],
           ),
