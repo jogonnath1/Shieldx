@@ -103,9 +103,15 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
     }
   }
 
+  bool _isLocating = false;
+
   Future<void> _goToMyLocation() async {
-    // Push a zoom level into the stream — CurrentLocationLayer will center the map
-    _alignPositionStreamController.add(16.0);
+    if (_isLocating) return;
+    setState(() => _isLocating = true);
+    
+    try {
+      // Push a zoom level into the stream — CurrentLocationLayer will center the map
+      _alignPositionStreamController.add(16.0);
 
     // Fetch the live location to ensure the highlight marker is perfectly synced
     Position? pos;
@@ -146,12 +152,17 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
     }
     
     if (mounted) {
-        ref.read(stationMapProvider.notifier).updateUserLocation(liveLoc);
-        setState(() => _isUserLocationHighlighted = true);
-        Future.delayed(const Duration(seconds: 4), () {
-          if (mounted) setState(() => _isUserLocationHighlighted = false);
-        });
+      ref.read(stationMapProvider.notifier).updateUserLocation(liveLoc);
+      setState(() => _isUserLocationHighlighted = true);
+      Future.delayed(const Duration(seconds: 4), () {
+        if (mounted) setState(() => _isUserLocationHighlighted = false);
+      });
+    }
+    } finally {
+      if (mounted) {
+        setState(() => _isLocating = false);
       }
+    }
   }
 
   String _distLabel(LatLng? userLoc, LatLng stationLoc) {
