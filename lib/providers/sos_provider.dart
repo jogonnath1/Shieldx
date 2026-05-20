@@ -84,13 +84,16 @@ class SOSNotifier extends StateNotifier<SOSState> {
       return;
     }
 
-    // 3. Initiate the 3-second countdown
+    // 3. Initiate the 3-second countdown — show 3, then 2, then 1, then trigger
     state = state.copyWith(status: SOSStatus.countingDown, countdown: 3, errorMessage: null);
-    
+
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (state.countdown > 1) {
-        state = state.copyWith(countdown: state.countdown - 1);
+      final next = state.countdown - 1;
+      if (next > 0) {
+        // Still counting down — display the next number
+        state = state.copyWith(countdown: next);
       } else {
+        // Reached zero — fire SOS
         timer.cancel();
         _countdownTimer = null;
         _triggerSOSAlert();

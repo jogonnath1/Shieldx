@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'core/theme/app_theme.dart';
 import 'core/router/app_router.dart';
+import 'providers/connectivity_provider.dart';
+import 'presentation/widgets/common/no_internet_screen.dart';
 
 class ShieldXApp extends ConsumerStatefulWidget {
   const ShieldXApp({super.key});
@@ -40,6 +42,17 @@ class _ShieldXAppState extends ConsumerState<ShieldXApp> {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
       routerConfig: router,
+      builder: (context, child) {
+        return Consumer(
+          builder: (context, ref, _) {
+            final isOnline = ref.watch(connectivityProvider);
+            if (!isOnline) {
+              return const NoInternetScreen();
+            }
+            return child ?? const SizedBox.shrink();
+          },
+        );
+      },
     );
   }
 }

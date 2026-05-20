@@ -2,10 +2,20 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../providers/sos_provider.dart';
 
 class SOSButtonSheet extends ConsumerWidget {
   const SOSButtonSheet({super.key});
+
+  Future<void> _callHotline(String number) async {
+    final uri = Uri.parse('tel:$number');
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      }
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -125,7 +135,7 @@ class SOSButtonSheet extends ConsumerWidget {
             ),
             const SizedBox(height: 36),
 
-            if (sosState.status == SOSStatus.error)
+            if (sosState.status == SOSStatus.error) ...[
               Padding(
                 padding: const EdgeInsets.only(bottom: 16),
                 child: Container(
@@ -142,6 +152,49 @@ class SOSButtonSheet extends ConsumerWidget {
                   ),
                 ),
               ),
+              const SizedBox(height: 8),
+              Text(
+                'OFFLINE FALLBACK HELPLINES',
+                style: GoogleFonts.inter(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.orangeAccent,
+                  letterSpacing: 1.0,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _callHotline('999'),
+                      icon: const Icon(Icons.phone_in_talk, color: Colors.white, size: 16),
+                      label: const Text('Call 999 (Emergency)'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFEF4444),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () => _callHotline('333'),
+                      icon: const Icon(Icons.phone_in_talk, color: Colors.white, size: 16),
+                      label: const Text('Call 333 (Helpline)'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF475569),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+            ],
           ] else if (sosState.status == SOSStatus.countingDown) ...[
             Text(
               'ACTIVATING SOS IN',
@@ -173,9 +226,12 @@ class SOSButtonSheet extends ConsumerWidget {
                   ),
                 )
                     .animate(key: ValueKey(sosState.countdown))
-                    .scale(begin: const Offset(0.4, 0.4), end: const Offset(1.1, 1.1), duration: 300.ms, curve: Curves.bounceOut)
-                    .animate(delay: 700.ms)
-                    .fadeOut(duration: 250.ms),
+                    .scale(
+                      begin: const Offset(0.4, 0.4),
+                      end: const Offset(1.0, 1.0),
+                      duration: 350.ms,
+                      curve: Curves.bounceOut,
+                    ),
               ),
             ),
             const SizedBox(height: 32),

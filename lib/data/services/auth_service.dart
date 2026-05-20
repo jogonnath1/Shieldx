@@ -11,6 +11,37 @@ class AuthService {
 
   Stream<AuthState> get authStateChanges => _client.auth.onAuthStateChange;
 
+  Future<Map<String, bool>> checkContactExists({
+    required String email,
+    required String phone,
+  }) async {
+    try {
+      final response = await _client.rpc(
+        'check_contact_exists',
+        params: {
+          'email_to_check': email,
+          'phone_to_check': phone,
+        },
+      );
+      if (response is List && response.isNotEmpty) {
+        final data = response.first as Map;
+        return {
+          'email_exists': data['email_exists'] as bool? ?? false,
+          'phone_exists': data['phone_exists'] as bool? ?? false,
+        };
+      }
+      if (response is Map) {
+        return {
+          'email_exists': response['email_exists'] as bool? ?? false,
+          'phone_exists': response['phone_exists'] as bool? ?? false,
+        };
+      }
+      return {'email_exists': false, 'phone_exists': false};
+    } catch (e) {
+      return {'email_exists': false, 'phone_exists': false};
+    }
+  }
+
   Future<AuthResponse> signUp({
     required String email,
     required String password,

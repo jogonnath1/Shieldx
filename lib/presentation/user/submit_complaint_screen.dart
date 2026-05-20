@@ -4,11 +4,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:intl/intl.dart';
+import 'package:uuid/uuid.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/utils/complaint_classifier.dart';
 import '../../data/services/complaint_service.dart';
+import '../../providers/connectivity_provider.dart';
+import '../../providers/complaint_provider.dart';
 import '../../providers/location_cache_provider.dart';
 import '../widgets/common/widgets.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
@@ -130,12 +134,20 @@ class _SubmitComplaintScreenState
     }
   }
 
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final picked = await picker.pickMultiImage();
-    if (picked.isNotEmpty) {
+  Future<void> _pickEvidenceFiles() async {
+    final result = await FilePicker.pickFiles(
+      allowMultiple: true,
+      withData: kIsWeb,
+    );
+    if (result != null && result.files.isNotEmpty) {
       setState(() {
-        _evidenceFiles.addAll(picked);
+        _evidenceFiles.addAll(result.files.map((file) {
+          if (kIsWeb) {
+            return XFile.fromData(file.bytes!, name: file.name, length: file.size);
+          } else {
+            return XFile(file.path!, name: file.name);
+          }
+        }));
       });
     }
   }
@@ -192,26 +204,43 @@ class _SubmitComplaintScreenState
       return;
     }
     setState(() => _isLoading = true);
+
+    // Check active internet connection first
+    final isOnline = await ref.read(connectivityProvider.notifier).checkConnection();
+    if (!isOnline) {
+      _showError('No internet connection. Active internet connection is required to submit a report.');
+      setState(() => _isLoading = false);
+      return;
+    }
+
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    final complaintId = const Uuid().v4();
+
+    final complaintData = {
+      'id': complaintId,
+      'user_id': userId,
+      'first_name': _isAnonymous ? null : _firstNameCtrl.text.trim(),
+      'last_name': _isAnonymous ? null : _lastNameCtrl.text.trim(),
+      'phone': _isAnonymous ? null : _phoneCtrl.text.trim(),
+      'nid': _isAnonymous ? null : _nidCtrl.text.trim(),
+      'profession': _isAnonymous ? null : _professionCtrl.text.trim(),
+      'present_address': _isAnonymous ? null : _presentAddressCtrl.text.trim(),
+      'permanent_address': _isAnonymous ? null : _permanentAddressCtrl.text.trim(),
+      'crime_category': _selectedCategory,
+      'description': _descriptionCtrl.text.trim(),
+      'location_address': _locationCtrl.text.trim(),
+      'incident_datetime': _incidentDate?.toIso8601String(),
+      'police_station': _selectedPoliceStation,
+      'evidence_urls': <String>[],
+      'is_anonymous': _isAnonymous,
+    };
+
     try {
-      final userId = Supabase.instance.client.auth.currentUser?.id;
       final service = ComplaintService();
-      await service.submitComplaint({
-        'user_id': userId,
-        'first_name': _isAnonymous ? null : _firstNameCtrl.text.trim(),
-        'last_name': _isAnonymous ? null : _lastNameCtrl.text.trim(),
-        'phone': _isAnonymous ? null : _phoneCtrl.text.trim(),
-        'nid': _isAnonymous ? null : _nidCtrl.text.trim(),
-        'profession': _isAnonymous ? null : _professionCtrl.text.trim(),
-        'present_address': _isAnonymous ? null : _presentAddressCtrl.text.trim(),
-        'permanent_address': _isAnonymous ? null : _permanentAddressCtrl.text.trim(),
-        'crime_category': _selectedCategory,
-        'description': _descriptionCtrl.text.trim(),
-        'location_address': _locationCtrl.text.trim(),
-        'incident_datetime': _incidentDate?.toIso8601String(),
-        'police_station': _selectedPoliceStation,
-        'evidence_urls': [],
-        'is_anonymous': _isAnonymous,
-      });
+      await service.submitComplaint(complaintData);
+      if (userId != null) {
+        ref.invalidate(userComplaintsStreamProvider(userId));
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -344,7 +373,7 @@ class _SubmitComplaintScreenState
                   isActive: _currentStep >= 2,
                   content: _EvidenceStep(
                     files: _evidenceFiles,
-                    onPickImage: _pickImage,
+                    onPickImage: _pickEvidenceFiles,
                     onRemove: (i) =>
                         setState(() => _evidenceFiles.removeAt(i)),
                   ),
@@ -831,7 +860,7 @@ class _EvidenceStep extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Upload Evidence Photos (Optional)',
+        Text('Upload Evidence Files (Optional)',
             style: GoogleFonts.inter(
                 color: AppColors.textSecondary, fontSize: 13)),
         const SizedBox(height: 12),
@@ -845,38 +874,60 @@ class _EvidenceStep extends StatelessWidget {
               mainAxisSpacing: 8,
             ),
             itemCount: files.length,
-            itemBuilder: (ctx, i) => Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: kIsWeb
-                      ? Image.network(files[i].path,
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: double.infinity)
-                      : Image.file(File(files[i].path),
-                          fit: BoxFit.cover,
-                          width: double.infinity,
-                          height: double.infinity),
-                ),
-                Positioned(
-                  top: 4,
-                  right: 4,
-                  child: GestureDetector(
-                    onTap: () => onRemove(i),
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: const BoxDecoration(
-                        color: AppColors.error,
-                        shape: BoxShape.circle,
+            itemBuilder: (ctx, i) {
+              final isImage = files[i].name.toLowerCase().endsWith('.jpg') || 
+                              files[i].name.toLowerCase().endsWith('.jpeg') || 
+                              files[i].name.toLowerCase().endsWith('.png');
+              return Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: isImage && !kIsWeb 
+                        ? Image.file(File(files[i].path),
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: double.infinity)
+                        : Container(
+                            color: AppColors.primary.withOpacity(0.1),
+                            width: double.infinity,
+                            height: double.infinity,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(Icons.insert_drive_file_outlined, color: AppColors.primary, size: 28),
+                                const SizedBox(height: 4),
+                                Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                                  child: Text(
+                                    files[i].name, 
+                                    maxLines: 1, 
+                                    overflow: TextOverflow.ellipsis, 
+                                    style: GoogleFonts.inter(fontSize: 10, color: AppColors.textPrimary)
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                  ),
+                  Positioned(
+                    top: 4,
+                    right: 4,
+                    child: GestureDetector(
+                      onTap: () => onRemove(i),
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: AppColors.error,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.close,
+                            size: 12, color: Colors.white),
                       ),
-                      child: const Icon(Icons.close,
-                          size: 12, color: Colors.white),
                     ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              );
+            },
           ),
         const SizedBox(height: 12),
         GestureDetector(
@@ -893,10 +944,10 @@ class _EvidenceStep extends StatelessWidget {
             ),
             child: Column(
               children: [
-                const Icon(Icons.add_photo_alternate_outlined,
+                const Icon(Icons.upload_file_outlined,
                     color: AppColors.primary, size: 36),
                 const SizedBox(height: 8),
-                Text('Tap to add photos',
+                Text('Tap to add files',
                     style: GoogleFonts.inter(
                         color: AppColors.primary, fontWeight: FontWeight.w600)),
               ],

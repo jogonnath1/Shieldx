@@ -38,6 +38,7 @@ dependencies:
   geolocator: ^14.0.2
   http: ^1.6.0
   flutter_map_location_marker: ^10.2.0
+  file_picker: ^11.0.2
 
 dev_dependencies:
   flutter_test:

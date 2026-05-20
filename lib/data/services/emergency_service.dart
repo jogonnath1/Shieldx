@@ -64,12 +64,13 @@ class EmergencyService {
     return _client
         .from('emergencies')
         .stream(primaryKey: ['id'])
-        .eq('status', 'active')
         .order('created_at', ascending: false)
         .asyncMap((data) async {
           if (data.isEmpty) return [];
           final list = <EmergencyModel>[];
-          for (final row in data) {
+          // Filter ONLY active ones client-side so updates to non-active status are processed and removed instantly
+          final activeRows = data.where((row) => row['status'] == 'active').toList();
+          for (final row in activeRows) {
             try {
               final profileRes = await _client
                   .from('profiles')

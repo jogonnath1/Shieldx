@@ -65,6 +65,8 @@ class AppColors {
 
   static Color statusColor(String status) {
     switch (status.toLowerCase()) {
+      case 'offline_pending':
+        return Colors.orangeAccent;
       case 'submitted':
         return submitted;
       case 'in_progress':

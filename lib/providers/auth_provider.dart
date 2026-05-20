@@ -92,6 +92,13 @@ class AuthNotifier extends StateNotifier<AsyncValue<ProfileModel?>> {
     }
   }
 
+  Future<Map<String, bool>> checkContactExists({
+    required String email,
+    required String phone,
+  }) async {
+    return await _service.checkContactExists(email: email, phone: phone);
+  }
+
   Future<void> sendPhoneOtp(String phone) async {
     try {
       await _service.sendPhoneOtp(phone);

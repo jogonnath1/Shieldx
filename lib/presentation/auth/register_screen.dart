@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/constants/app_colors.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/connectivity_provider.dart';
 import '../widgets/common/widgets.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -43,14 +44,42 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       _showError('Please verify your phone number first');
       return;
     }
+
+    final isOnline = await ref.read(connectivityProvider.notifier).checkConnection();
+    if (!isOnline) {
+      _showError('Active internet connection is required to create an account.');
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
       final notifier = ref.read(authNotifierProvider.notifier);
+
+      // Prevent registration if email or phone is already registered
+      final checks = await notifier.checkContactExists(
+        email: _emailCtrl.text.trim(),
+        phone: _phoneCtrl.text.trim(),
+      );
+
+      if (checks['email_exists'] == true) {
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+        _showError('This email address is already in use.');
+        return;
+      }
+
+      if (checks['phone_exists'] == true) {
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+        _showError('This phone number is already registered.');
+        return;
+      }
+
       final ok = await notifier.completeRegistration(
         email: _emailCtrl.text.trim(),
         password: _passwordCtrl.text.trim(),
         name: _nameCtrl.text.trim(),
-        phone: '+88${_phoneCtrl.text.trim()}',
+        phone: _phoneCtrl.text.trim(),
       );
       if (!mounted) return;
       if (ok) {
@@ -134,7 +163,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       const SizedBox(height: 14),
                       CustomTextField(
                         label: 'Phone Number',
-                        hint: '01XXXXXXXXX',
+                        hint: '+8801XXXXXXXXX',
                         controller: _phoneCtrl,
                         keyboardType: TextInputType.phone,
                         prefixIcon: Icons.phone_outlined,
@@ -142,7 +171,8 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         readOnly: _isPhoneVerified,
                         validator: (v) {
                           if (v == null || v.isEmpty) return 'Phone number is required';
-                          if (v.length != 11) return 'Must be exactly 11 digits';
+                          if (!v.startsWith('+')) return 'Must start with country code (e.g., +880)';
+                          if (v.length < 10) return 'Enter a valid phone number';
                           return null;
                         },
                         suffix: _isPhoneVerified
@@ -154,11 +184,31 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                 padding: const EdgeInsets.only(right: 8.0),
                                 child: TextButton(
                                   onPressed: () async {
-                                    if (_phoneCtrl.text.trim().length == 11) {
+                                    final isOnline = await ref.read(connectivityProvider.notifier).checkConnection();
+                                    if (!isOnline) {
+                                      _showError('Active internet connection is required for phone verification.');
+                                      return;
+                                    }
+                                    final number = _phoneCtrl.text.trim();
+                                    if (number.startsWith('+') && number.length >= 10) {
                                       setState(() => _isLoading = true);
                                       try {
                                         final notifier = ref.read(authNotifierProvider.notifier);
-                                        await notifier.sendPhoneOtp('+88${_phoneCtrl.text.trim()}');
+
+                                        // Prevent phone OTP if phone number is already registered
+                                        final checks = await notifier.checkContactExists(
+                                          email: '',
+                                          phone: number,
+                                        );
+
+                                        if (checks['phone_exists'] == true) {
+                                          if (!mounted) return;
+                                          setState(() => _isLoading = false);
+                                          _showError('This phone number is already registered.');
+                                          return;
+                                        }
+
+                                        await notifier.sendPhoneOtp(number);
                                         if (!mounted) return;
                                         setState(() {
                                           _isOtpSent = true;
@@ -176,7 +226,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                         _showError(e.toString().replaceAll('AuthException: ', ''));
                                       }
                                     } else {
-                                      _showError('Enter exactly 11 digits first');
+                                      _showError('Enter a valid phone number starting with +');
                                     }
                                   },
                                   child: const Text('Verify'),
@@ -196,11 +246,16 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             padding: const EdgeInsets.only(right: 8.0),
                             child: TextButton(
                               onPressed: () async {
+                                final isOnline = await ref.read(connectivityProvider.notifier).checkConnection();
+                                if (!isOnline) {
+                                  _showError('Active internet connection is required for OTP verification.');
+                                  return;
+                                }
                                 if (_otpCtrl.text.trim().isNotEmpty) {
                                   setState(() => _isLoading = true);
                                   try {
                                     final notifier = ref.read(authNotifierProvider.notifier);
-                                    await notifier.verifyPhoneOtp('+88${_phoneCtrl.text.trim()}', _otpCtrl.text.trim());
+                                    await notifier.verifyPhoneOtp(_phoneCtrl.text.trim(), _otpCtrl.text.trim());
                                     if (!mounted) return;
                                     setState(() {
                                       _isPhoneVerified = true;
@@ -292,4 +347,5 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       ),
     );
   }
+
 }

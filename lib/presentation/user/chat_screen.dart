@@ -8,6 +8,7 @@ import '../../core/constants/app_colors.dart';
 import '../../data/services/message_service.dart';
 import '../../data/models/message_model.dart';
 import '../../providers/auth_provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final String complaintId;
@@ -27,7 +28,23 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void initState() {
     super.initState();
     _service = MessageService();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToBottom());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scrollToBottom();
+      _markMessagesAsRead();
+    });
+  }
+
+  Future<void> _markMessagesAsRead() async {
+    final currentUser = Supabase.instance.client.auth.currentUser;
+    if (currentUser != null) {
+      try {
+        print('MARK AS READ: marking messages for complaint ${widget.complaintId} by user ${currentUser.id}');
+        await _service.markAsRead(widget.complaintId, currentUser.id);
+        print('MARK AS READ: successfully marked as read');
+      } catch (e, st) {
+        print('MARK AS READ ERROR: $e\n$st');
+      }
+    }
   }
 
   @override
@@ -111,8 +128,10 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       ),
                     );
                   }
-                  WidgetsBinding.instance
-                      .addPostFrameCallback((_) => _scrollToBottom());
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    _scrollToBottom();
+                    _markMessagesAsRead();
+                  });
                   return ListView.builder(
                     controller: _scrollCtrl,
                     padding: const EdgeInsets.symmetric(

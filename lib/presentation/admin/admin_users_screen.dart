@@ -7,6 +7,7 @@ import '../../core/constants/app_colors.dart';
 import '../../data/services/profile_service.dart';
 import '../../data/models/profile_model.dart';
 import '../widgets/common/widgets.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AdminUsersScreen extends ConsumerStatefulWidget {
   const AdminUsersScreen({super.key});
@@ -54,9 +55,197 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
     }
   }
 
+  Future<void> _toggleMainAdmin(ProfileModel user) async {
+    final makeMainAdmin = !user.isMainAdmin;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A2540),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.stars_rounded,
+                  color: AppColors.primary, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(makeMainAdmin ? 'Promote to Main Admin' : 'Demote Main Admin',
+                  style: GoogleFonts.inter(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16)),
+            ),
+          ],
+        ),
+        content: Text(
+          makeMainAdmin
+              ? 'Are you sure you want to promote ${user.displayName} to Main Administrator? They will get full controls, including the ability to manage other administrators.'
+              : 'Are you sure you want to demote ${user.displayName} from Main Administrator role?',
+          style: GoogleFonts.inter(
+              color: AppColors.textSecondary, fontSize: 14, height: 1.5),
+        ),
+        actions: [
+          OutlinedButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.textSecondary,
+              side: const BorderSide(color: AppColors.cardBorder),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: makeMainAdmin ? AppColors.primary : AppColors.error,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            child: Text(makeMainAdmin ? 'Promote' : 'Demote', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        setState(() => _isLoading = true);
+        await ProfileService().setMainAdmin(user.id, makeMainAdmin);
+        await _load();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(makeMainAdmin
+                  ? '${user.displayName} is now a Main Administrator'
+                  : '${user.displayName} has been demoted'),
+              backgroundColor: AppColors.success,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to update: $e'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   Future<void> _toggleVerified(ProfileModel user) async {
     await ProfileService().setVerified(user.id, !user.isVerified);
     await _load();
+  }
+
+  Future<void> _deleteUser(ProfileModel user) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A2540),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.error.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.person_remove_rounded,
+                  color: AppColors.error, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Text('Remove User',
+                style: GoogleFonts.inter(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 17)),
+          ],
+        ),
+        content: RichText(
+          text: TextSpan(
+            style: GoogleFonts.inter(
+                color: AppColors.textSecondary, fontSize: 14, height: 1.5),
+            children: [
+              const TextSpan(
+                  text: 'Are you sure you want to permanently remove '),
+              TextSpan(
+                text: user.displayName,
+                style: GoogleFonts.inter(
+                    color: AppColors.primaryLight,
+                    fontWeight: FontWeight.w700),
+              ),
+              const TextSpan(text: '? This will delete their account and all profile data permanently. This action cannot be undone.'),
+            ],
+          ),
+        ),
+        actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        actions: [
+          OutlinedButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.textSecondary,
+              side: const BorderSide(color: AppColors.cardBorder),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            ),
+            child: Text('Cancel', style: GoogleFonts.inter(fontSize: 13)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            ),
+            child: Text('Delete', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        setState(() => _isLoading = true);
+        await ProfileService().deleteUser(user.id);
+        await _load();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('User removed successfully'),
+              backgroundColor: AppColors.success,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to remove user: $e'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    }
   }
 
   @override
@@ -144,18 +333,26 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                                                         fontSize: 14,
                                                         color: AppColors.textPrimary)),
                                               ),
-                                              if (u.isAdmin)
+                                              if (u.isAdmin || u.isMainAdmin)
                                                 Container(
                                                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                                   decoration: BoxDecoration(
-                                                    color: AppColors.warning.withOpacity(0.15),
+                                                    color: u.isMainAdmin
+                                                        ? const Color(0xFFE53935).withOpacity(0.15)
+                                                        : AppColors.warning.withOpacity(0.15),
                                                     borderRadius: BorderRadius.circular(10),
+                                                    border: u.isMainAdmin
+                                                        ? Border.all(color: const Color(0xFFE53935).withOpacity(0.3), width: 1)
+                                                        : null,
                                                   ),
-                                                  child: Text('Admin',
+                                                  child: Text(
+                                                      u.isMainAdmin ? '👑 Main Admin' : 'Admin',
                                                       style: GoogleFonts.inter(
                                                           fontSize: 10,
                                                           fontWeight: FontWeight.w700,
-                                                          color: AppColors.warning)),
+                                                          color: u.isMainAdmin
+                                                              ? const Color(0xFFE53935)
+                                                              : AppColors.warning)),
                                                 ),
                                             ],
                                           ),
@@ -176,19 +373,51 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                                       onSelected: (v) {
                                         if (v == 'role') _toggleRole(u);
                                         if (v == 'verify') _toggleVerified(u);
+                                        if (v == 'main_admin') _toggleMainAdmin(u);
+                                        if (v == 'delete') _deleteUser(u);
                                       },
-                                      itemBuilder: (_) => [
-                                        PopupMenuItem(
-                                          value: 'role',
-                                          child: Text(u.isAdmin ? 'Demote to User' : 'Promote to Admin',
-                                              style: GoogleFonts.inter(color: AppColors.textPrimary)),
-                                        ),
-                                        PopupMenuItem(
-                                          value: 'verify',
-                                          child: Text(u.isVerified ? 'Unverify' : 'Verify',
-                                              style: GoogleFonts.inter(color: AppColors.textPrimary)),
-                                        ),
-                                      ],
+                                      itemBuilder: (_) {
+                                        final currentAdminId = Supabase.instance.client.auth.currentUser?.id;
+                                        final currentAdmin = _users.firstWhere((usr) => usr.id == currentAdminId, orElse: () => u);
+                                        final isSelf = u.id == currentAdminId;
+                                        final isMainAdmin = u.isMainAdmin;
+                                        final iAmMainAdmin = currentAdmin.isMainAdmin;
+                                        return [
+                                          PopupMenuItem(
+                                            value: 'role',
+                                            enabled: !isSelf && !isMainAdmin, // Prevent self demotion & main admin demotion
+                                            child: Text(u.isAdmin ? 'Demote to User' : 'Promote to Admin',
+                                                style: GoogleFonts.inter(
+                                                    color: (isSelf || isMainAdmin) ? AppColors.textHint : AppColors.textPrimary)),
+                                          ),
+                                          PopupMenuItem(
+                                            value: 'verify',
+                                            child: Text(u.isVerified ? 'Unverify' : 'Verify',
+                                                style: GoogleFonts.inter(color: AppColors.textPrimary)),
+                                          ),
+                                          if (iAmMainAdmin && !isSelf) ...[
+                                            PopupMenuItem(
+                                              value: 'main_admin',
+                                              child: Text(u.isMainAdmin ? 'Remove Main Admin' : 'Make Main Admin',
+                                                  style: GoogleFonts.inter(color: AppColors.textPrimary)),
+                                            ),
+                                          ],
+                                          if (!isSelf && !isMainAdmin) ...[
+                                            const PopupMenuDivider(),
+                                            PopupMenuItem(
+                                              value: 'delete',
+                                              child: Row(
+                                                children: [
+                                                  const Icon(Icons.delete_outline_rounded, color: AppColors.error, size: 18),
+                                                  const SizedBox(width: 8),
+                                                  Text('Delete User',
+                                                      style: GoogleFonts.inter(color: AppColors.error)),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
+                                        ];
+                                      },
                                     ),
                                   ],
                                 ),

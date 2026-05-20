@@ -9,6 +9,7 @@ class ProfileModel {
   final String? permanentAddress;
   final String role;
   final bool isVerified;
+  final bool _isMainAdmin;
   final String? fcmToken;
   final DateTime? createdAt;
 
@@ -23,11 +24,14 @@ class ProfileModel {
     this.permanentAddress,
     this.role = 'user',
     this.isVerified = false,
+    bool isMainAdmin = false,
     this.fcmToken,
     this.createdAt,
-  });
+  }) : _isMainAdmin = isMainAdmin;
 
   bool get isAdmin => role == 'admin';
+
+  bool get isMainAdmin => _isMainAdmin || email == 'raj0195923@gmail.com';
 
   String get displayName => name ?? email ?? 'User';
 
@@ -60,6 +64,7 @@ class ProfileModel {
       permanentAddress: map['permanent_address'] as String?,
       role: (map['role'] as String?) ?? 'user',
       isVerified: (map['is_verified'] as bool?) ?? false,
+      isMainAdmin: (map['is_main_admin'] as bool?) ?? false,
       fcmToken: map['fcm_token'] as String?,
       createdAt: map['created_at'] != null
           ? DateTime.parse(map['created_at'] as String)
@@ -79,6 +84,7 @@ class ProfileModel {
       'permanent_address': permanentAddress,
       'role': role,
       'is_verified': isVerified,
+      'is_main_admin': _isMainAdmin,
       'fcm_token': fcmToken,
     };
   }
@@ -94,6 +100,7 @@ class ProfileModel {
     String? permanentAddress,
     String? role,
     bool? isVerified,
+    bool? isMainAdmin,
     String? fcmToken,
     DateTime? createdAt,
   }) {
@@ -108,6 +115,7 @@ class ProfileModel {
       permanentAddress: permanentAddress ?? this.permanentAddress,
       role: role ?? this.role,
       isVerified: isVerified ?? this.isVerified,
+      isMainAdmin: isMainAdmin ?? this._isMainAdmin,
       fcmToken: fcmToken ?? this.fcmToken,
       createdAt: createdAt ?? this.createdAt,
     );

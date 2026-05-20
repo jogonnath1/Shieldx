@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/constants/app_constants.dart';
+import '../../data/models/complaint_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/complaint_provider.dart';
 import '../widgets/common/widgets.dart';
@@ -15,9 +17,12 @@ class MyComplaintsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final user = ref.watch(currentUserProvider);
+    final filterState = ref.watch(userComplaintFilterProvider);
+    final filterNotifier = ref.read(userComplaintFilterProvider.notifier);
+
     final complaintsAsync = user != null
-        ? ref.watch(userComplaintsStreamProvider(user.id))
-        : const AsyncValue<dynamic>.data([]);
+        ? ref.watch(userFilteredComplaintsProvider(user.id))
+        : const AsyncValue<List<ComplaintModel>>.data([]);
 
     return Scaffold(
       appBar: AppBar(
@@ -29,23 +34,197 @@ class MyComplaintsScreen extends ConsumerWidget {
       ),
       body: Container(
         decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
-        child: complaintsAsync.when(
-          data: (list) {
-            if (list.isEmpty) {
-              return EmptyState(
-                icon: Icons.assignment_outlined,
-                title: 'No Reports Yet',
-                subtitle: 'You haven\'t submitted any crime reports.',
-                buttonLabel: 'Submit Report',
-                onButton: () => context.push('/submit-complaint'),
-              );
-            }
-            return ListView.separated(
-              padding: const EdgeInsets.all(20),
-              itemCount: list.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (ctx, i) {
-                final c = list[i];
+        child: Column(
+          children: [
+            // Modern Search and Filter Row for Citizen
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceLight.withOpacity(0.4),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppColors.cardBorder, width: 1),
+                      ),
+                      child: TextField(
+                        onChanged: (val) {
+                          filterNotifier.state = filterState.copyWith(searchQuery: val);
+                        },
+                        style: GoogleFonts.inter(color: AppColors.textPrimary, fontSize: 14),
+                        decoration: InputDecoration(
+                          hintText: 'Search by Case ID, category, keyword...',
+                          hintStyle: GoogleFonts.inter(color: AppColors.textHint, fontSize: 13),
+                          prefixIcon: const Icon(Icons.search_rounded, color: AppColors.textSecondary, size: 20),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  // Advanced Filter Button
+                  GestureDetector(
+                    onTap: () => _showFilterBottomSheet(context, ref, false),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: (filterState.category != 'all' || filterState.dateRange != null)
+                            ? AppColors.primary.withOpacity(0.15)
+                            : AppColors.surfaceLight.withOpacity(0.4),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: (filterState.category != 'all' || filterState.dateRange != null)
+                              ? AppColors.primary
+                              : AppColors.cardBorder,
+                          width: 1,
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.tune_rounded,
+                        color: (filterState.category != 'all' || filterState.dateRange != null)
+                            ? AppColors.primaryLight
+                            : AppColors.textSecondary,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Active Filters indicator
+            if (filterState.category != 'all' || filterState.dateRange != null)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                child: Row(
+                  children: [
+                    Text(
+                      'Active:',
+                      style: GoogleFonts.inter(color: AppColors.textHint, fontSize: 11, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            if (filterState.category != 'all')
+                              Padding(
+                                padding: const EdgeInsets.only(right: 6),
+                                child: Chip(
+                                  label: Text(filterState.category),
+                                  labelStyle: GoogleFonts.inter(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600),
+                                  backgroundColor: AppColors.primary.withOpacity(0.2),
+                                  side: BorderSide(color: AppColors.primary.withOpacity(0.4)),
+                                  padding: EdgeInsets.zero,
+                                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  onDeleted: () {
+                                    filterNotifier.state = filterState.copyWith(category: 'all');
+                                  },
+                                ),
+                              ),
+                            if (filterState.dateRange != null)
+                              Padding(
+                                padding: const EdgeInsets.only(right: 6),
+                                child: Chip(
+                                  label: Text(
+                                    '${DateFormat('d MMM').format(filterState.dateRange!.start)} - ${DateFormat('d MMM').format(filterState.dateRange!.end)}',
+                                  ),
+                                  labelStyle: GoogleFonts.inter(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600),
+                                  backgroundColor: AppColors.primary.withOpacity(0.2),
+                                  side: BorderSide(color: AppColors.primary.withOpacity(0.4)),
+                                  padding: EdgeInsets.zero,
+                                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  onDeleted: () {
+                                    filterNotifier.state = filterState.copyWith(dateRange: () => null);
+                                  },
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () {
+                        filterNotifier.state = filterState.copyWith(
+                          category: 'all',
+                          dateRange: () => null,
+                        );
+                      },
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      child: Text(
+                        'Clear All',
+                        style: GoogleFonts.inter(color: AppColors.error, fontSize: 11, fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            // Status filter chips for citizen
+            SizedBox(
+              height: 50,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                children: [
+                  _FilterChip(
+                    label: 'All',
+                    selected: filterState.status == 'all',
+                    onTap: () => filterNotifier.state = filterState.copyWith(status: 'all'),
+                  ),
+                  ...AppConstants.complaintStatuses.map(
+                    (s) => _FilterChip(
+                      label: AppConstants.statusLabel(s),
+                      selected: filterState.status == s,
+                      onTap: () => filterNotifier.state = filterState.copyWith(status: s),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            Expanded(
+              child: complaintsAsync.when(
+                data: (list) {
+                  if (list.isEmpty) {
+                    final hasActiveFilters = filterState.searchQuery.isNotEmpty ||
+                        filterState.category != 'all' ||
+                        filterState.status != 'all' ||
+                        filterState.dateRange != null;
+
+                    if (hasActiveFilters) {
+                      return EmptyState(
+                        icon: Icons.search_off_rounded,
+                        title: 'No Matches Found',
+                        subtitle: 'Try adjusting or clearing your filters.',
+                        buttonLabel: 'Clear All Filters',
+                        onButton: () {
+                          filterNotifier.state = const ComplaintFilterState();
+                        },
+                      );
+                    }
+
+                    return EmptyState(
+                      icon: Icons.assignment_outlined,
+                      title: 'No Reports Yet',
+                      subtitle: 'You haven\'t submitted any crime reports.',
+                      buttonLabel: 'Submit Report',
+                      onButton: () => context.push('/submit-complaint'),
+                    );
+                  }
+                  return ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+                    itemCount: list.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    itemBuilder: (ctx, i) {
+                      final c = list[i];
                 return GlassCard(
                   onTap: () => context.push('/complaint/${c.id}'),
                   child: Column(
@@ -137,6 +316,9 @@ class MyComplaintsScreen extends ConsumerWidget {
             child: Text('Error: $e',
                 style: const TextStyle(color: AppColors.error)),
           ),
+        ),
+      ),
+          ],
         ),
       ),
       floatingActionButton: FloatingActionButton(
@@ -253,4 +435,234 @@ class MyComplaintsScreen extends ConsumerWidget {
       }
     }
   }
+}
+
+class _FilterChip extends StatelessWidget {
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+          decoration: BoxDecoration(
+            color: selected
+                ? AppColors.primary.withOpacity(0.2)
+                : AppColors.surfaceLight,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: selected ? AppColors.primary : AppColors.cardBorder,
+              width: selected ? 1.5 : 1,
+            ),
+          ),
+          child: Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: selected ? AppColors.primaryLight : AppColors.textSecondary,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+void _showFilterBottomSheet(BuildContext context, WidgetRef ref, bool isAdmin) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: const Color(0xFF0F172A),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (ctx) {
+      return Consumer(
+        builder: (ctx, ref, child) {
+          final filterState = ref.watch(isAdmin ? adminComplaintFilterProvider : userComplaintFilterProvider);
+          final filterNotifier = ref.read((isAdmin ? adminComplaintFilterProvider : userComplaintFilterProvider).notifier);
+
+          return Container(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'Advanced Filters',
+                      style: GoogleFonts.inter(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () {
+                        filterNotifier.state = filterState.copyWith(
+                          category: 'all',
+                          dateRange: () => null,
+                        );
+                        Navigator.pop(ctx);
+                      },
+                      child: Text(
+                        'Reset All',
+                        style: GoogleFonts.inter(color: AppColors.error, fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // Category Selector
+                Text(
+                  'Crime Category',
+                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceLight,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.cardBorder),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: filterState.category,
+                      dropdownColor: const Color(0xFF0F172A),
+                      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary),
+                      isExpanded: true,
+                      style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+                      items: [
+                        const DropdownMenuItem(
+                          value: 'all',
+                          child: Text('All Categories'),
+                        ),
+                        ...AppConstants.crimeCategories.map(
+                          (cat) => DropdownMenuItem(
+                            value: cat,
+                            child: Text(cat),
+                          ),
+                        ),
+                      ],
+                      onChanged: (val) {
+                        if (val != null) {
+                          filterNotifier.state = filterState.copyWith(category: val);
+                        }
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Date Range Selector
+                Text(
+                  'Date Range',
+                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 10),
+                InkWell(
+                  onTap: () async {
+                    final picked = await showDateRangePicker(
+                      context: context,
+                      firstDate: DateTime(2020),
+                      lastDate: DateTime.now().add(const Duration(days: 1)),
+                      initialDateRange: filterState.dateRange,
+                      builder: (context, child) {
+                        return Theme(
+                          data: Theme.of(context).copyWith(
+                            colorScheme: const ColorScheme.dark(
+                              primary: AppColors.primary,
+                              onPrimary: Colors.white,
+                              surface: Color(0xFF0F172A),
+                              onSurface: Colors.white,
+                            ),
+                          ),
+                          child: child!,
+                        );
+                      },
+                    );
+                    if (picked != null) {
+                      filterNotifier.state = filterState.copyWith(dateRange: () => picked);
+                    }
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceLight,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.cardBorder),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.calendar_month_rounded, color: AppColors.textSecondary, size: 20),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            filterState.dateRange == null
+                                ? 'Select Date Range'
+                                : '${DateFormat('dd MMM yyyy').format(filterState.dateRange!.start)} - ${DateFormat('dd MMM yyyy').format(filterState.dateRange!.end)}',
+                            style: GoogleFonts.inter(
+                              color: filterState.dateRange == null ? AppColors.textHint : Colors.white,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                        if (filterState.dateRange != null)
+                          GestureDetector(
+                            onTap: () {
+                              filterNotifier.state = filterState.copyWith(dateRange: () => null);
+                            },
+                            child: const Icon(Icons.close_rounded, color: AppColors.error, size: 18),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+
+                // Apply Filters Button
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                    ),
+                    child: Text(
+                      'Apply Filters',
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      );
+    },
+  );
 }

@@ -12,6 +12,7 @@ import '../../data/models/complaint_model.dart';
 import '../../data/models/status_history_model.dart';
 import '../../data/models/officer_model.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/chat_provider.dart';
 import '../widgets/common/widgets.dart';
 
 class AdminComplaintDetailScreen extends ConsumerStatefulWidget {
@@ -112,10 +113,25 @@ class _AdminComplaintDetailScreenState
         ),
         actions: [
           if (_complaint != null)
-            IconButton(
-              icon: const Icon(Icons.chat_bubble_outline_rounded),
-              onPressed: () => context.push('/chat/${_complaint!.id}'),
-            ),
+            ref.watch(unreadMessagesCountProvider(_complaint!.id)).when(
+                  data: (count) => IconButton(
+                    icon: Badge(
+                      label: Text('$count'),
+                      isLabelVisible: count > 0,
+                      backgroundColor: AppColors.primary,
+                      child: const Icon(Icons.chat_bubble_outline_rounded),
+                    ),
+                    onPressed: () => context.push('/chat/${_complaint!.id}'),
+                  ),
+                  loading: () => IconButton(
+                    icon: const Icon(Icons.chat_bubble_outline_rounded),
+                    onPressed: () => context.push('/chat/${_complaint!.id}'),
+                  ),
+                  error: (_, __) => IconButton(
+                    icon: const Icon(Icons.chat_bubble_outline_rounded),
+                    onPressed: () => context.push('/chat/${_complaint!.id}'),
+                  ),
+                ),
         ],
         bottom: TabBar(
           controller: _tabCtrl,
@@ -164,12 +180,15 @@ class _AdminComplaintDetailScreenState
   }
 }
 
-class _DetailsTab extends StatelessWidget {
+class _DetailsTab extends ConsumerWidget {
   final ComplaintModel complaint;
   const _DetailsTab({required this.complaint});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unreadAsync = ref.watch(unreadMessagesCountProvider(complaint.id));
+    final unreadCount = unreadAsync.valueOrNull ?? 0;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -280,6 +299,13 @@ class _DetailsTab extends StatelessWidget {
               ],
             ),
           ).animate().fadeIn(delay: 200.ms),
+
+          const SizedBox(height: 24),
+          GradientButton(
+            label: unreadCount > 0 ? 'Open Chat ($unreadCount New)' : 'Open Chat',
+            icon: Icons.chat_rounded,
+            onTap: () => context.push('/chat/${complaint.id}'),
+          ).animate().fadeIn(delay: 300.ms),
         ],
       ),
     );

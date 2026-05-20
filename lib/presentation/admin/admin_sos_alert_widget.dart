@@ -220,6 +220,7 @@ class AdminActiveSOSAlertsWidget extends ConsumerWidget {
                                     'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
                                   );
                                   if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+                                    if (!context.mounted) return;
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(content: Text('Could not open map.')),
                                     );
@@ -279,11 +280,92 @@ class AdminActiveSOSAlertsWidget extends ConsumerWidget {
                             ElevatedButton.icon(
                               onPressed: () async {
                                 if (profile == null) return;
+
+                                // Show premium confirmation dialog
+                                final confirm = await showDialog<bool>(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    backgroundColor: const Color(0xFF1E1E2E),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(16),
+                                      side: BorderSide(
+                                        color: const Color(0xFF10B981).withOpacity(0.2),
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    title: Row(
+                                      children: [
+                                        const Icon(
+                                          Icons.check_circle_rounded,
+                                          color: Color(0xFF10B981),
+                                          size: 24,
+                                        ),
+                                        const SizedBox(width: 10),
+                                        Text(
+                                          'Resolve Emergency?',
+                                          style: GoogleFonts.inter(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 18,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    content: Text(
+                                      'Are you sure you want to mark this active SOS emergency alert as resolved? This will close the case.',
+                                      style: GoogleFonts.inter(
+                                        color: Colors.white.withOpacity(0.7),
+                                        fontSize: 14,
+                                        height: 1.5,
+                                      ),
+                                    ),
+                                    actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.of(context).pop(false),
+                                        child: Text(
+                                          'CANCEL',
+                                          style: GoogleFonts.inter(
+                                            color: Colors.white.withOpacity(0.5),
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ),
+                                      ElevatedButton(
+                                        onPressed: () => Navigator.of(context).pop(true),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color(0xFF10B981),
+                                          foregroundColor: Colors.white,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                        ),
+                                        child: Text(
+                                          'RESOLVE',
+                                          style: GoogleFonts.inter(
+                                            fontWeight: FontWeight.w900,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+
+                                if (confirm != true) return;
+
                                 try {
                                   await ref.read(resolveEmergencyProvider)(
                                     emergency.id,
                                     profile.id,
                                   );
+                                  
+                                  // Force immediate client-side UI update by invalidating the stream provider
+                                  ref.invalidate(activeEmergenciesStreamProvider);
+
+                                  if (!context.mounted) return;
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                       content: Text('Emergency resolved successfully.'),
@@ -291,6 +373,7 @@ class AdminActiveSOSAlertsWidget extends ConsumerWidget {
                                     ),
                                   );
                                 } catch (e) {
+                                  if (!context.mounted) return;
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(content: Text('Failed to resolve: $e')),
                                   );

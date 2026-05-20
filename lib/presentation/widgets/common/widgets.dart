@@ -46,6 +46,7 @@ class GradientButton extends StatelessWidget {
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.transparent,
             shadowColor: Colors.transparent,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(14),
             ),
@@ -61,18 +62,23 @@ class GradientButton extends StatelessWidget {
                 )
               : Row(
                   mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     if (icon != null) ...[
                       Icon(icon, size: 18, color: Colors.white),
                       const SizedBox(width: 8),
                     ],
-                    Text(
-                      label,
-                      style: GoogleFonts.inter(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                        letterSpacing: 0.5,
+                    Flexible(
+                      child: Text(
+                        label,
+                        style: GoogleFonts.inter(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                          letterSpacing: 0.5,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
@@ -213,6 +219,8 @@ class StatusBadge extends StatelessWidget {
 
   String _label(String s) {
     switch (s) {
+      case 'offline_pending':
+        return 'Pending Offline Sync';
       case 'submitted':
         return 'Submitted';
       case 'in_progress':

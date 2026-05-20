@@ -35,6 +35,10 @@ class ProfileService {
   }
 
   Future<void> setUserRole(String userId, String role) async {
+    final profile = await getProfile(userId);
+    if (profile?.isMainAdmin == true) {
+      throw Exception('The Main Administrator role cannot be modified.');
+    }
     await _client
         .from(AppConstants.profilesTable)
         .update({'role': role})
@@ -48,11 +52,32 @@ class ProfileService {
         .eq('id', userId);
   }
 
+  Future<void> setMainAdmin(String userId, bool isMainAdmin) async {
+    final updates = <String, dynamic>{
+      'is_main_admin': isMainAdmin,
+    };
+    if (isMainAdmin) {
+      updates['role'] = 'admin';
+    }
+    await _client
+        .from(AppConstants.profilesTable)
+        .update(updates)
+        .eq('id', userId);
+  }
+
   Future<int> getTotalUserCount() async {
     final response = await _client
         .from(AppConstants.profilesTable)
         .select('id')
         .eq('role', 'user');
     return (response as List).length;
+  }
+
+  Future<void> deleteUser(String userId) async {
+    final profile = await getProfile(userId);
+    if (profile?.isMainAdmin == true) {
+      throw Exception('The Main Administrator cannot be deleted.');
+    }
+    await _client.rpc('delete_user_by_admin', params: {'user_id': userId});
   }
 }

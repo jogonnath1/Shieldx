@@ -7,8 +7,12 @@ import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
 import '../../data/services/complaint_service.dart';
+import '../../data/services/sync_service.dart';
 import '../../data/models/complaint_model.dart';
 import '../../data/models/status_history_model.dart';
+import '../../providers/chat_provider.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/connectivity_provider.dart';
 import '../widgets/common/widgets.dart';
 
 class ComplaintDetailScreen extends ConsumerStatefulWidget {
@@ -34,13 +38,35 @@ class _ComplaintDetailScreenState
 
   Future<void> _load() async {
     final service = ComplaintService();
-    final c = await service.getComplaint(widget.complaintId);
-    final h = await service.getStatusHistory(widget.complaintId);
-    if (mounted) setState(() { _complaint = c; _history = h; _isLoading = false; });
+    ComplaintModel? c;
+    List<StatusHistoryModel> h = [];
+
+    final isOnline = ref.read(connectivityProvider);
+    if (isOnline) {
+      try {
+        c = await service.getComplaint(widget.complaintId);
+        h = await service.getStatusHistory(widget.complaintId);
+      } catch (e) {
+        print('Error loading online details: $e');
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _complaint = c;
+        _history = h;
+        _isLoading = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final unreadAsync = _complaint != null
+        ? ref.watch(unreadMessagesCountProvider(_complaint!.id))
+        : const AsyncValue<int>.data(0);
+    final unreadCount = unreadAsync.valueOrNull ?? 0;
+
     return Scaffold(
       appBar: AppBar(
         title: Text('Case #${_complaint?.caseId ?? '...'}'),
@@ -55,12 +81,16 @@ class _ComplaintDetailScreenState
               tooltip: 'Edit Report',
               onPressed: () => context.push('/complaint/${_complaint!.id}/edit'),
             ),
-          IconButton(
-            icon: const Icon(Icons.chat_bubble_outline_rounded),
-            onPressed: _complaint != null
-                ? () => context.push('/chat/${_complaint!.id}')
-                : null,
-          ),
+          if (_complaint != null)
+            IconButton(
+              icon: Badge(
+                label: Text('$unreadCount'),
+                isLabelVisible: unreadCount > 0,
+                backgroundColor: AppColors.primary,
+                child: const Icon(Icons.chat_bubble_outline_rounded),
+              ),
+              onPressed: () => context.push('/chat/${_complaint!.id}'),
+            ),
         ],
       ),
       body: Container(
@@ -184,7 +214,9 @@ class _ComplaintDetailScreenState
 
                         const SizedBox(height: 24),
                         GradientButton(
-                          label: 'Open Chat',
+                          label: unreadCount > 0
+                              ? 'Open Chat ($unreadCount New)'
+                              : 'Open Chat',
                           icon: Icons.chat_rounded,
                           onTap: () =>
                               context.push('/chat/${_complaint!.id}'),

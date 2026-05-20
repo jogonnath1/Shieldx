@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/constants/app_colors.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/connectivity_provider.dart';
 import '../widgets/common/widgets.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -29,6 +30,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
   Future<void> _login() async {
     if (!_formKey.currentState!.validate()) return;
+    
+    // Require active internet connection to login
+    final isOnline = await ref.read(connectivityProvider.notifier).checkConnection();
+    if (!isOnline) {
+      _showError('Active internet connection is required to sign in.');
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
       final notifier = ref.read(authNotifierProvider.notifier);
