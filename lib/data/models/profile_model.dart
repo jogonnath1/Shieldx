@@ -32,15 +32,18 @@ class ProfileModel {
   String get displayName => name ?? email ?? 'User';
 
   String get initials {
-    if (name != null && name!.isNotEmpty) {
-      final parts = name!.split(' ');
+    if (name != null && name!.trim().isNotEmpty) {
+      final trimmedName = name!.trim();
+      final parts = trimmedName.split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
       if (parts.length >= 2) {
         return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
       }
-      return name![0].toUpperCase();
+      if (parts.isNotEmpty) {
+        return parts[0][0].toUpperCase();
+      }
     }
-    if (email != null && email!.isNotEmpty) {
-      return email![0].toUpperCase();
+    if (email != null && email!.trim().isNotEmpty) {
+      return email!.trim()[0].toUpperCase();
     }
     return 'U';
   }

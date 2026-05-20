@@ -15,7 +15,9 @@ import 'package:http/http.dart' as http;
 
 import '../../core/constants/app_colors.dart';
 import '../../data/models/police_station_model.dart';
+import '../../data/models/complaint_model.dart';
 import '../../providers/station_map_provider.dart';
+import '../../providers/complaint_provider.dart';
 import '../widgets/common/widgets.dart';
 
 class PoliceStationsScreen extends ConsumerStatefulWidget {
@@ -35,6 +37,7 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
   bool _isMapReady = false;
   bool _isUserLocationHighlighted = false;
   bool _isLocating = false;
+  bool _showHeatmap = false;
 
   LatLng? _searchPinLocation;
   String? _searchPinName;
@@ -657,6 +660,15 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
               ),
             ],
           ),
+        // Crime Hotspot Heatmap Overlay Layer
+        if (_showHeatmap)
+          ref.watch(crimeHotspotProvider).when(
+                data: (complaints) => CircleLayer<Object>(
+                  circles: _buildHeatmapCircles(complaints, state.stations),
+                ),
+                loading: () => const CircleLayer<Object>(circles: []),
+                error: (e, s) => const CircleLayer<Object>(circles: []),
+              ),
         // Route polyline — drawn below the user dot
         if (_routePoints.length > 1)
           PolylineLayer(
@@ -852,6 +864,75 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
         ),
       ],
     );
+  }
+
+  List<CircleMarker<Object>> _buildHeatmapCircles(
+      List<ComplaintModel> complaints, List<PoliceStation> stations) {
+    final circles = <CircleMarker<Object>>[];
+
+    // 1. Add Safe Zones around Police Stations
+    for (final s in stations) {
+      circles.add(
+        CircleMarker(
+          point: s.location,
+          radius: 400, // 400 meters safe zone
+          useRadiusInMeter: true,
+          color: HSLColor.fromAHSL(0.12, 120, 0.8, 0.45).toColor(),
+          borderColor: HSLColor.fromAHSL(0.35, 120, 0.9, 0.4).toColor(),
+          borderStrokeWidth: 1.5,
+        ),
+      );
+    }
+
+    // 2. Add Crime Hotspots
+    for (final c in complaints) {
+      if (c.latitude == null || c.longitude == null) continue;
+      final point = LatLng(c.latitude!, c.longitude!);
+      final category = c.crimeCategory ?? 'Other';
+      final catLower = category.toLowerCase();
+
+      double radius = 150.0; // default 150m
+      HSLColor hslColor = const HSLColor.fromAHSL(0.2, 55, 1.0, 0.5); // yellow
+
+      if (catLower.contains('murder') ||
+          catLower.contains('kill') ||
+          catLower.contains('violence') ||
+          catLower.contains('assault') ||
+          catLower.contains('weapon') ||
+          catLower.contains('armed') ||
+          catLower.contains('shooting') ||
+          catLower.contains('riot')) {
+        // High severity: Red
+        radius = 280.0;
+        hslColor = const HSLColor.fromAHSL(0.32, 0, 1.0, 0.5);
+      } else if (catLower.contains('robbery') ||
+          catLower.contains('hijack') ||
+          catLower.contains('theft') ||
+          catLower.contains('burglary') ||
+          catLower.contains('harassment') ||
+          catLower.contains('drug') ||
+          catLower.contains('kidnap')) {
+        // Medium severity: Orange
+        radius = 220.0;
+        hslColor = const HSLColor.fromAHSL(0.27, 30, 1.0, 0.5);
+      }
+
+      circles.add(
+        CircleMarker(
+          point: point,
+          radius: radius,
+          useRadiusInMeter: true,
+          color: hslColor.toColor(),
+          borderColor: hslColor
+              .withLightness(hslColor.lightness * 0.8)
+              .toColor()
+              .withValues(alpha: 0.6),
+          borderStrokeWidth: 1.5,
+        ),
+      );
+    }
+
+    return circles;
   }
 
   // ─── Search / Dropdown Overlay ───────────────────────────────────────────────
@@ -1443,28 +1524,59 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 16),
+            // ── Action Buttons: Call | Report | Navigate ──────────────
             Row(
               children: [
                 Expanded(
                   child: GradientButton(
-                    label: 'Call Station',
+                    label: 'Call',
                     icon: Icons.phone_in_talk_rounded,
-                    onTap:
-                        s.phone.isNotEmpty ? () => _callStation(s.phone) : null,
+                    onTap: s.phone.isNotEmpty
+                        ? () => _callStation(s.phone)
+                        : null,
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      final stationName = Uri.encodeComponent(s.name);
+                      context.push(
+                          '/submit-complaint?station=$stationName');
+                    },
+                    icon: const Icon(Icons.report_problem_rounded,
+                        size: 15, color: Colors.white),
+                    label: Text(
+                      'Report',
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        color: Colors.white,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFE65100),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      elevation: 2,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () => _openMaps(s),
                     icon: const Icon(Icons.directions_rounded,
-                        size: 16, color: AppColors.primary),
+                        size: 15, color: AppColors.primary),
                     label: const Text('Navigate',
-                        style: TextStyle(color: AppColors.primary)),
+                        style: TextStyle(
+                            color: AppColors.primary, fontSize: 13)),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.primary,
                       side: const BorderSide(color: AppColors.primary),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      padding: const EdgeInsets.symmetric(vertical: 13),
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12)),
                     ),
@@ -1492,6 +1604,41 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          FloatingActionButton.small(
+            heroTag: 'heatmap_toggle',
+            backgroundColor: _showHeatmap
+                ? AppColors.error
+                : Colors.white.withValues(alpha: 0.95),
+            foregroundColor: _showHeatmap ? Colors.white : AppColors.primary,
+            elevation: 3,
+            onPressed: () {
+              setState(() {
+                _showHeatmap = !_showHeatmap;
+              });
+              ScaffoldMessenger.of(context).clearSnackBars();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    _showHeatmap
+                        ? 'Crime Hotspot Heatmap enabled. Showing safe zones (green) & crime hotspots (yellow/red).'
+                        : 'Heatmap disabled.',
+                    style: GoogleFonts.inter(
+                        color: Colors.white, fontWeight: FontWeight.w600),
+                  ),
+                  duration: const Duration(seconds: 3),
+                  backgroundColor:
+                      _showHeatmap ? AppColors.error : AppColors.primary,
+                ),
+              );
+            },
+            child: Icon(
+              _showHeatmap
+                  ? Icons.local_fire_department_rounded
+                  : Icons.bubble_chart_rounded,
+              size: 20,
+            ),
+          ),
+          const SizedBox(height: 12),
           FloatingActionButton.small(
             heroTag: 'zoom_in',
             backgroundColor: Colors.white.withValues(alpha: 0.95),

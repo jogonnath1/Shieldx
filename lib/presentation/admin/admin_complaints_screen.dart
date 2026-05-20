@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
 import '../../providers/complaint_provider.dart';
+import '../widgets/admin/station_switcher_widget.dart';
 import '../widgets/common/widgets.dart';
 
 class AdminComplaintsScreen extends ConsumerWidget {
@@ -18,11 +19,19 @@ class AdminComplaintsScreen extends ConsumerWidget {
     final complaintsAsync = ref.watch(filteredComplaintsProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('All Cases')),
+      appBar: AppBar(
+        title: const Text('All Cases'),
+        actions: const [
+          StationSwitcherChip(),
+          SizedBox(width: 12),
+        ],
+      ),
       body: Container(
         decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
         child: Column(
           children: [
+            // Station context banner
+            const StationContextBanner(),
             // Filter chips
             SizedBox(
               height: 52,

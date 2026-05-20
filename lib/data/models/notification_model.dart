@@ -3,12 +3,12 @@ class NotificationModel {
   final String userId;
   final String title;
   final String message;
-  final String type;
+  final String type; // 'complaint', 'sos', 'system'
   final String? relatedId;
   final bool isRead;
   final DateTime createdAt;
 
-  NotificationModel({
+  const NotificationModel({
     required this.id,
     required this.userId,
     required this.title,
@@ -21,16 +21,22 @@ class NotificationModel {
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
     return NotificationModel(
-      id: json['id'],
-      userId: json['user_id'],
-      title: json['title'],
-      message: json['message'],
-      type: json['type'],
-      relatedId: json['related_id'],
-      isRead: json['is_read'] ?? false,
-      createdAt: DateTime.parse(json['created_at']),
+      id: json['id'] as String,
+      userId: json['user_id'] as String,
+      title: json['title'] as String,
+      message: json['message'] as String,
+      type: (json['type'] as String?) ?? 'system',
+      relatedId: json['related_id'] as String?,
+      isRead: (json['is_read'] as bool?) ?? false,
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'] as String)
+          : DateTime.now(),
     );
   }
+
+  // Alias for consistency with the rest of the codebase
+  factory NotificationModel.fromMap(Map<String, dynamic> map) =>
+      NotificationModel.fromJson(map);
 
   Map<String, dynamic> toJson() {
     return {
@@ -43,5 +49,21 @@ class NotificationModel {
       'is_read': isRead,
       'created_at': createdAt.toIso8601String(),
     };
+  }
+
+  bool get isSos => type == 'sos';
+  bool get isComplaint => type == 'complaint';
+
+  NotificationModel copyWith({bool? isRead}) {
+    return NotificationModel(
+      id: id,
+      userId: userId,
+      title: title,
+      message: message,
+      type: type,
+      relatedId: relatedId,
+      isRead: isRead ?? this.isRead,
+      createdAt: createdAt,
+    );
   }
 }

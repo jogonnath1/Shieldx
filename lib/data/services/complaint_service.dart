@@ -160,6 +160,16 @@ class ComplaintService {
         .eq('id', id);
   }
 
+  // Get historical complaint coordinates for heatmap
+  Future<List<ComplaintModel>> getHistoricalCrimeCoordinates() async {
+    final response = await _client
+        .from(AppConstants.complaintsTable)
+        .select()
+        .not('latitude', 'is', null)
+        .not('longitude', 'is', null);
+    return (response as List).map((e) => ComplaintModel.fromMap(e)).toList();
+  }
+
   // Real-time stream for user complaints
   Stream<List<ComplaintModel>> watchUserComplaints(String userId) {
     return _client
@@ -170,12 +180,97 @@ class ComplaintService {
         .map((data) => data.map((e) => ComplaintModel.fromMap(e)).toList());
   }
 
-  // Real-time stream for all complaints (admin)
-  Stream<List<ComplaintModel>> watchAllComplaints() {
-    return _client
+  // Real-time stream for all complaints (admin) — optionally scoped to a thana
+  Stream<List<ComplaintModel>> watchAllComplaints({String? stationThana}) {
+    final stream = _client
         .from(AppConstants.complaintsTable)
         .stream(primaryKey: ['id'])
         .order('created_at', ascending: false)
         .map((data) => data.map((e) => ComplaintModel.fromMap(e)).toList());
+
+    if (stationThana == null || stationThana.isEmpty) return stream;
+
+    // Filter client-side: match locationAddress or jurisdiction field containing thana keywords
+    final keywords = _thanaKeywords(stationThana);
+    return stream.map((list) => list.where((c) {
+      final addr = (c.locationAddress ?? '').toLowerCase();
+      return keywords.any((kw) => addr.contains(kw));
+    }).toList());
+  }
+
+  // Admin: Get stats optionally scoped to a thana
+  Future<Map<String, int>> getStatsForStation({String? stationThana}) async {
+    final response = await _client
+        .from(AppConstants.complaintsTable)
+        .select('status, location_address');
+    final list = response as List;
+    final filtered = _filterByThana(list, stationThana);
+    final stats = <String, int>{
+      'total': filtered.length,
+      'submitted': 0,
+      'in_progress': 0,
+      'under_investigation': 0,
+      'resolved': 0,
+      'closed': 0,
+      'rejected': 0,
+    };
+    for (final item in filtered) {
+      final status = item['status'] as String? ?? 'submitted';
+      stats[status] = (stats[status] ?? 0) + 1;
+    }
+    return stats;
+  }
+
+  // Admin: Get category stats optionally scoped to a thana
+  Future<Map<String, int>> getCategoryStatsForStation({String? stationThana}) async {
+    final response = await _client
+        .from(AppConstants.complaintsTable)
+        .select('crime_category, location_address');
+    final list = response as List;
+    final filtered = _filterByThana(list, stationThana);
+    final stats = <String, int>{};
+    for (final item in filtered) {
+      final cat = (item['crime_category'] as String?) ?? 'Other';
+      stats[cat] = (stats[cat] ?? 0) + 1;
+    }
+    final sorted = stats.entries.toList()..sort((a, b) => b.value.compareTo(a.value));
+    return Map.fromEntries(sorted.take(7));
+  }
+
+  // ── Private helpers ──────────────────────────────────────────────────────
+
+  List<Map<String, dynamic>> _filterByThana(
+      List<dynamic> list, String? stationThana) {
+    if (stationThana == null || stationThana.isEmpty) {
+      return list.cast<Map<String, dynamic>>();
+    }
+    final keywords = _thanaKeywords(stationThana);
+    return list
+        .cast<Map<String, dynamic>>()
+        .where((item) {
+          final addr = (item['location_address'] as String? ?? '').toLowerCase();
+          return keywords.any((kw) => addr.contains(kw));
+        })
+        .toList();
+  }
+
+  /// Returns lowercase keywords extracted from the thana name for address matching.
+  List<String> _thanaKeywords(String thana) {
+    // Map each SMP thana to distinguishing location keywords
+    const Map<String, List<String>> thanaKeywordsMap = {
+      'Kotwali Model Thana': ['kotwali', 'zindabazar', 'dargah', 'bandar bazar', 'chowhatta', 'mirabazar', 'lamabazar'],
+      'Moglabazar Thana':    ['moglabazar', 'kamalbazar', 'leading university', 'daudpur', 'jalalpur', 'kuchai', 'silam'],
+      'South Surma Thana':   ['south surma', 'kadamtali', 'boroikandi', 'mominkhola', 'shivbari', 'babna'],
+      'Shahporan Thana':     ['shahporan', 'shah poran', 'tilagor', 'baluchar', 'khadimnagar', 'uposhohor'],
+      'Jalalabad Thana':     ['jalalabad', 'akhalia', 'sust', 'kumargaon', 'osmani medical', 'medina market'],
+      'Airport Thana':       ['airport', 'bimanbandar', 'lakkatura', 'osmani international', 'housing estate', 'dhopagul'],
+    };
+    final lower = thana.toLowerCase();
+    // Try exact map lookup first
+    for (final entry in thanaKeywordsMap.entries) {
+      if (entry.key.toLowerCase() == lower) return entry.value;
+    }
+    // Fallback: split the thana name into individual words
+    return lower.split(' ').where((w) => w.length > 3).toList();
   }
 }

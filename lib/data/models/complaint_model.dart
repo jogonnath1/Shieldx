@@ -61,7 +61,7 @@ class ComplaintModel {
     return firstName ?? lastName ?? 'Unknown';
   }
 
-  String get caseId => id.substring(0, 8).toUpperCase();
+  String get caseId => id.length >= 8 ? id.substring(0, 8).toUpperCase() : id.toUpperCase();
 
   factory ComplaintModel.fromMap(Map<String, dynamic> map) {
     List<String> urls = [];

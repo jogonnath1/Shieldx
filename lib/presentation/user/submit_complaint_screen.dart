@@ -9,14 +9,31 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/utils/complaint_classifier.dart';
 import '../../data/services/complaint_service.dart';
+import '../../providers/location_cache_provider.dart';
 import '../widgets/common/widgets.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+// ── Police station names for the dropdown ──────────────────────────────────
+const List<String> smpPoliceStations = [
+  'Kotwali Model Police Station',
+  'Jalalabad Police Station',
+  'Moglabazar Police Station',
+  'South Surma Police Station',
+  'Shahporan Police Station',
+  'Airport Police Station',
+];
+
+
 
 class SubmitComplaintScreen extends ConsumerStatefulWidget {
   final bool initialAnonymous;
-  const SubmitComplaintScreen({super.key, this.initialAnonymous = false});
+  final String? initialPoliceStation;
+  const SubmitComplaintScreen({
+    super.key,
+    this.initialAnonymous = false,
+    this.initialPoliceStation,
+  });
 
   @override
   ConsumerState<SubmitComplaintScreen> createState() =>
@@ -37,9 +54,11 @@ class _SubmitComplaintScreenState
   final _locationCtrl = TextEditingController();
 
   String? _selectedCategory;
+  String? _selectedPoliceStation;
   DateTime? _incidentDate;
-  final List<File> _evidenceFiles = [];
+  final List<XFile> _evidenceFiles = [];
   bool _isLoading = false;
+  bool _isDetectingLocation = false;
   late bool _isAnonymous;
   int _currentStep = 0;
   ClassificationResult? _aiSuggestion;
@@ -48,6 +67,44 @@ class _SubmitComplaintScreenState
   void initState() {
     super.initState();
     _isAnonymous = widget.initialAnonymous;
+
+    // If navigated from Station Map, use that station immediately — no GPS needed
+    if (widget.initialPoliceStation != null &&
+        widget.initialPoliceStation!.isNotEmpty) {
+      _selectedPoliceStation = widget.initialPoliceStation;
+    } else {
+      // Otherwise detect via GPS
+      WidgetsBinding.instance
+          .addPostFrameCallback((_) => _detectPoliceStation());
+    }
+  }
+
+  /// Detects the police station using GPS and sets [_selectedPoliceStation].
+  /// Uses [resolveStationFromGps] directly — no provider timing issues.
+  Future<void> _detectPoliceStation() async {
+    if (!mounted) return;
+
+    // Fast-path: provider already has the result (pre-warmed from HomeScreen)
+    final cached = ref.read(detectedStationProvider).valueOrNull;
+    if (cached != null && cached.isNotEmpty) {
+      setState(() => _selectedPoliceStation = cached);
+      return;
+    }
+
+    // Direct GPS call — always works regardless of provider state
+    setState(() => _isDetectingLocation = true);
+    try {
+      final station = await resolveStationFromGps();
+      if (station != null && station.isNotEmpty && mounted) {
+        setState(() => _selectedPoliceStation = station);
+        // Cache result in provider so retry is instant
+        ref.invalidate(detectedStationProvider);
+      }
+    } catch (_) {
+      // User can select manually
+    } finally {
+      if (mounted) setState(() => _isDetectingLocation = false);
+    }
   }
 
   @override
@@ -78,7 +135,7 @@ class _SubmitComplaintScreenState
     final picked = await picker.pickMultiImage();
     if (picked.isNotEmpty) {
       setState(() {
-        _evidenceFiles.addAll(picked.map((x) => File(x.path)));
+        _evidenceFiles.addAll(picked);
       });
     }
   }
@@ -151,6 +208,7 @@ class _SubmitComplaintScreenState
         'description': _descriptionCtrl.text.trim(),
         'location_address': _locationCtrl.text.trim(),
         'incident_datetime': _incidentDate?.toIso8601String(),
+        'police_station': _selectedPoliceStation,
         'evidence_urls': [],
         'is_anonymous': _isAnonymous,
       });
@@ -270,6 +328,14 @@ class _SubmitComplaintScreenState
                     onPickDate: _pickDate,
                     aiSuggestion: _aiSuggestion,
                     onDescriptionChanged: _onDescriptionChanged,
+                    selectedPoliceStation: _selectedPoliceStation,
+                    onPoliceStationChanged: (v) =>
+                        setState(() => _selectedPoliceStation = v),
+                    isDetectingLocation: _isDetectingLocation,
+                    onRetryDetect: () {
+                      setState(() => _selectedPoliceStation = null);
+                      _detectPoliceStation();
+                    },
                   ),
                 ),
                 Step(
@@ -471,6 +537,10 @@ class _IncidentStep extends StatelessWidget {
   final VoidCallback onPickDate;
   final ClassificationResult? aiSuggestion;
   final ValueChanged<String> onDescriptionChanged;
+  final String? selectedPoliceStation;
+  final void Function(String?) onPoliceStationChanged;
+  final bool isDetectingLocation;
+  final VoidCallback onRetryDetect;
 
   const _IncidentStep({
     required this.selectedCategory,
@@ -481,6 +551,10 @@ class _IncidentStep extends StatelessWidget {
     required this.onPickDate,
     required this.aiSuggestion,
     required this.onDescriptionChanged,
+    required this.selectedPoliceStation,
+    required this.onPoliceStationChanged,
+    required this.isDetectingLocation,
+    required this.onRetryDetect,
   });
 
   @override
@@ -587,6 +661,124 @@ class _IncidentStep extends StatelessWidget {
           prefixIcon: Icons.place_outlined,
           maxLines: 2,
         ),
+        const SizedBox(height: 16),
+        // ── Police Station Field ─────────────────────────────────────────────
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.local_police_outlined,
+                    color: AppColors.textHint, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  'That Incident Place is Under the Police Station',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Stack(
+              children: [
+                DropdownButtonFormField<String>(
+                  initialValue: selectedPoliceStation,
+                  dropdownColor: AppColors.card,
+                  decoration: InputDecoration(
+                    prefixIcon: isDetectingLocation
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: Padding(
+                              padding: EdgeInsets.all(14),
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: AppColors.primary,
+                              ),
+                            ),
+                          )
+                        : const Icon(Icons.account_balance_outlined,
+                            color: AppColors.textHint, size: 20),
+                    hintText: isDetectingLocation
+                        ? 'Detecting your location…'
+                        : 'Select police station',
+                    hintStyle: GoogleFonts.inter(
+                      color: AppColors.textHint,
+                      fontSize: 13,
+                    ),
+                    suffixIcon: selectedPoliceStation != null
+                        ? const Icon(Icons.gps_fixed_rounded,
+                            color: AppColors.primary, size: 18)
+                        : IconButton(
+                            tooltip: 'Detect location',
+                            icon: const Icon(Icons.my_location_rounded,
+                                color: AppColors.textHint, size: 18),
+                            onPressed: onRetryDetect,
+                          ),
+                  ),
+                  items: smpPoliceStations
+                      .map((s) => DropdownMenuItem(
+                            value: s,
+                            child: Text(s,
+                                style: GoogleFonts.inter(fontSize: 13)),
+                          ))
+                      .toList(),
+                  onChanged: isDetectingLocation ? null : onPoliceStationChanged,
+                ),
+                if (selectedPoliceStation != null)
+                  Positioned(
+                    top: 6,
+                    right: 48,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                            color: AppColors.primary.withOpacity(0.4)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.gps_fixed_rounded,
+                              color: AppColors.primary, size: 10),
+                          const SizedBox(width: 3),
+                          Text(
+                            'Auto-detected',
+                            style: GoogleFonts.inter(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            if (!isDetectingLocation && selectedPoliceStation == null)
+              Padding(
+                padding: const EdgeInsets.only(top: 6, left: 4),
+                child: Row(
+                  children: [
+                    const Icon(Icons.info_outline_rounded,
+                        size: 12, color: AppColors.textHint),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Location access denied — please select manually.',
+                      style: GoogleFonts.inter(
+                          fontSize: 11, color: AppColors.textHint),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ),
         const SizedBox(height: 12),
         GestureDetector(
           onTap: onPickDate,
@@ -624,7 +816,7 @@ class _IncidentStep extends StatelessWidget {
 }
 
 class _EvidenceStep extends StatelessWidget {
-  final List<File> files;
+  final List<XFile> files;
   final VoidCallback onPickImage;
   final void Function(int) onRemove;
 
@@ -662,7 +854,7 @@ class _EvidenceStep extends StatelessWidget {
                           fit: BoxFit.cover,
                           width: double.infinity,
                           height: double.infinity)
-                      : Image.file(files[i],
+                      : Image.file(File(files[i].path),
                           fit: BoxFit.cover,
                           width: double.infinity,
                           height: double.infinity),

@@ -51,7 +51,7 @@ class ProfileService {
   Future<int> getTotalUserCount() async {
     final response = await _client
         .from(AppConstants.profilesTable)
-        .select()
+        .select('id')
         .eq('role', 'user');
     return (response as List).length;
   }

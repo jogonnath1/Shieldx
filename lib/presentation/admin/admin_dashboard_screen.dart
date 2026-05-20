@@ -8,7 +8,10 @@ import '../../core/constants/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/complaint_provider.dart';
 import '../../providers/notification_provider.dart';
+import '../../providers/selected_station_provider.dart';
+import '../widgets/admin/station_switcher_widget.dart';
 import '../widgets/common/widgets.dart';
+import 'admin_sos_alert_widget.dart';
 
 class AdminDashboardScreen extends ConsumerWidget {
   const AdminDashboardScreen({super.key});
@@ -52,41 +55,85 @@ class AdminDashboardScreen extends ConsumerWidget {
                               ],
                             ),
                           ),
+                          // Station switcher chip
+                          const StationSwitcherChip(),
+                          const SizedBox(width: 8),
                           Consumer(
                             builder: (context, ref, child) {
                               final unreadCount = ref.watch(unreadNotificationCountProvider);
-                              return Stack(
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(Icons.notifications_outlined, color: AppColors.textPrimary, size: 28),
-                                    onPressed: () => context.push('/notifications'),
-                                  ),
-                                  if (unreadCount > 0)
-                                    Positioned(
-                                      right: 8,
-                                      top: 8,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(4),
-                                        decoration: const BoxDecoration(
-                                          color: Colors.red,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Text(
-                                          unreadCount.toString(),
-                                          style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                              return GestureDetector(
+                                onTap: () => context.push('/notifications'),
+                                child: Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    Container(
+                                      width: 42,
+                                      height: 42,
+                                      decoration: BoxDecoration(
+                                        color: unreadCount > 0
+                                            ? AppColors.error.withValues(alpha: 0.12)
+                                            : AppColors.surface.withValues(alpha: 0.3),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: unreadCount > 0
+                                              ? AppColors.error.withValues(alpha: 0.35)
+                                              : AppColors.cardBorder,
+                                          width: 1,
                                         ),
                                       ),
+                                      child: Icon(
+                                        unreadCount > 0
+                                            ? Icons.notifications_rounded
+                                            : Icons.notifications_none_rounded,
+                                        color: unreadCount > 0
+                                            ? AppColors.error
+                                            : AppColors.textSecondary,
+                                        size: 20,
+                                      ),
                                     ),
-                                ],
+                                    if (unreadCount > 0)
+                                      Positioned(
+                                        right: -4,
+                                        top: -4,
+                                        child: Container(
+                                          constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+                                          padding: const EdgeInsets.all(3),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.error,
+                                            shape: BoxShape.circle,
+                                            border: Border.all(color: AppColors.background, width: 2),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: AppColors.error.withValues(alpha: 0.5),
+                                                blurRadius: 8,
+                                                spreadRadius: 1,
+                                              ),
+                                            ],
+                                          ),
+                                          child: Text(
+                                            unreadCount > 99 ? '99+' : unreadCount.toString(),
+                                            style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        ).animate(onPlay: (c) => c.repeat()).scale(
+                                              begin: const Offset(0.85, 0.85),
+                                              end: const Offset(1.1, 1.1),
+                                              duration: 900.ms,
+                                              curve: Curves.easeInOut,
+                                            ),
+                                      ),
+                                  ],
+                                ),
                               );
                             },
                           ),
-                          const SizedBox(width: 8),
+
+                          const SizedBox(width: 4),
                           GestureDetector(
                             onTap: () => context.push('/admin/profile'),
                             child: Container(
-                              width: 46,
-                              height: 46,
+                              width: 42,
+                              height: 42,
                               decoration: BoxDecoration(
                                 gradient: const LinearGradient(
                                     colors: [Color(0xFF7B1FA2), Color(0xFF1565C0)]),
@@ -98,12 +145,51 @@ class AdminDashboardScreen extends ConsumerWidget {
                                 ],
                               ),
                               child: const Icon(Icons.admin_panel_settings_rounded,
-                                  color: Colors.white, size: 24),
+                                  color: Colors.white, size: 22),
                             ),
                           ),
                         ],
                       ).animate().fadeIn().slideY(begin: -0.2),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 10),
+
+                      // Active station context banner
+                      const StationContextBanner(),
+                      const SizedBox(height: 14),
+
+                      // Real-time Emergency SOS Alerts
+                      const AdminActiveSOSAlertsWidget(),
+
+                      // Station context label for stats
+                      Consumer(
+                        builder: (context, ref, _) {
+                          final label = ref.watch(selectedStationLabelProvider);
+                          return Row(
+                            children: [
+                              Container(
+                                width: 4,
+                                height: 16,
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [Color(0xFF7B1FA2), Color(0xFF1565C0)],
+                                    begin: Alignment.topCenter,
+                                    end: Alignment.bottomCenter,
+                                  ),
+                                  borderRadius: BorderRadius.circular(2),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Showing stats for: $label',
+                                style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textHint),
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 12),
 
                       // Stats Grid
                       statsAsync.when(

@@ -11,6 +11,7 @@ class AppConstants {
   static const String officersTable = 'officers';
   static const String statusHistoryTable = 'status_history';
   static const String messagesTable = 'messages';
+  static const String notificationsTable = 'notifications';
 
   // Storage buckets
   static const String evidenceBucket = 'evidence';

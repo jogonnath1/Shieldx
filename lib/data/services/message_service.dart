@@ -48,7 +48,7 @@ class MessageService {
   Future<int> getUnreadCount(String complaintId, String currentUserId) async {
     final response = await _client
         .from(AppConstants.messagesTable)
-        .select()
+        .select('id')
         .eq('complaint_id', complaintId)
         .eq('is_read', false)
         .neq('sender_id', currentUserId);

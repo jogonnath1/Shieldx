@@ -8,7 +8,9 @@ import '../../core/constants/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/complaint_provider.dart';
 import '../../providers/notification_provider.dart';
+import '../../providers/sos_provider.dart';
 import '../widgets/common/widgets.dart';
+import '../widgets/common/sos_button_widget.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -63,36 +65,85 @@ class HomeScreen extends ConsumerWidget {
                             builder: (context, ref, child) {
                               final unreadCount =
                                   ref.watch(unreadNotificationCountProvider);
-                              return Stack(
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(
-                                        Icons.notifications_outlined,
-                                        color: AppColors.textPrimary,
-                                        size: 28),
-                                    onPressed: () =>
-                                        context.push('/notifications'),
-                                  ),
-                                  if (unreadCount > 0)
-                                    Positioned(
-                                      right: 8,
-                                      top: 8,
-                                      child: Container(
-                                        padding: const EdgeInsets.all(4),
-                                        decoration: const BoxDecoration(
-                                          color: Colors.red,
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Text(
-                                          unreadCount.toString(),
-                                          style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 10,
-                                              fontWeight: FontWeight.bold),
+                              return GestureDetector(
+                                onTap: () => context.push('/notifications'),
+                                child: Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    Container(
+                                      width: 44,
+                                      height: 44,
+                                      decoration: BoxDecoration(
+                                        color: unreadCount > 0
+                                            ? AppColors.primaryLight
+                                                .withValues(alpha: 0.12)
+                                            : AppColors.surface
+                                                .withValues(alpha: 0.3),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: unreadCount > 0
+                                              ? AppColors.primaryLight
+                                                  .withValues(alpha: 0.3)
+                                              : AppColors.cardBorder,
+                                          width: 1,
                                         ),
                                       ),
+                                      child: Icon(
+                                        unreadCount > 0
+                                            ? Icons.notifications_rounded
+                                            : Icons.notifications_none_rounded,
+                                        color: unreadCount > 0
+                                            ? AppColors.primaryLight
+                                            : AppColors.textSecondary,
+                                        size: 22,
+                                      ),
                                     ),
-                                ],
+                                    if (unreadCount > 0)
+                                      Positioned(
+                                        right: -4,
+                                        top: -4,
+                                        child: Container(
+                                          constraints: const BoxConstraints(
+                                              minWidth: 18, minHeight: 18),
+                                          padding: const EdgeInsets.all(3),
+                                          decoration: BoxDecoration(
+                                            color: AppColors.error,
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                                color: AppColors.background,
+                                                width: 2),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: AppColors.error
+                                                    .withValues(alpha: 0.5),
+                                                blurRadius: 8,
+                                                spreadRadius: 1,
+                                              ),
+                                            ],
+                                          ),
+                                          child: Text(
+                                            unreadCount > 99
+                                                ? '99+'
+                                                : unreadCount.toString(),
+                                            style: GoogleFonts.inter(
+                                              color: Colors.white,
+                                              fontSize: 9,
+                                              fontWeight: FontWeight.w800,
+                                            ),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                        )
+                                            .animate(
+                                                onPlay: (c) => c.repeat())
+                                            .scale(
+                                              begin: const Offset(0.85, 0.85),
+                                              end: const Offset(1.1, 1.1),
+                                              duration: 900.ms,
+                                              curve: Curves.easeInOut,
+                                            ),
+                                      ),
+                                  ],
+                                ),
                               );
                             },
                           ),
@@ -128,60 +179,155 @@ class HomeScreen extends ConsumerWidget {
                       ).animate().fadeIn().slideY(begin: -0.2),
                       const SizedBox(height: 28),
 
-                      // Emergency Banner
-                      Container(
-                        padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF7B1FA2), Color(0xFF1565C0)],
-                          ),
-                          borderRadius: BorderRadius.circular(20),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.primary.withOpacity(0.3),
-                              blurRadius: 20,
-                              offset: const Offset(0, 8),
-                            )
-                          ],
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.emergency_rounded,
-                                color: Colors.white, size: 36),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
+                      // Emergency SOS Banner
+                      Consumer(
+                        builder: (context, ref, child) {
+                          final sosState = ref.watch(sosNotifierProvider);
+                          final sosNotifier = ref.read(sosNotifierProvider.notifier);
+                          final isActive = sosState.status == SOSStatus.active;
+                          final isCountdown = sosState.status == SOSStatus.countingDown;
+
+                          if (isActive || isCountdown) {
+                            return Container(
+                              padding: const EdgeInsets.all(18),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF7F1D1D),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: const Color(0xFFEF4444), width: 1.5),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFFEF4444).withOpacity(0.3),
+                                    blurRadius: 20,
+                                    offset: const Offset(0, 8),
+                                  )
+                                ],
+                              ),
+                              child: Row(
                                 children: [
-                                  Text('Emergency?',
-                                      style: GoogleFonts.inter(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: 16)),
-                                  Text('Call 999 for immediate help',
-                                      style: GoogleFonts.inter(
-                                          color: Colors.white70, fontSize: 13)),
+                                  const Icon(Icons.radar_rounded, color: Color(0xFFEF4444), size: 36)
+                                      .animate(onPlay: (controller) => controller.repeat())
+                                      .shake(hz: 8, duration: 1.seconds)
+                                      .scale(begin: const Offset(0.9, 0.9), end: const Offset(1.15, 1.15), duration: 600.ms),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          isCountdown ? 'ACTIVATING SOS...' : 'SOS ALARM ACTIVE',
+                                          style: GoogleFonts.inter(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w900,
+                                              fontSize: 16),
+                                        ),
+                                        Text(
+                                          isCountdown
+                                              ? 'Initiating alert in ${sosState.countdown}s...'
+                                              : 'Broadcasting live GPS location to police...',
+                                          style: GoogleFonts.inter(
+                                              color: const Color(0xFFFCA5A5), fontSize: 13, fontWeight: FontWeight.w600),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  GestureDetector(
+                                    onTap: () {
+                                      if (isCountdown) {
+                                        sosNotifier.cancelSOSCountdown();
+                                      } else {
+                                        sosNotifier.markSafe();
+                                      }
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 14, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFEF4444).withOpacity(0.2),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                            color: const Color(0xFFEF4444).withOpacity(0.5)),
+                                      ),
+                                      child: Text(
+                                          'CANCEL',
+                                          style: GoogleFonts.inter(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 12)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ).animate(onPlay: (c) => c.repeat(reverse: true))
+                                .shimmer(color: Colors.redAccent.withOpacity(0.1), duration: 2.seconds);
+                          }
+
+                          return GestureDetector(
+                            onTap: () {
+                              showModalBottomSheet(
+                                context: context,
+                                backgroundColor: Colors.transparent,
+                                isScrollControlled: true,
+                                builder: (_) => const SOSButtonSheet(),
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(18),
+                              decoration: BoxDecoration(
+                                gradient: const LinearGradient(
+                                  colors: [Color(0xFF7B1FA2), Color(0xFF1565C0)],
+                                ),
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.primary.withOpacity(0.3),
+                                    blurRadius: 20,
+                                    offset: const Offset(0, 8),
+                                  )
+                                ],
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.emergency_rounded,
+                                      color: Colors.white, size: 36)
+                                      .animate(onPlay: (c) => c.repeat(reverse: true))
+                                      .scale(begin: const Offset(0.95, 0.95), end: const Offset(1.05, 1.05), duration: 1.seconds),
+                                  const SizedBox(width: 14),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text('Emergency SOS',
+                                            style: GoogleFonts.inter(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w900,
+                                                fontSize: 16)),
+                                        Text('Tap to trigger high-alert broadcast',
+                                            style: GoogleFonts.inter(
+                                                color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 14, vertical: 8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.2),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                          color: Colors.white.withOpacity(0.3)),
+                                    ),
+                                    child: Text('TRIGGER',
+                                        style: GoogleFonts.inter(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 12)),
+                                  ),
                                 ],
                               ),
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 14, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                    color: Colors.white.withOpacity(0.3)),
-                              ),
-                              child: Text('Call 999',
-                                  style: GoogleFonts.inter(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 13)),
-                            ),
-                          ],
-                        ),
-                      ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.2),
+                          ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.2);
+                        },
+                      ),
                       const SizedBox(height: 28),
 
                       // Quick Actions

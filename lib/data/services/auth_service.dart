@@ -89,9 +89,10 @@ class AuthService {
           .eq('id', user.id)
           .maybeSingle();
       if (data == null) return null;
-      // Inject email from auth
-      data['email'] = user.email;
-      return ProfileModel.fromMap(data);
+      // Inject email from auth using a modifiable map copy
+      final modifiableData = Map<String, dynamic>.from(data);
+      modifiableData['email'] = user.email;
+      return ProfileModel.fromMap(modifiableData);
     } catch (e) {
       return null;
     }

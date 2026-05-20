@@ -24,6 +24,7 @@ import '../../presentation/admin/admin_complaint_detail_screen.dart';
 import '../../presentation/admin/admin_users_screen.dart';
 import '../../presentation/admin/admin_officers_screen.dart';
 import '../../presentation/admin/admin_profile_screen.dart';
+import '../../presentation/admin/admin_stations_screen.dart';
 import '../../presentation/common/notifications_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -31,15 +32,16 @@ final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _adminShellKey = GlobalKey<NavigatorState>();
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final authState = ref.watch(authNotifierProvider);
+  // Recreate the router object ONLY if loading status, user ID, or role changes.
+  final isLoading = ref.watch(authNotifierProvider.select((state) => state.isLoading));
+  final profileId = ref.watch(authNotifierProvider.select((state) => state.valueOrNull?.id));
+  final profileRole = ref.watch(authNotifierProvider.select((state) => state.valueOrNull?.role));
   final prefsService = ref.read(preferencesServiceProvider);
 
   final router = GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/splash',
     redirect: (context, state) {
-      final isLoading = authState.isLoading;
-      final profile = authState.valueOrNull;
       final isLoggedIn = Supabase.instance.client.auth.currentUser != null;
       final location = state.matchedLocation;
 
@@ -57,15 +59,16 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // If logged in and on an auth route (including splash)
       if (isOnAuthRoute) {
-        // If profile is still null but not loading, allow home (could be a missing profile row fallback)
-        if (profile == null) return '/home';
+        // If profileId is still null but not loading, allow home (could be a missing profile row fallback)
+        if (profileId == null) return '/home';
         
         final savedRoute = prefsService.getLastRoute();
         if (savedRoute != null && savedRoute.isNotEmpty && !authRoutes.contains(savedRoute)) {
           return savedRoute;
         }
 
-        return profile.isAdmin ? '/admin/dashboard' : '/home';
+        final isAdmin = profileRole == 'admin';
+        return isAdmin ? '/admin/dashboard' : '/home';
       }
       
       return null;
@@ -100,7 +103,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/submit-complaint',
         builder: (context, state) {
           final isAnon = state.uri.queryParameters['anonymous'] == 'true';
-          return SubmitComplaintScreen(initialAnonymous: isAnon);
+          final station = state.uri.queryParameters['station'];
+          return SubmitComplaintScreen(
+            initialAnonymous: isAnon,
+            initialPoliceStation: station,
+          );
         },
       ),
       GoRoute(
@@ -153,6 +160,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/admin/complaints',
             builder: (context, state) => const AdminComplaintsScreen(),
+          ),
+          GoRoute(
+            path: '/admin/stations',
+            builder: (context, state) => const AdminStationsScreen(),
           ),
           GoRoute(
             path: '/admin/users',
