@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import '../data/models/police_station_model.dart';
+import 'gps_simulation_provider.dart';
 
 /// Maps a thana key to the display name shown in the dropdown.
 String? thanaToStationName(String? thana) {
@@ -24,6 +25,13 @@ final detectedStationProvider = FutureProvider.autoDispose<String?>((ref) async 
   final link = ref.keepAlive();
   // ignore: unused_local_variable
   final _ = link;
+
+  // 1. Simulation Check: If active, resolve simulation parameters immediately
+  final sim = ref.watch(gpsSimulationProvider);
+  if (sim.isSimulationActive) {
+    final thana = resolveSmpThana(sim.latitude, sim.longitude);
+    return thanaToStationName(thana);
+  }
 
   try {
     final permission = await Geolocator.checkPermission()
@@ -53,8 +61,21 @@ final detectedStationProvider = FutureProvider.autoDispose<String?>((ref) async 
 ///
 /// IMPORTANT: Do NOT call this while Station Map is open — both screens
 /// should never run getCurrentPosition() concurrently.
-Future<String?> resolveStationFromGps() async {
+Future<String?> resolveStationFromGps({
+  bool forceFresh = false,
+  WidgetRef? ref,
+  Ref? riverpodRef,
+}) async {
   try {
+    // ── 0. GPS Simulation ─────────────────────────────────────────────────
+    final sim = ref != null
+        ? ref.read(gpsSimulationProvider)
+        : riverpodRef?.read(gpsSimulationProvider);
+    if (sim != null && sim.isSimulationActive) {
+      final thana = resolveSmpThana(sim.latitude, sim.longitude);
+      return thanaToStationName(thana);
+    }
+
     // ── 1. Permission ─────────────────────────────────────────────────────
     LocationPermission permission;
     try {
@@ -80,11 +101,13 @@ Future<String?> resolveStationFromGps() async {
 
     // ── 2. Last-known (device cache, nearly instant, no GPS lock) ─────────
     Position? pos;
-    try {
-      pos = await Geolocator.getLastKnownPosition()
-          .timeout(const Duration(seconds: 2));
-    } catch (_) {
-      pos = null;
+    if (!forceFresh) {
+      try {
+        pos = await Geolocator.getLastKnownPosition()
+            .timeout(const Duration(seconds: 2));
+      } catch (_) {
+        pos = null;
+      }
     }
 
     // ── 3. Fresh fix — only if no cache available ──────────────────────────
@@ -92,9 +115,9 @@ Future<String?> resolveStationFromGps() async {
       try {
         pos = await Geolocator.getCurrentPosition(
           locationSettings: const LocationSettings(
-            accuracy: LocationAccuracy.medium,
+            accuracy: LocationAccuracy.high,
           ),
-        ).timeout(const Duration(seconds: 10));
+        ).timeout(const Duration(seconds: 8));
       } catch (_) {
         pos = null;
       }

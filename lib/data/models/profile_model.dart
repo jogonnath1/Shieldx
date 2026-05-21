@@ -7,6 +7,7 @@ class ProfileModel {
   final String? profession;
   final String? presentAddress;
   final String? permanentAddress;
+  final String? avatarUrl;
   final String role;
   final bool isVerified;
   final bool _isMainAdmin;
@@ -22,6 +23,7 @@ class ProfileModel {
     this.profession,
     this.presentAddress,
     this.permanentAddress,
+    this.avatarUrl,
     this.role = 'user',
     this.isVerified = false,
     bool isMainAdmin = false,
@@ -62,6 +64,7 @@ class ProfileModel {
       profession: map['profession'] as String?,
       presentAddress: map['present_address'] as String?,
       permanentAddress: map['permanent_address'] as String?,
+      avatarUrl: map['avatar_url'] as String?,
       role: (map['role'] as String?) ?? 'user',
       isVerified: (map['is_verified'] as bool?) ?? false,
       isMainAdmin: (map['is_main_admin'] as bool?) ?? false,
@@ -82,6 +85,7 @@ class ProfileModel {
       'profession': profession,
       'present_address': presentAddress,
       'permanent_address': permanentAddress,
+      'avatar_url': avatarUrl,
       'role': role,
       'is_verified': isVerified,
       'is_main_admin': _isMainAdmin,
@@ -98,6 +102,7 @@ class ProfileModel {
     String? profession,
     String? presentAddress,
     String? permanentAddress,
+    String? avatarUrl,
     String? role,
     bool? isVerified,
     bool? isMainAdmin,
@@ -113,9 +118,10 @@ class ProfileModel {
       profession: profession ?? this.profession,
       presentAddress: presentAddress ?? this.presentAddress,
       permanentAddress: permanentAddress ?? this.permanentAddress,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
       role: role ?? this.role,
       isVerified: isVerified ?? this.isVerified,
-      isMainAdmin: isMainAdmin ?? this._isMainAdmin,
+      isMainAdmin: isMainAdmin ?? _isMainAdmin,
       fcmToken: fcmToken ?? this.fcmToken,
       createdAt: createdAt ?? this.createdAt,
     );

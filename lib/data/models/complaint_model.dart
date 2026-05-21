@@ -19,7 +19,9 @@ class ComplaintModel {
   final List<String> evidenceUrls;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final DateTime? deletedAt;
   final bool isAnonymous;
+  final String? policeStation;
 
   // Joined fields
   final String? assignedOfficerName;
@@ -47,10 +49,12 @@ class ComplaintModel {
     this.evidenceUrls = const [],
     this.createdAt,
     this.updatedAt,
+    this.deletedAt,
     this.assignedOfficerName,
     this.userEmail,
     this.userName,
     this.isAnonymous = false,
+    this.policeStation,
   });
 
   String get fullName {
@@ -97,10 +101,14 @@ class ComplaintModel {
       updatedAt: map['updated_at'] != null
           ? DateTime.parse(map['updated_at'] as String)
           : null,
+      deletedAt: map['deleted_at'] != null
+          ? DateTime.parse(map['deleted_at'] as String)
+          : null,
       assignedOfficerName: map['assigned_officer_name'] as String?,
       userEmail: map['user_email'] as String?,
       userName: map['user_name'] as String?,
       isAnonymous: (map['is_anonymous'] as bool?) ?? false,
+      policeStation: map['police_station'] as String?,
     );
   }
 
@@ -122,6 +130,7 @@ class ComplaintModel {
       'incident_datetime': incidentDatetime?.toIso8601String(),
       'evidence_urls': evidenceUrls,
       'is_anonymous': isAnonymous,
+      'police_station': policeStation,
     };
   }
 }

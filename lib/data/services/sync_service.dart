@@ -180,12 +180,12 @@ class SyncService {
 
   List<String> _thanaKeywords(String thana) {
     const Map<String, List<String>> thanaKeywordsMap = {
-      'Kotwali Model Thana': ['kotwali', 'zindabazar', 'dargah', 'bandar bazar', 'chowhatta', 'mirabazar', 'lamabazar'],
-      'Moglabazar Thana':    ['moglabazar', 'kamalbazar', 'leading university', 'daudpur', 'jalalpur', 'kuchai', 'silam'],
-      'South Surma Thana':   ['south surma', 'kadamtali', 'boroikandi', 'mominkhola', 'shivbari', 'babna'],
+      'Kotwali Model Thana': ['kotwali', 'zindabazar', 'dargah', 'bandar bazar', 'chowhatta', 'mirabazar', 'lamabazar', 'osmani medical', 'kajalshah'],
+      'Moglabazar Thana':    ['moglabazar', 'daudpur', 'jalalpur', 'kuchai', 'silam'],
+      'South Surma Thana':   ['south surma', 'kadamtali', 'boroikandi', 'mominkhola', 'shivbari', 'babna', 'kamalbazar', 'leading university', 'ragibnagar'],
       'Shahporan Thana':     ['shahporan', 'shah poran', 'tilagor', 'baluchar', 'khadimnagar', 'uposhohor'],
-      'Jalalabad Thana':     ['jalalabad', 'akhalia', 'sust', 'kumargaon', 'osmani medical', 'medina market'],
-      'Airport Thana':       ['airport', 'bimanbandar', 'lakkatura', 'osmani international', 'housing estate', 'dhopagul'],
+      'Jalalabad Thana':     ['jalalabad', 'akhalia', 'sust', 'kumargaon', 'medina market', 'housing estate'],
+      'Airport Thana':       ['airport', 'bimanbandar', 'lakkatura', 'osmani international', 'dhopagul'],
     };
     final lower = thana.toLowerCase();
     for (final entry in thanaKeywordsMap.entries) {

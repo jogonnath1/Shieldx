@@ -1,7 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../data/models/notification_model.dart';
+import '../data/services/notification_service.dart';
 import 'auth_provider.dart';
+
+final notificationServiceProvider = Provider<NotificationService>((ref) => NotificationService());
 
 final notificationProvider = StateNotifierProvider<NotificationNotifier, AsyncValue<List<NotificationModel>>>((ref) {
   final authState = ref.watch(authNotifierProvider);
@@ -36,6 +39,7 @@ class NotificationNotifier extends StateNotifier<AsyncValue<List<NotificationMod
           .from('notifications')
           .select()
           .eq('user_id', _userId!)
+          .isFilter('deleted_at', null)
           .order('created_at', ascending: false);
 
       final notifications = (response as List).map((json) => NotificationModel.fromJson(json)).toList();
@@ -87,6 +91,7 @@ class NotificationNotifier extends StateNotifier<AsyncValue<List<NotificationMod
               relatedId: n.relatedId,
               isRead: true,
               createdAt: n.createdAt,
+              deletedAt: n.deletedAt,
             );
           }
           return n;
@@ -118,8 +123,95 @@ class NotificationNotifier extends StateNotifier<AsyncValue<List<NotificationMod
             relatedId: n.relatedId,
             isRead: true,
             createdAt: n.createdAt,
+            deletedAt: n.deletedAt,
           );
         }).toList();
+        state = AsyncValue.data(updated);
+      });
+    } catch (e) {
+      // Handle error
+    }
+  }
+
+  Future<void> deleteNotification(String notificationId) async {
+    try {
+      await _supabase
+          .from('notifications')
+          .update({'deleted_at': DateTime.now().toIso8601String()})
+          .eq('id', notificationId);
+          
+      // Optimistic update
+      state.whenData((notifications) {
+        final updated = notifications.where((n) => n.id != notificationId).toList();
+        state = AsyncValue.data(updated);
+      });
+    } catch (e) {
+      // Handle error
+    }
+  }
+
+  Future<void> deleteAllNotifications() async {
+    try {
+      await _supabase
+          .from('notifications')
+          .update({'deleted_at': DateTime.now().toIso8601String()})
+          .eq('user_id', _userId!);
+          
+      // Optimistic update
+      if (mounted) {
+        state = const AsyncValue.data([]);
+      }
+    } catch (e) {
+      // Handle error
+    }
+  }
+
+  Future<void> markMultipleAsRead(List<String> notificationIds) async {
+    try {
+      await Future.wait(notificationIds.map((id) =>
+        _supabase
+            .from('notifications')
+            .update({'is_read': true})
+            .eq('id', id)
+      ));
+      
+      // Optimistic update
+      state.whenData((notifications) {
+        final updated = notifications.map((n) {
+          if (notificationIds.contains(n.id)) {
+            return NotificationModel(
+              id: n.id,
+              userId: n.userId,
+              title: n.title,
+              message: n.message,
+              type: n.type,
+              relatedId: n.relatedId,
+              isRead: true,
+              createdAt: n.createdAt,
+              deletedAt: n.deletedAt,
+            );
+          }
+          return n;
+        }).toList();
+        state = AsyncValue.data(updated);
+      });
+    } catch (e) {
+      // Handle error
+    }
+  }
+
+  Future<void> deleteMultipleNotifications(List<String> notificationIds) async {
+    try {
+      await Future.wait(notificationIds.map((id) =>
+        _supabase
+            .from('notifications')
+            .update({'deleted_at': DateTime.now().toIso8601String()})
+            .eq('id', id)
+      ));
+      
+      // Optimistic update
+      state.whenData((notifications) {
+        final updated = notifications.where((n) => !notificationIds.contains(n.id)).toList();
         state = AsyncValue.data(updated);
       });
     } catch (e) {
@@ -133,3 +225,4 @@ class NotificationNotifier extends StateNotifier<AsyncValue<List<NotificationMod
     super.dispose();
   }
 }
+

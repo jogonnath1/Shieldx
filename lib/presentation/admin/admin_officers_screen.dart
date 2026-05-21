@@ -3,8 +3,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../core/constants/app_colors.dart';
-import '../../data/services/officer_service.dart';
 import '../../data/models/officer_model.dart';
+import '../../providers/officer_provider.dart';
 import '../widgets/common/widgets.dart';
 
 class AdminOfficersScreen extends ConsumerStatefulWidget {
@@ -16,20 +16,6 @@ class AdminOfficersScreen extends ConsumerStatefulWidget {
 }
 
 class _AdminOfficersScreenState extends ConsumerState<AdminOfficersScreen> {
-  List<OfficerModel> _officers = [];
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _load();
-  }
-
-  Future<void> _load() async {
-    final list = await OfficerService().getAllOfficers();
-    if (mounted) setState(() { _officers = list; _isLoading = false; });
-  }
-
   void _showAddDialog([OfficerModel? existing]) {
     final nameCtrl = TextEditingController(text: existing?.name);
     final rankCtrl = TextEditingController(text: existing?.rank);
@@ -91,12 +77,14 @@ class _AdminOfficersScreenState extends ConsumerState<AdminOfficersScreen> {
                 'station': stationCtrl.text.trim(),
                 'contact': contactCtrl.text.trim(),
               };
+              final service = ref.read(officerServiceProvider);
               if (existing == null) {
-                await OfficerService().addOfficer(data);
+                await service.addOfficer(data);
               } else {
-                await OfficerService().updateOfficer(existing.id, data);
+                await service.updateOfficer(existing.id, data);
               }
-              await _load();
+              ref.invalidate(officersProvider);
+              ref.invalidate(activeOfficersProvider);
             },
             child: Text(existing == null ? 'Add' : 'Update'),
           ),
@@ -122,121 +110,132 @@ class _AdminOfficersScreenState extends ConsumerState<AdminOfficersScreen> {
       ),
     );
     if (ok == true) {
-      await OfficerService().deleteOfficer(o.id);
-      await _load();
+      await ref.read(officerServiceProvider).deleteOfficer(o.id);
+      ref.invalidate(officersProvider);
+      ref.invalidate(activeOfficersProvider);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final officersAsync = ref.watch(officersProvider);
+
     return Scaffold(
       appBar: AppBar(title: const Text('Officers')),
       body: Container(
         decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
-        child: _isLoading
-            ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-            : _officers.isEmpty
-                ? EmptyState(
-                    icon: Icons.badge_outlined,
-                    title: 'No Officers',
-                    subtitle: 'Add officers to manage assignments.',
-                    buttonLabel: 'Add Officer',
-                    onButton: () => _showAddDialog(),
-                  )
-                : RefreshIndicator(
-                    onRefresh: _load,
-                    color: AppColors.primary,
-                    child: ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-                      itemCount: _officers.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 10),
-                      itemBuilder: (ctx, i) {
-                        final o = _officers[i];
-                        return GlassCard(
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 48,
-                                height: 48,
-                                decoration: BoxDecoration(
+        child: officersAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+          error: (err, stack) => Center(
+            child: Text(
+              'Error loading officers: $err',
+              style: GoogleFonts.inter(color: AppColors.error),
+            ),
+          ),
+          data: (officers) => officers.isEmpty
+              ? EmptyState(
+                  icon: Icons.badge_outlined,
+                  title: 'No Officers',
+                  subtitle: 'Add officers to manage assignments.',
+                  buttonLabel: 'Add Officer',
+                  onButton: () => _showAddDialog(),
+                )
+              : RefreshIndicator(
+                  onRefresh: () async => ref.refresh(officersProvider.future),
+                  color: AppColors.primary,
+                  child: ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                    itemCount: officers.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    itemBuilder: (ctx, i) {
+                      final o = officers[i];
+                      return GlassCard(
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: o.isActive
+                                    ? AppColors.primary.withValues(alpha: 0.15)
+                                    : AppColors.surfaceLight,
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Icon(Icons.badge_rounded,
                                   color: o.isActive
-                                      ? AppColors.primary.withOpacity(0.15)
-                                      : AppColors.surfaceLight,
-                                  borderRadius: BorderRadius.circular(14),
-                                ),
-                                child: Icon(Icons.badge_rounded,
-                                    color: o.isActive
-                                        ? AppColors.primary
-                                        : AppColors.textHint,
-                                    size: 26),
-                              ),
-                              const SizedBox(width: 14),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: Text(o.name ?? 'Officer',
-                                              style: GoogleFonts.inter(
-                                                  fontWeight: FontWeight.w700,
-                                                  fontSize: 14,
-                                                  color: AppColors.textPrimary)),
+                                      ? AppColors.primary
+                                      : AppColors.textHint,
+                                  size: 26),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(o.name ?? 'Officer',
+                                            style: GoogleFonts.inter(
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 14,
+                                                color: AppColors.textPrimary)),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: (o.isActive ? AppColors.success : AppColors.textHint)
+                                              .withValues(alpha: 0.15),
+                                          borderRadius: BorderRadius.circular(10),
                                         ),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                          decoration: BoxDecoration(
-                                            color: (o.isActive ? AppColors.success : AppColors.textHint)
-                                                .withOpacity(0.15),
-                                            borderRadius: BorderRadius.circular(10),
-                                          ),
-                                          child: Text(o.isActive ? 'Active' : 'Inactive',
-                                              style: GoogleFonts.inter(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.w700,
-                                                  color: o.isActive ? AppColors.success : AppColors.textHint)),
-                                        ),
-                                      ],
-                                    ),
-                                    if (o.rank != null)
-                                      Text(o.rank!,
-                                          style: GoogleFonts.inter(
-                                              fontSize: 12, color: AppColors.textSecondary)),
-                                    if (o.station != null)
-                                      Text(o.station!,
-                                          style: GoogleFonts.inter(
-                                              fontSize: 12, color: AppColors.textHint)),
-                                    if (o.contact != null)
-                                      Text(o.contact!,
-                                          style: GoogleFonts.inter(
-                                              fontSize: 12, color: AppColors.textHint)),
-                                  ],
-                                ),
-                              ),
-                              PopupMenuButton<String>(
-                                color: AppColors.card,
-                                icon: const Icon(Icons.more_vert, color: AppColors.textHint),
-                                onSelected: (v) async {
-                                  if (v == 'edit') _showAddDialog(o);
-                                  if (v == 'toggle') {
-                                    await OfficerService().toggleActive(o.id, !o.isActive);
-                                    await _load();
-                                  }
-                                  if (v == 'delete') await _delete(o);
-                                },
-                                itemBuilder: (_) => [
-                                  PopupMenuItem(value: 'edit', child: Text('Edit', style: GoogleFonts.inter(color: AppColors.textPrimary))),
-                                  PopupMenuItem(value: 'toggle', child: Text(o.isActive ? 'Deactivate' : 'Activate', style: GoogleFonts.inter(color: AppColors.textPrimary))),
-                                  PopupMenuItem(value: 'delete', child: Text('Delete', style: GoogleFonts.inter(color: AppColors.error))),
+                                        child: Text(o.isActive ? 'Active' : 'Inactive',
+                                            style: GoogleFonts.inter(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w700,
+                                                color: o.isActive ? AppColors.success : AppColors.textHint)),
+                                      ),
+                                    ],
+                                  ),
+                                  if (o.rank != null)
+                                    Text(o.rank!,
+                                        style: GoogleFonts.inter(
+                                            fontSize: 12, color: AppColors.textSecondary)),
+                                  if (o.station != null)
+                                    Text(o.station!,
+                                        style: GoogleFonts.inter(
+                                            fontSize: 12, color: AppColors.textHint)),
+                                  if (o.contact != null)
+                                    Text(o.contact!,
+                                        style: GoogleFonts.inter(
+                                            fontSize: 12, color: AppColors.textHint)),
                                 ],
                               ),
-                            ],
-                          ),
-                        ).animate().fadeIn(delay: (i * 50).ms).slideY(begin: 0.1);
-                      },
-                    ),
+                            ),
+                            PopupMenuButton<String>(
+                              color: AppColors.card,
+                              icon: const Icon(Icons.more_vert, color: AppColors.textHint),
+                              onSelected: (v) async {
+                                if (v == 'edit') _showAddDialog(o);
+                                if (v == 'toggle') {
+                                  await ref.read(officerServiceProvider).toggleActive(o.id, !o.isActive);
+                                  ref.invalidate(officersProvider);
+                                  ref.invalidate(activeOfficersProvider);
+                                }
+                                if (v == 'delete') await _delete(o);
+                              },
+                              itemBuilder: (_) => [
+                                PopupMenuItem(value: 'edit', child: Text('Edit', style: GoogleFonts.inter(color: AppColors.textPrimary))),
+                                PopupMenuItem(value: 'toggle', child: Text(o.isActive ? 'Deactivate' : 'Activate', style: GoogleFonts.inter(color: AppColors.textPrimary))),
+                                PopupMenuItem(value: 'delete', child: Text('Delete', style: GoogleFonts.inter(color: AppColors.error))),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ).animate().fadeIn(delay: (i * 50).ms).slideY(begin: 0.1);
+                    },
                   ),
+                ),
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showAddDialog(),

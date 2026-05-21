@@ -17,6 +17,50 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen<SOSState>(sosNotifierProvider, (previous, next) {
+      if (previous?.status == SOSStatus.active && next.status == SOSStatus.idle) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: const BoxDecoration(color: Colors.white24, shape: BoxShape.circle),
+                    child: const Icon(Icons.verified_user_rounded, color: Colors.white, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'EMERGENCY SOS RESOLVED',
+                          style: GoogleFonts.inter(fontWeight: FontWeight.w900, fontSize: 12, letterSpacing: 0.5, color: Colors.white),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'The administration has resolved your SOS signal.',
+                          style: GoogleFonts.inter(fontSize: 11, color: Colors.white70),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: const Color(0xFF10B981),
+              behavior: SnackBarBehavior.floating,
+              margin: const EdgeInsets.all(16),
+              elevation: 8,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              duration: const Duration(seconds: 6),
+            ),
+          );
+        }
+      }
+    });
+
     final profile = ref.watch(authNotifierProvider).valueOrNull;
     final complaintsAsync = profile != null
         ? ref.watch(userComplaintsStreamProvider(profile.id))
@@ -41,13 +85,21 @@ class HomeScreen extends ConsumerWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  'Hello, ${profile?.displayName.split(' ').first ?? 'User'} 👋',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 22,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.textPrimary,
-                                  ),
+                                Wrap(
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  spacing: 8,
+                                  runSpacing: 6,
+                                  children: [
+                                    Text(
+                                      'Hello, ${profile?.displayName.split(' ').first ?? 'User'} 👋',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 22,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.textPrimary,
+                                      ),
+                                    ),
+                                    _buildVerificationBadge(profile?.isVerified ?? false, compact: true),
+                                  ],
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
@@ -163,15 +215,34 @@ class HomeScreen extends ConsumerWidget {
                                   )
                                 ],
                               ),
-                              child: Center(
-                                child: Text(
-                                  profile?.initials ?? 'U',
-                                  style: GoogleFonts.inter(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 18,
-                                  ),
-                                ),
+                              child: ClipOval(
+                                child: profile?.avatarUrl != null && profile!.avatarUrl!.isNotEmpty
+                                    ? Image.network(
+                                        profile.avatarUrl!,
+                                        width: 48,
+                                        height: 48,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) => Center(
+                                          child: Text(
+                                            profile.initials,
+                                            style: GoogleFonts.inter(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w700,
+                                              fontSize: 18,
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                    : Center(
+                                        child: Text(
+                                          profile?.initials ?? 'U',
+                                          style: GoogleFonts.inter(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 18,
+                                          ),
+                                        ),
+                                      ),
                               ),
                             ),
                           ),
@@ -263,6 +334,10 @@ class HomeScreen extends ConsumerWidget {
 
                           return GestureDetector(
                             onTap: () {
+                              if (profile?.isVerified != true) {
+                                _showVerificationRequiredDialog(context);
+                                return;
+                              }
                               showModalBottomSheet(
                                 context: context,
                                 backgroundColor: Colors.transparent,
@@ -461,6 +536,129 @@ class HomeScreen extends ConsumerWidget {
             style: GoogleFonts.inter(
                 fontWeight: FontWeight.w700, color: Colors.white)),
       ).animate().scale(delay: 500.ms, curve: Curves.elasticOut),
+    );
+  }
+
+  void _showVerificationRequiredDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A2540),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.amber.withOpacity(0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(Icons.gpp_maybe_rounded,
+                  color: Colors.amber, size: 22),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Verification Required',
+                style: GoogleFonts.inter(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          'Emergency SOS is reserved for verified citizens to prevent misuse and ensure rapid, high-priority police dispatch. Please verify your profile to access this feature.',
+          style: GoogleFonts.inter(
+            color: AppColors.textSecondary,
+            fontSize: 14,
+            height: 1.5,
+          ),
+        ),
+        actions: [
+          OutlinedButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.textSecondary,
+              side: const BorderSide(color: AppColors.cardBorder),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: const Text('Close'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              context.push('/profile');
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: Text(
+              'Go to Profile',
+              style: GoogleFonts.inter(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildVerificationBadge(bool isVerified, {bool compact = false}) {
+    final icon = isVerified ? Icons.verified_rounded : Icons.gpp_maybe_rounded;
+    final color = isVerified ? const Color(0xFF10B981) : const Color(0xFFF59E0B);
+    final bgColor = isVerified 
+        ? const Color(0xFF047857).withOpacity(0.15) 
+        : const Color(0xFFB45309).withOpacity(0.15);
+    final borderColor = isVerified 
+        ? const Color(0xFF10B981).withOpacity(0.3) 
+        : const Color(0xFFF59E0B).withOpacity(0.3);
+    final label = isVerified ? 'Verified' : 'Unverified';
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 8 : 12, 
+        vertical: compact ? 3 : 5
+      ),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor, width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.08),
+            blurRadius: 6,
+            spreadRadius: 1,
+          )
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon, 
+            color: color, 
+            size: compact ? 13 : 15
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: compact ? 10 : 12,
+              fontWeight: FontWeight.w800,
+              color: color,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

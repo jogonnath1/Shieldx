@@ -1,14 +1,83 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 import '../models/emergency_model.dart';
 import '../models/profile_model.dart';
 
 class EmergencyService {
   final SupabaseClient _client = Supabase.instance.client;
 
+  // Send notification to all admins
+  Future<void> _notifyAdmins({
+    required String title,
+    required String message,
+    required String type,
+    String? relatedId,
+  }) async {
+    try {
+      // Fetch all admins from profiles table
+      final adminProfiles = await _client
+          .from('profiles')
+          .select('id')
+          .eq('role', 'admin');
+          
+      if (adminProfiles == null || adminProfiles.isEmpty) return;
+      
+      final uuid = const Uuid();
+      final notificationsToInsert = adminProfiles.map((admin) {
+        return {
+          'id': uuid.v4(),
+          'user_id': admin['id'],
+          'title': title,
+          'message': message,
+          'type': type,
+          'related_id': relatedId,
+          'is_read': false,
+          'created_at': DateTime.now().toIso8601String(),
+        };
+      }).toList();
+      
+      await _client
+          .from('notifications')
+          .insert(notificationsToInsert);
+    } catch (e) {
+      // Ignore or log error
+      print('Failed to notify admins: $e');
+    }
+  }
+
   // Trigger a new SOS emergency
   Future<EmergencyModel> triggerSOS(double lat, double lng) async {
     final user = _client.auth.currentUser;
     if (user == null) throw Exception('User not logged in');
+
+    // Fetch user profile first to get their name and phone number for the notification
+    String citizenName = 'A citizen';
+    String citizenPhone = 'N/A';
+    try {
+      final profileRes = await _client
+          .from('profiles')
+          .select()
+          .eq('id', user.id)
+          .maybeSingle();
+      if (profileRes != null) {
+        citizenName = profileRes['display_name'] ?? 'A citizen';
+        citizenPhone = profileRes['phone_number'] ?? 'N/A';
+      }
+    } catch (_) {}
+
+    // Automatically cancel any existing active emergencies for this user to prevent duplicates
+    try {
+      await _client
+          .from('emergencies')
+          .update({
+            'status': 'cancelled',
+            'resolved_at': DateTime.now().toIso8601String(),
+          })
+          .eq('user_id', user.id)
+          .eq('status', 'active');
+    } catch (_) {
+      // Ignore cleanup failures to ensure SOS trigger still works
+    }
 
     final response = await _client
         .from('emergencies')
@@ -21,7 +90,17 @@ class EmergencyService {
         .select()
         .single();
     
-    return EmergencyModel.fromMap(response);
+    final emergency = EmergencyModel.fromMap(response);
+
+    // Notify all admins about the active SOS
+    await _notifyAdmins(
+      title: '🚨 Emergency SOS Triggered',
+      message: '$citizenName ($citizenPhone) has triggered an active SOS alert! Coordinates: $lat, $lng.',
+      type: 'sos',
+      relatedId: emergency.id,
+    );
+    
+    return emergency;
   }
 
   // Update live GPS coordinates of an active emergency
@@ -38,6 +117,38 @@ class EmergencyService {
 
   // Citizen: Cancel own emergency
   Future<void> cancelEmergency(String emergencyId) async {
+    // Fetch the emergency row to know who the user is for the safety notification
+    try {
+      final emergencyRes = await _client
+          .from('emergencies')
+          .select()
+          .eq('id', emergencyId)
+          .maybeSingle();
+          
+      if (emergencyRes != null) {
+        final userId = emergencyRes['user_id'] as String?;
+        if (userId != null) {
+          // Fetch user profile
+          final profileRes = await _client
+              .from('profiles')
+              .select()
+              .eq('id', userId)
+              .maybeSingle();
+              
+          final name = profileRes != null ? (profileRes['display_name'] ?? 'A citizen') : 'A citizen';
+          final phone = profileRes != null ? (profileRes['phone_number'] ?? 'N/A') : 'N/A';
+          
+          // Notify all admins that the user marked themselves safe
+          await _notifyAdmins(
+            title: '✅ SOS Cancelled / Safe',
+            message: '$name ($phone) has marked themselves safe and cancelled the SOS alarm.',
+            type: 'sos',
+            relatedId: emergencyId,
+          );
+        }
+      }
+    } catch (_) {}
+
     await _client
         .from('emergencies')
         .update({
@@ -70,7 +181,23 @@ class EmergencyService {
           final list = <EmergencyModel>[];
           // Filter ONLY active ones client-side so updates to non-active status are processed and removed instantly
           final activeRows = data.where((row) => row['status'] == 'active').toList();
+          
+          // Deduplicate by user_id to ensure a user only has one active SOS card in the dashboard
+          final seenUserIds = <String>{};
+          final uniqueActiveRows = <Map<String, dynamic>>[];
           for (final row in activeRows) {
+            final userId = row['user_id'] as String?;
+            if (userId != null) {
+              if (!seenUserIds.contains(userId)) {
+                seenUserIds.add(userId);
+                uniqueActiveRows.add(row);
+              }
+            } else {
+              uniqueActiveRows.add(row);
+            }
+          }
+
+          for (final row in uniqueActiveRows) {
             try {
               final profileRes = await _client
                   .from('profiles')

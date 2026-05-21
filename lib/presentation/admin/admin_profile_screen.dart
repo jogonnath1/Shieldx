@@ -3,16 +3,250 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
+import '../../data/services/storage_service.dart';
+import '../../data/services/profile_service.dart';
 import '../../providers/auth_provider.dart';
 import '../widgets/common/widgets.dart';
 
-class AdminProfileScreen extends ConsumerWidget {
+class AdminProfileScreen extends ConsumerStatefulWidget {
   const AdminProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AdminProfileScreen> createState() => _AdminProfileScreenState();
+}
+
+class _AdminProfileScreenState extends ConsumerState<AdminProfileScreen> {
+  bool _isUploading = false;
+
+  Future<void> _pickAndUploadAvatar(String userId, String? currentAvatarUrl) async {
+    if (_isUploading) return;
+
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 512,
+      maxHeight: 512,
+      imageQuality: 85,
+    );
+
+    if (pickedFile == null) return;
+
+    setState(() => _isUploading = true);
+
+    try {
+      final bytes = await pickedFile.readAsBytes();
+      final storageService = StorageService();
+      final downloadUrl = await storageService.uploadAvatarBytes(
+        bytes: bytes,
+        userId: userId,
+        fileName: pickedFile.name,
+      );
+
+      final profileService = ProfileService();
+      await profileService.updateProfile(userId, {'avatar_url': downloadUrl});
+
+      // Delete the old file from Supabase storage if it exists
+      if (currentAvatarUrl != null && currentAvatarUrl.isNotEmpty) {
+        try {
+          final uri = Uri.parse(currentAvatarUrl);
+          final pathSegments = uri.pathSegments;
+          final bucketIndex = pathSegments.indexOf('avatars');
+          if (bucketIndex != -1 && bucketIndex < pathSegments.length - 1) {
+            final filePath = pathSegments.sublist(bucketIndex + 1).join('/');
+            await storageService.deleteFile('avatars', filePath);
+          }
+        } catch (e) {
+          debugPrint('Failed to delete old physical avatar file: $e');
+        }
+      }
+
+      // Refresh Auth State so UI updates immediately
+      await ref.read(authNotifierProvider.notifier).refresh();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile picture updated successfully!'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to upload profile picture: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUploading = false);
+      }
+    }
+  }
+
+  Future<void> _deleteAvatar(String userId, String? currentAvatarUrl) async {
+    if (_isUploading) return;
+
+    setState(() => _isUploading = true);
+
+    try {
+      final profileService = ProfileService();
+      await profileService.updateProfile(userId, {'avatar_url': null});
+
+      if (currentAvatarUrl != null && currentAvatarUrl.isNotEmpty) {
+        try {
+          final storageService = StorageService();
+          final uri = Uri.parse(currentAvatarUrl);
+          final pathSegments = uri.pathSegments;
+          final bucketIndex = pathSegments.indexOf('avatars');
+          if (bucketIndex != -1 && bucketIndex < pathSegments.length - 1) {
+            final filePath = pathSegments.sublist(bucketIndex + 1).join('/');
+            await storageService.deleteFile('avatars', filePath);
+          }
+        } catch (e) {
+          debugPrint('Failed to delete physical avatar file: $e');
+        }
+      }
+
+      // Refresh Auth State so UI updates immediately
+      await ref.read(authNotifierProvider.notifier).refresh();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Profile picture deleted successfully!'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete profile picture: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isUploading = false);
+      }
+    }
+  }
+
+  void _showAvatarOptions(BuildContext context, dynamic profile) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        final hasAvatar = profile.avatarUrl != null && profile.avatarUrl!.isNotEmpty;
+        return Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFF1E293B),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Text(
+                'Profile Photo',
+                style: GoogleFonts.inter(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 24),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.photo_library_outlined, color: AppColors.primaryLight),
+                ),
+                title: Text(
+                  'Upload New Photo',
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickAndUploadAvatar(profile.id, profile.avatarUrl);
+                },
+              ),
+              if (hasAvatar) ...[
+                const Divider(color: Colors.white10),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.error.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.delete_outline_rounded, color: AppColors.error),
+                  ),
+                  title: Text(
+                    'Delete Current Photo',
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.error,
+                    ),
+                  ),
+                  onTap: () {
+                    Navigator.pop(context);
+                    _deleteAvatar(profile.id, profile.avatarUrl);
+                  },
+                ),
+              ],
+              const Divider(color: Colors.white10),
+              ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white10,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.close_rounded, color: Colors.white70),
+                ),
+                title: Text(
+                  'Cancel',
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w600,
+                    color: Colors.white70,
+                  ),
+                ),
+                onTap: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final profile = ref.watch(authNotifierProvider).valueOrNull;
     if (profile == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator(color: AppColors.primary)));
@@ -26,25 +260,89 @@ class AdminProfileScreen extends ConsumerWidget {
           child: Column(
             children: [
               const SizedBox(height: 16),
-              Container(
-                width: 90,
-                height: 90,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                      colors: [Color(0xFF7B1FA2), Color(0xFF1565C0)]),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                        color: AppColors.primary.withOpacity(0.4),
-                        blurRadius: 20)
+              GestureDetector(
+                onTap: () => _showAvatarOptions(context, profile),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Container(
+                      width: 90,
+                      height: 90,
+                      decoration: BoxDecoration(
+                        gradient: profile.isMainAdmin
+                            ? const LinearGradient(colors: [Color(0xFFFFB300), Color(0xFFFF6F00)])
+                            : const LinearGradient(colors: [Color(0xFF7B1FA2), Color(0xFF1565C0)]),
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                              color: (profile.isMainAdmin ? const Color(0xFFFFB300) : AppColors.primary).withOpacity(0.4),
+                              blurRadius: 20)
+                        ],
+                      ),
+                      child: ClipOval(
+                        child: profile.avatarUrl != null && profile.avatarUrl!.isNotEmpty
+                            ? Image.network(
+                                profile.avatarUrl!,
+                                width: 90,
+                                height: 90,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) => Center(
+                                  child: Text(profile.initials,
+                                      style: GoogleFonts.inter(
+                                          color: Colors.white,
+                                          fontSize: 32,
+                                          fontWeight: FontWeight.w800)),
+                                ),
+                              )
+                            : Center(
+                                child: Text(profile.initials,
+                                    style: GoogleFonts.inter(
+                                        color: Colors.white,
+                                        fontSize: 32,
+                                        fontWeight: FontWeight.w800)),
+                              ),
+                      ),
+                    ),
+                    if (_isUploading)
+                      Container(
+                        width: 90,
+                        height: 90,
+                        decoration: BoxDecoration(
+                          color: Colors.black.withOpacity(0.5),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Center(
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 3,
+                          ),
+                        ),
+                      )
+                    else
+                      Positioned(
+                        right: 0,
+                        bottom: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(5),
+                          decoration: BoxDecoration(
+                            color: profile.isMainAdmin ? const Color(0xFFFF8F00) : const Color(0xFF7B1FA2),
+                            shape: BoxShape.circle,
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black26,
+                                blurRadius: 4,
+                                offset: Offset(0, 2),
+                              )
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.camera_alt_rounded,
+                            size: 14,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
                   ],
-                ),
-                child: Center(
-                  child: Text(profile.initials,
-                      style: GoogleFonts.inter(
-                          color: Colors.white,
-                          fontSize: 32,
-                          fontWeight: FontWeight.w800)),
                 ),
               ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
               const SizedBox(height: 14),
@@ -56,11 +354,12 @@ class AdminProfileScreen extends ConsumerWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                      colors: [Color(0xFF7B1FA2), Color(0xFF1565C0)]),
+                  gradient: profile.isMainAdmin
+                      ? const LinearGradient(colors: [Color(0xFFFFB300), Color(0xFFFF6F00)])
+                      : const LinearGradient(colors: [Color(0xFF7B1FA2), Color(0xFF1565C0)]),
                   borderRadius: BorderRadius.circular(20),
                 ),
-                child: Text('👑 Administrator',
+                child: Text(profile.isMainAdmin ? '👑 Main Administrator' : '🛡️ Administrator',
                     style: GoogleFonts.inter(
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
@@ -95,6 +394,12 @@ class AdminProfileScreen extends ConsumerWidget {
                 label: 'Change Password',
                 onTap: () => context.push('/change-password'),
               ).animate().fadeIn(delay: 300.ms),
+              const SizedBox(height: 10),
+              _ProfileAction(
+                icon: Icons.delete_outline_rounded,
+                label: 'Recycle Bin',
+                onTap: () => context.push('/admin/recycle-bin'),
+              ).animate().fadeIn(delay: 330.ms),
               const SizedBox(height: 10),
               _ProfileAction(
                 icon: Icons.logout_rounded,

@@ -66,7 +66,11 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Profile updated!'), backgroundColor: AppColors.success),
       );
-      context.pop();
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.go('/profile');
+      }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
@@ -83,7 +87,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         title: const Text('Edit Profile'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/profile');
+            }
+          },
         ),
       ),
       body: Container(

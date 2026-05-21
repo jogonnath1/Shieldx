@@ -7,6 +7,7 @@ import '../../core/constants/app_colors.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/connectivity_provider.dart';
 import '../widgets/common/widgets.dart';
+import '../../core/services/preferences_service.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -46,6 +47,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
         _passwordCtrl.text.trim(),
       );
       if (!mounted) return;
+
+      // Save credentials for persistent background auto-login
+      final prefsService = ref.read(preferencesServiceProvider);
+      await prefsService.saveCredentials(
+        _emailCtrl.text.trim(),
+        _passwordCtrl.text.trim(),
+      );
+
       final profile = ref.read(authNotifierProvider).valueOrNull;
       context.go(profile?.isAdmin == true ? '/admin/dashboard' : '/home');
     } catch (e) {

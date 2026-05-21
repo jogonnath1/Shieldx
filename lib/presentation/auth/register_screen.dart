@@ -19,6 +19,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
+  final _nidCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _otpCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
@@ -26,11 +27,13 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _isLoading = false;
   bool _isOtpSent = false;
   bool _isPhoneVerified = false;
+  String? _mockOtpCode;
 
   @override
   void dispose() {
     _nameCtrl.dispose();
     _emailCtrl.dispose();
+    _nidCtrl.dispose();
     _phoneCtrl.dispose();
     _otpCtrl.dispose();
     _passwordCtrl.dispose();
@@ -75,13 +78,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         return;
       }
 
-      final ok = await notifier.completeRegistration(
+      final ok = await notifier.signUp(
         email: _emailCtrl.text.trim(),
         password: _passwordCtrl.text.trim(),
         name: _nameCtrl.text.trim(),
         phone: _phoneCtrl.text.trim(),
+        nid: _nidCtrl.text.trim(),
       );
-      if (!mounted) return;
+      if (!context.mounted) return;
       if (ok) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -155,11 +159,28 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         prefixIcon: Icons.email_outlined,
                         textInputAction: TextInputAction.next,
                         validator: (v) {
-                          if (v == null || v.isEmpty) return 'Email is required';
-                          if (!v.contains('@')) return 'Enter a valid email';
+                          if (v == null || v.trim().isEmpty) return 'Email is required';
+                          final emailRegExp = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+                          if (!emailRegExp.hasMatch(v.trim())) {
+                            return 'Enter a valid email address (e.g., name@domain.com)';
+                          }
                           return null;
                         },
                       ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.2),
+                      const SizedBox(height: 14),
+                      CustomTextField(
+                        label: 'NID Card or Birth Certificate',
+                        hint: 'e.g. 19951234567890123',
+                        controller: _nidCtrl,
+                        keyboardType: TextInputType.number,
+                        prefixIcon: Icons.badge_outlined,
+                        textInputAction: TextInputAction.next,
+                        validator: (v) {
+                          if (v == null || v.trim().isEmpty) return 'NID or Birth Certificate is required';
+                          if (v.trim().length < 10) return 'Must be at least 10 digits';
+                          return null;
+                        },
+                      ).animate().fadeIn(delay: 225.ms).slideY(begin: 0.2),
                       const SizedBox(height: 14),
                       CustomTextField(
                         label: 'Phone Number',
@@ -195,7 +216,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                       try {
                                         final notifier = ref.read(authNotifierProvider.notifier);
 
-                                        // Prevent phone OTP if phone number is already registered
+                                        // Prevent phone if already registered
                                         final checks = await notifier.checkContactExists(
                                           email: '',
                                           phone: number,
@@ -208,16 +229,122 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                           return;
                                         }
 
-                                        await notifier.sendPhoneOtp(number);
-                                        if (!mounted) return;
+                                        // Save mock OTP "1111" to database for testing
+                                        const mockOtp = "1111";
+                                        _mockOtpCode = mockOtp;
+
+                                        await notifier.saveMockOtp(number, mockOtp);
+
+                                        if (!context.mounted) return;
                                         setState(() {
                                           _isOtpSent = true;
                                           _isLoading = false;
                                         });
+
                                         ScaffoldMessenger.of(context).showSnackBar(
                                           const SnackBar(
-                                            content: Text('OTP sent to your phone!'),
+                                            content: Text('Verification code generated & saved to database!'),
                                             backgroundColor: AppColors.success,
+                                          ),
+                                        );
+
+                                        // Show mock verification dialog
+                                        if (!context.mounted) return;
+                                        showDialog(
+                                          context: context,
+                                          barrierDismissible: false,
+                                          builder: (context) => Dialog(
+                                            backgroundColor: Colors.transparent,
+                                            child: Container(
+                                              padding: const EdgeInsets.all(24),
+                                              decoration: BoxDecoration(
+                                                color: Colors.grey[950],
+                                                borderRadius: BorderRadius.circular(24),
+                                                border: Border.all(color: AppColors.primary.withOpacity(0.3)),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: AppColors.primary.withOpacity(0.15),
+                                                    blurRadius: 20,
+                                                    spreadRadius: 2,
+                                                  ),
+                                                ],
+                                              ),
+                                              child: Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Container(
+                                                    padding: const EdgeInsets.all(12),
+                                                    decoration: BoxDecoration(
+                                                      color: AppColors.primary.withOpacity(0.1),
+                                                      shape: BoxShape.circle,
+                                                    ),
+                                                    child: const Icon(
+                                                      Icons.phonelink_ring_rounded,
+                                                      color: AppColors.primary,
+                                                      size: 40,
+                                                    ),
+                                                  ).animate().scale(duration: 400.ms, curve: Curves.easeOutBack),
+                                                  const SizedBox(height: 18),
+                                                  Text(
+                                                    'ShieldX Demo Verification',
+                                                    style: GoogleFonts.inter(
+                                                      color: Colors.white,
+                                                      fontSize: 18,
+                                                      fontWeight: FontWeight.w800,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 12),
+                                                  Text(
+                                                    'Use the code below to complete your phone verification in this demo:',
+                                                    textAlign: TextAlign.center,
+                                                    style: GoogleFonts.inter(
+                                                      color: AppColors.textSecondary,
+                                                      fontSize: 13,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 20),
+                                                  Container(
+                                                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.black26,
+                                                      borderRadius: BorderRadius.circular(16),
+                                                      border: Border.all(color: Colors.white.withOpacity(0.08)),
+                                                    ),
+                                                    child: Text(
+                                                      mockOtp,
+                                                      style: GoogleFonts.spaceMono(
+                                                        color: AppColors.primary,
+                                                        fontSize: 32,
+                                                        fontWeight: FontWeight.bold,
+                                                        letterSpacing: 6,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 24),
+                                                  SizedBox(
+                                                    width: double.infinity,
+                                                    child: ElevatedButton(
+                                                      style: ElevatedButton.styleFrom(
+                                                        backgroundColor: AppColors.primary,
+                                                        foregroundColor: Colors.white,
+                                                        shape: RoundedRectangleBorder(
+                                                          borderRadius: BorderRadius.circular(12),
+                                                        ),
+                                                        padding: const EdgeInsets.symmetric(vertical: 14),
+                                                      ),
+                                                      onPressed: () {
+                                                        _otpCtrl.text = mockOtp;
+                                                        Navigator.pop(context);
+                                                      },
+                                                      child: Text(
+                                                        'Auto-Fill & Continue',
+                                                        style: GoogleFonts.inter(fontWeight: FontWeight.w700),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
                                           ),
                                         );
                                       } catch (e) {
@@ -251,26 +378,33 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                   _showError('Active internet connection is required for OTP verification.');
                                   return;
                                 }
-                                if (_otpCtrl.text.trim().isNotEmpty) {
+                                final enteredOtp = _otpCtrl.text.trim();
+                                if (enteredOtp.isNotEmpty) {
                                   setState(() => _isLoading = true);
                                   try {
                                     final notifier = ref.read(authNotifierProvider.notifier);
-                                    await notifier.verifyPhoneOtp(_phoneCtrl.text.trim(), _otpCtrl.text.trim());
+                                    final isValid = await notifier.verifyMockOtp(_phoneCtrl.text.trim(), enteredOtp);
                                     if (!mounted) return;
-                                    setState(() {
-                                      _isPhoneVerified = true;
-                                      _isLoading = false;
-                                    });
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text('Phone verified! You can now set your password.'),
-                                        backgroundColor: AppColors.success,
-                                      ),
-                                    );
+                                    if (isValid) {
+                                      if (!context.mounted) return;
+                                      setState(() {
+                                        _isPhoneVerified = true;
+                                        _isLoading = false;
+                                      });
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Phone verified successfully from database!'),
+                                          backgroundColor: AppColors.success,
+                                        ),
+                                      );
+                                    } else {
+                                      setState(() => _isLoading = false);
+                                      _showError('Invalid OTP code. Please try again.');
+                                    }
                                   } catch (e) {
                                     if (!mounted) return;
                                     setState(() => _isLoading = false);
-                                    _showError('Invalid OTP or verification failed.');
+                                    _showError('Verification error: $e');
                                   }
                                 } else {
                                   _showError('Please enter the OTP');
@@ -312,14 +446,14 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                             return null;
                           },
                         ).animate().fadeIn(delay: 350.ms).slideY(begin: 0.2),
+                        const SizedBox(height: 28),
+                        GradientButton(
+                          label: 'Create Account',
+                          onTap: _isLoading ? null : _register,
+                          isLoading: _isLoading,
+                          icon: Icons.person_add_rounded,
+                        ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.2),
                       ],
-                      const SizedBox(height: 28),
-                      GradientButton(
-                        label: 'Create Account',
-                        onTap: _isLoading ? null : _register,
-                        isLoading: _isLoading,
-                        icon: Icons.person_add_rounded,
-                      ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.2),
                     ],
                   ),
                 ),
@@ -347,5 +481,4 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       ),
     );
   }
-
 }

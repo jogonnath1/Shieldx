@@ -194,6 +194,8 @@ const Map<String, ThanaInfo> thanaDetailedInfo = {
           'Sylhet Central Jail Road Area',
           'Police Line / Police HQ Surroundings',
           'Govt. Alia Madrasa Surrounding Area',
+          'Sylhet MAG Osmani Medical College Area (Medical Road)',
+          'Kajalshah',
           'Court Road–Jail Road Administrative Corridor',
         ],
       ),
@@ -216,9 +218,49 @@ const Map<String, ThanaInfo> thanaDetailedInfo = {
 
   thanaMoglabazar: ThanaInfo(
     thana: thanaMoglabazar,
-    subtitle: 'Leading University Hub',
+    subtitle: 'Southeastern Suburbs & Agriculture',
+    emoji: '🌾',
+    sections: [
+      ThanaSection(
+        heading: 'Surrounding Moglabazar Localities',
+        emoji: '🌾',
+        areas: [
+          'Moglabazar Proper',
+          'Daudpur',
+          'Jalalpur',
+          'Kuchai',
+          'Silam',
+          'Tetli (South Part)',
+          'Pirijpur',
+          'Burunga',
+          'Parairchak (City expansion/waste management zone)',
+          'Sreerampur',
+          'Surma River-side Village Clusters',
+        ],
+      ),
+    ],
+    overlapNotes: 'Moglabazar coordinates are tightly bound to the southeastern agricultural and residential outskirts.',
+  ),
+
+  thanaSouthSurma: ThanaInfo(
+    thana: thanaSouthSurma,
+    subtitle: 'Expansion City & Academic Hub',
     emoji: '🎓',
     sections: [
+      ThanaSection(
+        heading: 'Main Commercial & Transport Hubs',
+        emoji: '🏙️',
+        areas: [
+          'Kadamtali Point',
+          'Humayun Rashid Chattar',
+          'Babna Point',
+          'Titas Point',
+          'Chondipul (Gateway point)',
+          'Kin Bridge Area (South End)',
+          'South Surma Bus Terminal Area',
+          'Railway Station Area (South Part)',
+        ],
+      ),
       ThanaSection(
         heading: 'Kamalbazar & Leading University Core',
         emoji: '🏫',
@@ -240,46 +282,6 @@ const Map<String, ThanaInfo> thanaDetailedInfo = {
         ],
       ),
       ThanaSection(
-        heading: 'Surrounding Moglabazar Localities',
-        emoji: '🌾',
-        areas: [
-          'Moglabazar Proper',
-          'Daudpur',
-          'Jalalpur',
-          'Kuchai',
-          'Silam',
-          'Tetli (South Part)',
-          'Pirijpur',
-          'Burunga',
-          'Parairchak (City expansion/waste management zone)',
-          'Sreerampur',
-          'Surma River-side Village Clusters',
-        ],
-      ),
-    ],
-    overlapNotes: 'Kamalbazar is close to South Surma but administratively falls under Moglabazar Thana.',
-  ),
-
-  thanaSouthSurma: ThanaInfo(
-    thana: thanaSouthSurma,
-    subtitle: 'Expansion City (South of Surma River)',
-    emoji: '🏗️',
-    sections: [
-      ThanaSection(
-        heading: 'Main Commercial & Transport Hubs',
-        emoji: '🏙️',
-        areas: [
-          'Kadamtali Point',
-          'Humayun Rashid Chattar',
-          'Babna Point',
-          'Titas Point',
-          'Chondipul (Gateway point)',
-          'Kin Bridge Area (South End)',
-          'South Surma Bus Terminal Area',
-          'Railway Station Area (South Part)',
-        ],
-      ),
-      ThanaSection(
         heading: 'Residential & Expansion Zones',
         emoji: '🏘️',
         areas: [
@@ -292,7 +294,7 @@ const Map<String, ThanaInfo> thanaDetailedInfo = {
         ],
       ),
     ],
-    overlapNotes: 'Note: Shahjalal Uposhohor and Sylhet Housing Estate are NORTH of the Surma River and do NOT belong to South Surma Thana. They fall under Shah Poran/Kotwali and Airport Thana respectively.',
+    overlapNotes: 'Kamalbazar & Leading University are administratively within Dakshin Surma. Shahjalal Uposhohor and Sylhet Housing Estate are NORTH of the Surma River and do NOT belong here.',
   ),
 
   thanaShahPoran: ThanaInfo(
@@ -343,7 +345,7 @@ const Map<String, ThanaInfo> thanaDetailedInfo = {
           'Akhalia Point',
           'SUST Main Gate & Surrounding area',
           'Kumargaon (Major Bus Stand & Power Plant Area)',
-          'Sylhet MAG Osmani Medical College Area (Medical Road)',
+          'Sylhet Housing Estate (Central Planned Blocks — North of Surma)',
           'Tapobon Residential Area',
           'Surma Residential Area',
         ],
@@ -386,13 +388,11 @@ const Map<String, ThanaInfo> thanaDetailedInfo = {
           'Lakkatura Tea Garden Area',
           'Malnichhara Tea Estate Road',
           'Sylhet International Cricket Stadium Area',
-          'Sylhet Housing Estate (Central Planned Blocks — North of Surma)',
           'Gowai Para',
-          'Dhopadighirpar (Airport Edge)',
         ],
       ),
     ],
-    overlapNotes: 'Ambarkhana is a massive commercial hub acting as the true gateway to Airport Road — it straddles the Kotwali and Airport Thana boundary. Sylhet Housing Estate was previously miscategorized under South Surma — it is north of the river.',
+    overlapNotes: 'Ambarkhana is a massive commercial hub acting as the true gateway to Airport Road — it straddles the Kotwali and Airport Thana boundary.',
   ),
 };
 
@@ -500,17 +500,17 @@ final List<PoliceStation> dummyPoliceStations = [
 // CORRECTED: Uposhohor & Housing Estate moved to correct thanas (north of river).
 // ─────────────────────────────────────────────────────────────────────────────
 const Map<String, List<double>> smpThanaBounds = {
-  // Kotwali: tight city core including Dargah, Zindabazar, Bandar, Kadamtali(N)
-  thanaKotwali:    [24.882, 24.912, 91.856, 91.882],
-  // Moglabazar: east of Kotwali, LU campus zone, south towards Moglabazar Proper
-  thanaMoglabazar: [24.870, 24.900, 91.878, 91.918],
-  // South Surma: SOUTH of Surma river only
-  thanaSouthSurma: [24.850, 24.885, 91.845, 91.878],
+  // Kotwali: tight city core including Dargah, Zindabazar, Bandar, Kadamtali(N), Osmani Medical
+  thanaKotwali:    [24.882, 24.912, 91.850, 91.882],
+  // Moglabazar: east of Kotwali, south towards Moglabazar Proper
+  thanaMoglabazar: [24.840, 24.900, 91.878, 91.920],
+  // South Surma: SOUTH of Surma river, including Kadamtali, Kamalbazar, and Leading University
+  thanaSouthSurma: [24.840, 24.885, 91.800, 91.878],
   // Shah Poran: eastern zone including Uposhohor (north of river), MC College, Khadimnagar
   thanaShahPoran:  [24.890, 24.945, 91.885, 91.960],
-  // Jalalabad: west zone, SUST, Medical College, Akhalia
+  // Jalalabad: west zone, SUST, Medical College, Akhalia, Housing Estate
   thanaJalalabad:  [24.893, 24.940, 91.815, 91.870],
-  // Airport: northern zone including Housing Estate (north of river), Lakkatura, Cricket Stadium
+  // Airport: northern zone including Lakkatura, Cricket Stadium
   thanaAirport:    [24.918, 24.995, 91.840, 91.910],
 };
 

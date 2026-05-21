@@ -7,11 +7,9 @@ import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
 import '../../data/services/complaint_service.dart';
-import '../../data/services/sync_service.dart';
 import '../../data/models/complaint_model.dart';
 import '../../data/models/status_history_model.dart';
 import '../../providers/chat_provider.dart';
-import '../../providers/auth_provider.dart';
 import '../../providers/connectivity_provider.dart';
 import '../widgets/common/widgets.dart';
 
@@ -47,7 +45,7 @@ class _ComplaintDetailScreenState
         c = await service.getComplaint(widget.complaintId);
         h = await service.getStatusHistory(widget.complaintId);
       } catch (e) {
-        print('Error loading online details: $e');
+        debugPrint('Error loading online details: $e');
       }
     }
 

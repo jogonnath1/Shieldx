@@ -3,6 +3,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import '../data/models/police_station_model.dart';
 import '../data/services/map_service.dart';
+import 'gps_simulation_provider.dart';
 
 // ---------------------------------------------------------------------------
 // State
@@ -92,13 +93,19 @@ class StationMapState {
 
 class StationMapNotifier extends StateNotifier<StationMapState> {
   final MapService _mapService = MapService();
-  // Sylhet city centre — fallback when GPS is unavailable
-  static const LatLng _sylhetCentre = LatLng(24.8949, 91.8687);
+  final Ref _ref;
+  // Kajolshah beside Medinova Diagnostic Center — fallback when GPS is unavailable
+  static const LatLng _sylhetCentre = LatLng(24.89996, 91.87030);
 
   // Prevent concurrent init calls
   bool _isInitializing = false;
 
-  StationMapNotifier() : super(const StationMapState());
+  StationMapNotifier(this._ref) : super(const StationMapState()) {
+    // Reactive: listen to GPS simulation provider changes to automatically refresh map locations
+    _ref.listen<GpsSimulationState>(gpsSimulationProvider, (prev, next) {
+      _acquireLocationAndLoad();
+    });
+  }
 
   void reset() {
     _isInitializing = false;
@@ -198,6 +205,14 @@ class StationMapNotifier extends StateNotifier<StationMapState> {
     state = state.copyWith(isLoading: true, clearError: true);
 
     try {
+      final simState = _ref.read(gpsSimulationProvider);
+      if (simState.isSimulationActive) {
+        final loc = LatLng(simState.latitude, simState.longitude);
+        state = state.copyWith(userLocation: loc, isLoading: false);
+        await _loadSmpStations(loc);
+        return;
+      }
+
       // ── 1a. Check if location service is enabled (3-second hard timeout) ──
       var serviceEnabled = true;
       try {
@@ -211,7 +226,10 @@ class StationMapNotifier extends StateNotifier<StationMapState> {
 
       if (!serviceEnabled) {
         await _loadSmpStations(_sylhetCentre, silentLoad: true);
-        state = state.copyWith(isLoading: false);
+        state = state.copyWith(
+          userLocation: _sylhetCentre,
+          isLoading: false,
+        );
         return;
       }
 
@@ -243,6 +261,7 @@ class StationMapNotifier extends StateNotifier<StationMapState> {
           permission == LocationPermission.denied) {
         await _loadSmpStations(_sylhetCentre, silentLoad: true);
         state = state.copyWith(
+          userLocation: _sylhetCentre,
           isLoading: false,
           isPermissionDenied: permission == LocationPermission.deniedForever,
         );
@@ -363,5 +382,5 @@ class StationMapNotifier extends StateNotifier<StationMapState> {
 
 final stationMapProvider =
     StateNotifierProvider<StationMapNotifier, StationMapState>(
-  (ref) => StationMapNotifier(),
+  (ref) => StationMapNotifier(ref),
 );

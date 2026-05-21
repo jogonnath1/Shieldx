@@ -7,12 +7,12 @@ import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
 import '../../data/services/complaint_service.dart';
-import '../../data/services/officer_service.dart';
 import '../../data/models/complaint_model.dart';
 import '../../data/models/status_history_model.dart';
 import '../../data/models/officer_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/chat_provider.dart';
+import '../../providers/officer_provider.dart';
 import '../widgets/common/widgets.dart';
 
 class AdminComplaintDetailScreen extends ConsumerStatefulWidget {
@@ -29,7 +29,6 @@ class _AdminComplaintDetailScreenState
     with SingleTickerProviderStateMixin {
   ComplaintModel? _complaint;
   List<StatusHistoryModel> _history = [];
-  List<OfficerModel> _officers = [];
   bool _isLoading = true;
   bool _isUpdating = false;
   late TabController _tabCtrl;
@@ -54,15 +53,12 @@ class _AdminComplaintDetailScreenState
 
   Future<void> _load() async {
     final cs = ComplaintService();
-    final os = OfficerService();
     final c = await cs.getComplaint(widget.complaintId);
     final h = await cs.getStatusHistory(widget.complaintId);
-    final officers = await os.getActiveOfficers();
     if (mounted) {
       setState(() {
         _complaint = c;
         _history = h;
-        _officers = officers;
         _selectedStatus = c?.status;
         _selectedOfficerId = c?.assignedOfficerId;
         _isLoading = false;
@@ -109,7 +105,13 @@ class _AdminComplaintDetailScreenState
         title: Text('Case #${_complaint?.caseId ?? '...'}'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/admin/complaints');
+            }
+          },
         ),
         actions: [
           if (_complaint != null)
@@ -161,7 +163,7 @@ class _AdminComplaintDetailScreenState
                       _DetailsTab(complaint: _complaint!),
                       _ManageTab(
                         complaint: _complaint!,
-                        officers: _officers,
+                        officers: ref.watch(activeOfficersProvider).valueOrNull ?? [],
                         selectedStatus: _selectedStatus,
                         selectedOfficerId: _selectedOfficerId,
                         noteCtrl: _noteCtrl,

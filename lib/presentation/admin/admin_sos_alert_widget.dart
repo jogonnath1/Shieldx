@@ -219,7 +219,11 @@ class AdminActiveSOSAlertsWidget extends ConsumerWidget {
                                   final uri = Uri.parse(
                                     'https://www.google.com/maps/search/?api=1&query=$lat,$lng',
                                   );
-                                  if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+                                  if (!await launchUrl(
+                                    uri,
+                                    mode: LaunchMode.platformDefault,
+                                    webOnlyWindowName: '_self',
+                                  )) {
                                     if (!context.mounted) return;
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       const SnackBar(content: Text('Could not open map.')),
@@ -233,15 +237,16 @@ class AdminActiveSOSAlertsWidget extends ConsumerWidget {
                                   ),
                                   decoration: BoxDecoration(
                                     color: Colors.blue.withOpacity(0.15),
-                                    borderRadius: BorderRadius.circular(6),
+                                    borderRadius: BorderRadius.circular(4),
                                     border: Border.all(
-                                      color: Colors.blue.withOpacity(0.4),
+                                      color: Colors.blueAccent.withOpacity(0.3),
+                                      width: 0.5,
                                     ),
                                   ),
                                   child: Row(
                                     children: [
                                       const Icon(
-                                        Icons.open_in_new_rounded,
+                                        Icons.map_rounded,
                                         color: Colors.blueAccent,
                                         size: 11,
                                       ),
@@ -411,8 +416,13 @@ class AdminActiveSOSAlertsWidget extends ConsumerWidget {
                     ),
                   ),
                 ),
-              ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1);
-            }).toList(),
+              ).animate(onPlay: (controller) => controller.repeat(reverse: true))
+                  .shimmer(color: const Color(0xFFFF8A8A).withOpacity(0.18), duration: 2.seconds)
+                  .fadeIn(begin: 0.65, duration: 1.seconds, curve: Curves.easeInOut)
+                  .animate() // Entrance animation
+                  .fadeIn(duration: 400.ms)
+                  .slideY(begin: 0.1);
+            }),
             const SizedBox(height: 16),
           ],
         );

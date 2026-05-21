@@ -484,6 +484,7 @@ class _FilterChip extends StatelessWidget {
 void _showFilterBottomSheet(BuildContext context, WidgetRef ref, bool isAdmin) {
   showModalBottomSheet(
     context: context,
+    isScrollControlled: true,
     backgroundColor: const Color(0xFF0F172A),
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -494,171 +495,180 @@ void _showFilterBottomSheet(BuildContext context, WidgetRef ref, bool isAdmin) {
           final filterState = ref.watch(isAdmin ? adminComplaintFilterProvider : userComplaintFilterProvider);
           final filterNotifier = ref.read((isAdmin ? adminComplaintFilterProvider : userComplaintFilterProvider).notifier);
 
-          return Container(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          return SafeArea(
+            child: SingleChildScrollView(
+              child: Padding(
+                padding: EdgeInsets.only(
+                  left: 24,
+                  right: 24,
+                  top: 24,
+                  bottom: 24 + MediaQuery.of(ctx).viewInsets.bottom,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Row(
+                      children: [
+                        Text(
+                          'Advanced Filters',
+                          style: GoogleFonts.inter(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                        const Spacer(),
+                        TextButton(
+                          onPressed: () {
+                            filterNotifier.state = filterState.copyWith(
+                              category: 'all',
+                              dateRange: () => null,
+                            );
+                            Navigator.pop(ctx);
+                          },
+                          child: Text(
+                            'Reset All',
+                            style: GoogleFonts.inter(color: AppColors.error, fontSize: 13, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Category Selector
                     Text(
-                      'Advanced Filters',
-                      style: GoogleFonts.inter(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.white,
+                      'Crime Category',
+                      style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceLight,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.cardBorder),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: filterState.category,
+                          dropdownColor: const Color(0xFF0F172A),
+                          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary),
+                          isExpanded: true,
+                          style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
+                          items: [
+                            const DropdownMenuItem(
+                              value: 'all',
+                              child: Text('All Categories'),
+                            ),
+                            ...AppConstants.crimeCategories.map(
+                              (cat) => DropdownMenuItem(
+                                value: cat,
+                                child: Text(cat),
+                              ),
+                            ),
+                          ],
+                          onChanged: (val) {
+                            if (val != null) {
+                              filterNotifier.state = filterState.copyWith(category: val);
+                            }
+                          },
+                        ),
                       ),
                     ),
-                    const Spacer(),
-                    TextButton(
-                      onPressed: () {
-                        filterNotifier.state = filterState.copyWith(
-                          category: 'all',
-                          dateRange: () => null,
+                    const SizedBox(height: 24),
+
+                    // Date Range Selector
+                    Text(
+                      'Date Range',
+                      style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: 10),
+                    InkWell(
+                      onTap: () async {
+                        final picked = await showDateRangePicker(
+                          context: context,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime.now().add(const Duration(days: 1)),
+                          initialDateRange: filterState.dateRange,
+                          builder: (context, child) {
+                            return Theme(
+                              data: Theme.of(context).copyWith(
+                                colorScheme: const ColorScheme.dark(
+                                  primary: AppColors.primary,
+                                  onPrimary: Colors.white,
+                                  surface: Color(0xFF0F172A),
+                                  onSurface: Colors.white,
+                                ),
+                              ),
+                              child: child!,
+                            );
+                          },
                         );
-                        Navigator.pop(ctx);
+                        if (picked != null) {
+                          filterNotifier.state = filterState.copyWith(dateRange: () => picked);
+                        }
                       },
-                      child: Text(
-                        'Reset All',
-                        style: GoogleFonts.inter(color: AppColors.error, fontSize: 13, fontWeight: FontWeight.w600),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceLight,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.cardBorder),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.calendar_month_rounded, color: AppColors.textSecondary, size: 20),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                filterState.dateRange == null
+                                    ? 'Select Date Range'
+                                    : '${DateFormat('dd MMM yyyy').format(filterState.dateRange!.start)} - ${DateFormat('dd MMM yyyy').format(filterState.dateRange!.end)}',
+                                style: GoogleFonts.inter(
+                                  color: filterState.dateRange == null ? AppColors.textHint : Colors.white,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ),
+                            if (filterState.dateRange != null)
+                              GestureDetector(
+                                onTap: () {
+                                  filterNotifier.state = filterState.copyWith(dateRange: () => null);
+                                },
+                                child: const Icon(Icons.close_rounded, color: AppColors.error, size: 18),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+
+                    // Apply Filters Button
+                    SizedBox(
+                      width: double.infinity,
+                      height: 50,
+                      child: ElevatedButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        child: Text(
+                          'Apply Filters',
+                          style: GoogleFonts.inter(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                            color: Colors.white,
+                          ),
+                        ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
-
-                // Category Selector
-                Text(
-                  'Crime Category',
-                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
-                ),
-                const SizedBox(height: 10),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceLight,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.cardBorder),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: filterState.category,
-                      dropdownColor: const Color(0xFF0F172A),
-                      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.textSecondary),
-                      isExpanded: true,
-                      style: GoogleFonts.inter(color: Colors.white, fontSize: 14),
-                      items: [
-                        const DropdownMenuItem(
-                          value: 'all',
-                          child: Text('All Categories'),
-                        ),
-                        ...AppConstants.crimeCategories.map(
-                          (cat) => DropdownMenuItem(
-                            value: cat,
-                            child: Text(cat),
-                          ),
-                        ),
-                      ],
-                      onChanged: (val) {
-                        if (val != null) {
-                          filterNotifier.state = filterState.copyWith(category: val);
-                        }
-                      },
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                // Date Range Selector
-                Text(
-                  'Date Range',
-                  style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
-                ),
-                const SizedBox(height: 10),
-                InkWell(
-                  onTap: () async {
-                    final picked = await showDateRangePicker(
-                      context: context,
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime.now().add(const Duration(days: 1)),
-                      initialDateRange: filterState.dateRange,
-                      builder: (context, child) {
-                        return Theme(
-                          data: Theme.of(context).copyWith(
-                            colorScheme: const ColorScheme.dark(
-                              primary: AppColors.primary,
-                              onPrimary: Colors.white,
-                              surface: Color(0xFF0F172A),
-                              onSurface: Colors.white,
-                            ),
-                          ),
-                          child: child!,
-                        );
-                      },
-                    );
-                    if (picked != null) {
-                      filterNotifier.state = filterState.copyWith(dateRange: () => picked);
-                    }
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceLight,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.cardBorder),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.calendar_month_rounded, color: AppColors.textSecondary, size: 20),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Text(
-                            filterState.dateRange == null
-                                ? 'Select Date Range'
-                                : '${DateFormat('dd MMM yyyy').format(filterState.dateRange!.start)} - ${DateFormat('dd MMM yyyy').format(filterState.dateRange!.end)}',
-                            style: GoogleFonts.inter(
-                              color: filterState.dateRange == null ? AppColors.textHint : Colors.white,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ),
-                        if (filterState.dateRange != null)
-                          GestureDetector(
-                            onTap: () {
-                              filterNotifier.state = filterState.copyWith(dateRange: () => null);
-                            },
-                            child: const Icon(Icons.close_rounded, color: AppColors.error, size: 18),
-                          ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 32),
-
-                // Apply Filters Button
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    child: Text(
-                      'Apply Filters',
-                      style: GoogleFonts.inter(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
           );
         },

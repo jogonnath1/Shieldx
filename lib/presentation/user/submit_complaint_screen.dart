@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -11,12 +12,16 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/utils/complaint_classifier.dart';
 import '../../data/services/complaint_service.dart';
+import '../../data/services/storage_service.dart';
 import '../../providers/connectivity_provider.dart';
 import '../../providers/complaint_provider.dart';
 import '../../providers/location_cache_provider.dart';
 import '../widgets/common/widgets.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/services/preferences_service.dart';
+import 'incident_location_picker.dart';
+
 
 // ── Police station names for the dropdown ──────────────────────────────────
 const List<String> smpPoliceStations = [
@@ -61,53 +66,174 @@ class _SubmitComplaintScreenState
   String? _selectedPoliceStation;
   DateTime? _incidentDate;
   final List<XFile> _evidenceFiles = [];
+  final Map<String, Uint8List> _webEvidenceBytes = {};
   bool _isLoading = false;
   bool _isDetectingLocation = false;
   late bool _isAnonymous;
   int _currentStep = 0;
   ClassificationResult? _aiSuggestion;
+  double? _latitude;
+  double? _longitude;
 
   @override
   void initState() {
     super.initState();
     _isAnonymous = widget.initialAnonymous;
 
-    // If navigated from Station Map, use that station immediately — no GPS needed
-    if (widget.initialPoliceStation != null &&
-        widget.initialPoliceStation!.isNotEmpty) {
-      _selectedPoliceStation = widget.initialPoliceStation;
+    // Load draft if any, and set up auto-saving
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadDraft();
+    });
+  }
+
+  void _loadDraft() {
+    final prefs = ref.read(preferencesServiceProvider);
+    final draft = prefs.getComplaintDraft();
+    if (draft != null) {
+      setState(() {
+        _firstNameCtrl.text = draft['first_name'] as String? ?? '';
+        _lastNameCtrl.text = draft['last_name'] as String? ?? '';
+        _phoneCtrl.text = draft['phone'] as String? ?? '';
+        _nidCtrl.text = draft['nid'] as String? ?? '';
+        _professionCtrl.text = draft['profession'] as String? ?? '';
+        _presentAddressCtrl.text = draft['present_address'] as String? ?? '';
+        _permanentAddressCtrl.text = draft['permanent_address'] as String? ?? '';
+        _descriptionCtrl.text = draft['description'] as String? ?? '';
+        _locationCtrl.text = draft['location_address'] as String? ?? '';
+        
+        _selectedCategory = draft['crime_category'] as String?;
+        _selectedPoliceStation = draft['police_station'] as String?;
+        _isAnonymous = draft['is_anonymous'] as bool? ?? widget.initialAnonymous;
+        _currentStep = draft['current_step'] as int? ?? 0;
+        _latitude = (draft['latitude'] as num?)?.toDouble();
+        _longitude = (draft['longitude'] as num?)?.toDouble();
+        
+        final dateStr = draft['incident_datetime'] as String?;
+        if (dateStr != null) {
+          _incidentDate = DateTime.tryParse(dateStr);
+        }
+      });
+      
+      // Auto classify description
+      if (_descriptionCtrl.text.isNotEmpty) {
+        _onDescriptionChanged(_descriptionCtrl.text);
+      }
     } else {
-      // Otherwise detect via GPS
-      WidgetsBinding.instance
-          .addPostFrameCallback((_) => _detectPoliceStation());
+      // If no draft exists, fallback to standard initializations
+      if (widget.initialPoliceStation != null &&
+          widget.initialPoliceStation!.isNotEmpty) {
+        setState(() {
+          _selectedPoliceStation = widget.initialPoliceStation;
+        });
+      }
     }
+
+    // ALWAYS perform live high-accuracy GPS auto-detection on entry to select
+    // the correct thana based on the user's current live location.
+    if (widget.initialPoliceStation == null || widget.initialPoliceStation!.isEmpty) {
+      _detectPoliceStation(forceFresh: true);
+    }
+    
+    // Attach listeners to all controllers to auto-save draft
+    _attachControllerListeners();
+  }
+
+  void _attachControllerListeners() {
+    final controllers = [
+      _firstNameCtrl,
+      _lastNameCtrl,
+      _phoneCtrl,
+      _nidCtrl,
+      _professionCtrl,
+      _presentAddressCtrl,
+      _permanentAddressCtrl,
+      _descriptionCtrl,
+      _locationCtrl,
+    ];
+    for (final ctrl in controllers) {
+      ctrl.addListener(_saveDraft);
+    }
+  }
+
+  void _saveDraft() {
+    if (!mounted) return;
+    final draft = {
+      'first_name': _firstNameCtrl.text,
+      'last_name': _lastNameCtrl.text,
+      'phone': _phoneCtrl.text,
+      'nid': _nidCtrl.text,
+      'profession': _professionCtrl.text,
+      'present_address': _presentAddressCtrl.text,
+      'permanent_address': _permanentAddressCtrl.text,
+      'description': _descriptionCtrl.text,
+      'location_address': _locationCtrl.text,
+      'crime_category': _selectedCategory,
+      'police_station': _selectedPoliceStation,
+      'is_anonymous': _isAnonymous,
+      'current_step': _currentStep,
+      'incident_datetime': _incidentDate?.toIso8601String(),
+      'latitude': _latitude,
+      'longitude': _longitude,
+    };
+    ref.read(preferencesServiceProvider).saveComplaintDraft(draft);
   }
 
   /// Detects the police station using GPS and sets [_selectedPoliceStation].
   /// Uses [resolveStationFromGps] directly — no provider timing issues.
-  Future<void> _detectPoliceStation() async {
+  Future<void> _detectPoliceStation({bool forceFresh = false}) async {
     if (!mounted) return;
 
-    // Fast-path: provider already has the result (pre-warmed from HomeScreen)
-    final cached = ref.read(detectedStationProvider).valueOrNull;
-    if (cached != null && cached.isNotEmpty) {
-      setState(() => _selectedPoliceStation = cached);
-      return;
+    if (!forceFresh) {
+      // Fast-path: provider already has the result (pre-warmed from HomeScreen)
+      final cached = ref.read(detectedStationProvider).valueOrNull;
+      if (cached != null && cached.isNotEmpty) {
+        setState(() => _selectedPoliceStation = cached);
+        _saveDraft();
+        return;
+      }
+    } else {
+      // Clear cached provider state so a clean lookup runs next time
+      ref.invalidate(detectedStationProvider);
     }
 
     // Direct GPS call — always works regardless of provider state
     setState(() => _isDetectingLocation = true);
     try {
-      final station = await resolveStationFromGps();
+      final station = await resolveStationFromGps(forceFresh: forceFresh, ref: ref);
       if (station != null && station.isNotEmpty && mounted) {
         setState(() => _selectedPoliceStation = station);
-        // Cache result in provider so retry is instant
-        ref.invalidate(detectedStationProvider);
+        _saveDraft();
       }
     } catch (_) {
       // User can select manually
     } finally {
       if (mounted) setState(() => _isDetectingLocation = false);
+    }
+  }
+
+  Future<void> _selectIncidentLocation() async {
+    final result = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => IncidentLocationPicker(
+          initialLatitude: _latitude,
+          initialLongitude: _longitude,
+          initialAddress: _locationCtrl.text.isNotEmpty ? _locationCtrl.text : null,
+        ),
+      ),
+    );
+
+    if (result != null && mounted) {
+      setState(() {
+        _latitude = result['latitude'] as double?;
+        _longitude = result['longitude'] as double?;
+        _locationCtrl.text = result['address'] as String? ?? '';
+        final station = result['police_station'] as String?;
+        if (station != null && station.isNotEmpty) {
+          _selectedPoliceStation = station;
+        }
+      });
+      _saveDraft();
     }
   }
 
@@ -131,6 +257,7 @@ class _SubmitComplaintScreenState
     // Auto-fill category if not already chosen
     if (result != null && _selectedCategory == null) {
       setState(() => _selectedCategory = result.category);
+      _saveDraft();
     }
   }
 
@@ -141,13 +268,17 @@ class _SubmitComplaintScreenState
     );
     if (result != null && result.files.isNotEmpty) {
       setState(() {
-        _evidenceFiles.addAll(result.files.map((file) {
+        for (final file in result.files) {
           if (kIsWeb) {
-            return XFile.fromData(file.bytes!, name: file.name, length: file.size);
+            if (file.bytes != null) {
+              final xfile = XFile.fromData(file.bytes!, name: file.name, length: file.size);
+              _evidenceFiles.add(xfile);
+              _webEvidenceBytes[file.name] = file.bytes!;
+            }
           } else {
-            return XFile(file.path!, name: file.name);
+            _evidenceFiles.add(XFile(file.path!, name: file.name));
           }
-        }));
+        }
       });
     }
   }
@@ -193,6 +324,7 @@ class _SubmitComplaintScreenState
             time.minute,
           );
         });
+        _saveDraft();
       }
     }
   }
@@ -216,6 +348,34 @@ class _SubmitComplaintScreenState
     final userId = Supabase.instance.client.auth.currentUser?.id;
     final complaintId = const Uuid().v4();
 
+    // ── Upload evidence files to Supabase Storage ───────────────────────────
+    final List<String> uploadedUrls = [];
+    final storage = StorageService();
+
+    try {
+      for (final file in _evidenceFiles) {
+        if (kIsWeb) {
+          final bytes = _webEvidenceBytes[file.name];
+          if (bytes != null) {
+            final url = await storage.uploadEvidenceBytes(
+              bytes: bytes,
+              fileName: file.name,
+              complaintId: complaintId,
+            );
+            uploadedUrls.add(url);
+          }
+        } else {
+          final fileObj = File(file.path);
+          final url = await storage.uploadEvidence(fileObj, complaintId);
+          uploadedUrls.add(url);
+        }
+      }
+    } catch (uploadError) {
+      _showError('Failed to upload evidence attachments: $uploadError');
+      setState(() => _isLoading = false);
+      return;
+    }
+
     final complaintData = {
       'id': complaintId,
       'user_id': userId,
@@ -231,13 +391,18 @@ class _SubmitComplaintScreenState
       'location_address': _locationCtrl.text.trim(),
       'incident_datetime': _incidentDate?.toIso8601String(),
       'police_station': _selectedPoliceStation,
-      'evidence_urls': <String>[],
+      'evidence_urls': uploadedUrls,
       'is_anonymous': _isAnonymous,
+      'latitude': _latitude,
+      'longitude': _longitude,
     };
 
     try {
       final service = ComplaintService();
       await service.submitComplaint(complaintData);
+      try {
+        await ref.read(preferencesServiceProvider).clearComplaintDraft();
+      } catch (_) {}
       if (userId != null) {
         ref.invalidate(userComplaintsStreamProvider(userId));
       }
@@ -262,6 +427,238 @@ class _SubmitComplaintScreenState
     );
   }
 
+  Widget _buildCustomStepper() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 16),
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      decoration: BoxDecoration(
+        color: AppColors.card.withOpacity(0.4),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.cardBorder.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          _buildStepItem(
+            index: 0,
+            label: 'Personal Info',
+            icon: Icons.person_rounded,
+          ),
+          _buildStepConnector(0),
+          _buildStepItem(
+            index: 1,
+            label: 'Incident Details',
+            icon: Icons.description_rounded,
+          ),
+          _buildStepConnector(1),
+          _buildStepItem(
+            index: 2,
+            label: 'Evidence',
+            icon: Icons.cloud_upload_rounded,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepItem({
+    required int index,
+    required String label,
+    required IconData icon,
+  }) {
+    final isCompleted = _currentStep > index;
+    final isActive = _currentStep == index;
+
+    Color statusColor;
+    if (isActive) {
+      statusColor = AppColors.primary;
+    } else if (isCompleted) {
+      statusColor = AppColors.success;
+    } else {
+      statusColor = AppColors.textHint;
+    }
+
+    return Expanded(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: () {
+          FocusScope.of(context).unfocus();
+          setState(() {
+            _currentStep = index;
+          });
+          _saveDraft();
+        },
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: isActive
+                    ? AppColors.primary.withOpacity(0.12)
+                    : isCompleted
+                        ? AppColors.success.withOpacity(0.08)
+                        : AppColors.surfaceLight,
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: statusColor,
+                  width: isActive ? 2.5 : 1.5,
+                ),
+                boxShadow: isActive
+                    ? [
+                        BoxShadow(
+                          color: AppColors.primary.withOpacity(0.2),
+                          blurRadius: 8,
+                          spreadRadius: 1,
+                        )
+                      ]
+                    : null,
+              ),
+              child: Icon(
+                isCompleted ? Icons.check_rounded : icon,
+                color: statusColor,
+                size: 20,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                color: isActive
+                    ? AppColors.primary
+                    : isCompleted
+                        ? AppColors.textPrimary
+                        : AppColors.textHint,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStepConnector(int stepIndex) {
+    final isCompleted = _currentStep > stepIndex;
+    return Container(
+      width: 20,
+      height: 2,
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: BoxDecoration(
+        color: isCompleted ? AppColors.success : AppColors.cardBorder.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(1),
+      ),
+    );
+  }
+
+  Widget _buildCurrentStepContent() {
+    switch (_currentStep) {
+      case 0:
+        return _PersonalInfoStep(
+          key: const ValueKey('personal_info'),
+          firstNameCtrl: _firstNameCtrl,
+          lastNameCtrl: _lastNameCtrl,
+          phoneCtrl: _phoneCtrl,
+          nidCtrl: _nidCtrl,
+          professionCtrl: _professionCtrl,
+          presentAddressCtrl: _presentAddressCtrl,
+          permanentAddressCtrl: _permanentAddressCtrl,
+          isAnonymous: _isAnonymous,
+          onAnonymousChanged: (v) {
+            setState(() => _isAnonymous = v);
+            _saveDraft();
+          },
+        );
+      case 1:
+        return _IncidentStep(
+          key: const ValueKey('incident_details'),
+          selectedCategory: _selectedCategory,
+          onCategoryChanged: (v) {
+            setState(() => _selectedCategory = v);
+            _saveDraft();
+          },
+          descriptionCtrl: _descriptionCtrl,
+          locationCtrl: _locationCtrl,
+          incidentDate: _incidentDate,
+          onPickDate: _pickDate,
+          aiSuggestion: _aiSuggestion,
+          onDescriptionChanged: _onDescriptionChanged,
+          selectedPoliceStation: _selectedPoliceStation,
+          onPoliceStationChanged: (v) {
+            setState(() => _selectedPoliceStation = v);
+            _saveDraft();
+          },
+          isDetectingLocation: _isDetectingLocation,
+          onRetryDetect: () {
+            setState(() {
+              _selectedPoliceStation = null;
+              _isDetectingLocation = true;
+            });
+            _saveDraft();
+            _detectPoliceStation(forceFresh: true);
+          },
+          onTapLocation: _selectIncidentLocation,
+        );
+      case 2:
+        return _EvidenceStep(
+          key: const ValueKey('evidence'),
+          files: _evidenceFiles,
+          webBytes: _webEvidenceBytes,
+          onPickImage: _pickEvidenceFiles,
+          onRemove: (i) {
+            final removed = _evidenceFiles.removeAt(i);
+            _webEvidenceBytes.remove(removed.name);
+            setState(() {});
+          },
+        );
+      default:
+        return const SizedBox.shrink();
+    }
+  }
+
+  Widget _buildNavigationControls() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Row(
+        children: [
+          Expanded(
+            child: GradientButton(
+              label: _currentStep == 2 ? 'Submit Report' : 'Continue',
+              onTap: () {
+                if (_currentStep < 2) {
+                  FocusScope.of(context).unfocus();
+                  setState(() => _currentStep++);
+                  _saveDraft();
+                } else {
+                  _submit();
+                }
+              },
+              icon: _currentStep == 2
+                  ? Icons.send_rounded
+                  : Icons.arrow_forward_rounded,
+            ),
+          ),
+          if (_currentStep > 0) ...[
+            const SizedBox(width: 12),
+            SizedBox(
+              height: 52,
+              child: OutlinedButton(
+                onPressed: () {
+                  FocusScope.of(context).unfocus();
+                  setState(() => _currentStep--);
+                  _saveDraft();
+                },
+                child: const Text('Back'),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -278,104 +675,35 @@ class _SubmitComplaintScreenState
           isLoading: _isLoading,
           child: Form(
             key: _formKey,
-            child: Stepper(
-              currentStep: _currentStep,
-              onStepContinue: () {
-                if (_currentStep < 2) {
-                  setState(() => _currentStep++);
-                } else {
-                  _submit();
-                }
-              },
-              onStepCancel: () {
-                if (_currentStep > 0) {
-                  setState(() => _currentStep--);
-                } else {
-                  context.go('/home');
-                }
-              },
-              controlsBuilder: (ctx, details) => Padding(
-                padding: const EdgeInsets.only(top: 16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: GradientButton(
-                        label: _currentStep == 2 ? 'Submit Report' : 'Continue',
-                        onTap: details.onStepContinue,
-                        icon: _currentStep == 2
-                            ? Icons.send_rounded
-                            : Icons.arrow_forward_rounded,
-                      ),
-                    ),
-                    if (_currentStep > 0) ...[
-                      const SizedBox(width: 12),
-                      SizedBox(
-                        height: 52,
-                        child: OutlinedButton(
-                          onPressed: details.onStepCancel,
-                          child: const Text('Back'),
+            child: Column(
+              children: [
+                _buildCustomStepper(),
+                Expanded(
+                  child: SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 300),
+                          transitionBuilder: (Widget child, Animation<double> animation) {
+                            return FadeTransition(
+                              opacity: animation,
+                              child: SlideTransition(
+                                position: Tween<Offset>(
+                                  begin: const Offset(0.0, 0.05),
+                                  end: Offset.zero,
+                                ).animate(animation),
+                                child: child,
+                              ),
+                            );
+                          },
+                          child: _buildCurrentStepContent(),
                         ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              steps: [
-                Step(
-                  title: Text('Personal Info',
-                      style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-                  isActive: _currentStep >= 0,
-                  state: _currentStep > 0
-                      ? StepState.complete
-                      : StepState.indexed,
-                  content: _PersonalInfoStep(
-                    firstNameCtrl: _firstNameCtrl,
-                    lastNameCtrl: _lastNameCtrl,
-                    phoneCtrl: _phoneCtrl,
-                    nidCtrl: _nidCtrl,
-                    professionCtrl: _professionCtrl,
-                    presentAddressCtrl: _presentAddressCtrl,
-                    permanentAddressCtrl: _permanentAddressCtrl,
-                    isAnonymous: _isAnonymous,
-                    onAnonymousChanged: (v) => setState(() => _isAnonymous = v),
-                  ),
-                ),
-                Step(
-                  title: Text('Incident Details',
-                      style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-                  isActive: _currentStep >= 1,
-                  state: _currentStep > 1
-                      ? StepState.complete
-                      : StepState.indexed,
-                  content: _IncidentStep(
-                    selectedCategory: _selectedCategory,
-                    onCategoryChanged: (v) =>
-                        setState(() => _selectedCategory = v),
-                    descriptionCtrl: _descriptionCtrl,
-                    locationCtrl: _locationCtrl,
-                    incidentDate: _incidentDate,
-                    onPickDate: _pickDate,
-                    aiSuggestion: _aiSuggestion,
-                    onDescriptionChanged: _onDescriptionChanged,
-                    selectedPoliceStation: _selectedPoliceStation,
-                    onPoliceStationChanged: (v) =>
-                        setState(() => _selectedPoliceStation = v),
-                    isDetectingLocation: _isDetectingLocation,
-                    onRetryDetect: () {
-                      setState(() => _selectedPoliceStation = null);
-                      _detectPoliceStation();
-                    },
-                  ),
-                ),
-                Step(
-                  title: Text('Evidence',
-                      style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-                  isActive: _currentStep >= 2,
-                  content: _EvidenceStep(
-                    files: _evidenceFiles,
-                    onPickImage: _pickEvidenceFiles,
-                    onRemove: (i) =>
-                        setState(() => _evidenceFiles.removeAt(i)),
+                        const SizedBox(height: 12),
+                        _buildNavigationControls(),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -394,6 +722,7 @@ class _PersonalInfoStep extends StatelessWidget {
   final ValueChanged<bool> onAnonymousChanged;
 
   const _PersonalInfoStep({
+    super.key,
     required this.firstNameCtrl,
     required this.lastNameCtrl,
     required this.phoneCtrl,
@@ -570,8 +899,10 @@ class _IncidentStep extends StatelessWidget {
   final void Function(String?) onPoliceStationChanged;
   final bool isDetectingLocation;
   final VoidCallback onRetryDetect;
+  final VoidCallback onTapLocation;
 
   const _IncidentStep({
+    super.key,
     required this.selectedCategory,
     required this.onCategoryChanged,
     required this.descriptionCtrl,
@@ -584,6 +915,7 @@ class _IncidentStep extends StatelessWidget {
     required this.onPoliceStationChanged,
     required this.isDetectingLocation,
     required this.onRetryDetect,
+    required this.onTapLocation,
   });
 
   @override
@@ -689,6 +1021,10 @@ class _IncidentStep extends StatelessWidget {
           controller: locationCtrl,
           prefixIcon: Icons.place_outlined,
           maxLines: 2,
+          readOnly: true,
+          onTap: onTapLocation,
+          validator: (v) =>
+              v == null || v.isEmpty ? 'Incident location is required' : null,
         ),
         const SizedBox(height: 16),
         // ── Police Station Field ─────────────────────────────────────────────
@@ -713,7 +1049,7 @@ class _IncidentStep extends StatelessWidget {
             const SizedBox(height: 8),
             Stack(
               children: [
-                DropdownButtonFormField<String>(
+                DropdownButtonFormField<String?>(
                   initialValue: selectedPoliceStation,
                   dropdownColor: AppColors.card,
                   decoration: InputDecoration(
@@ -738,23 +1074,35 @@ class _IncidentStep extends StatelessWidget {
                       color: AppColors.textHint,
                       fontSize: 13,
                     ),
-                    suffixIcon: selectedPoliceStation != null
-                        ? const Icon(Icons.gps_fixed_rounded,
-                            color: AppColors.primary, size: 18)
-                        : IconButton(
-                            tooltip: 'Detect location',
-                            icon: const Icon(Icons.my_location_rounded,
-                                color: AppColors.textHint, size: 18),
-                            onPressed: onRetryDetect,
-                          ),
+                    suffixIcon: IconButton(
+                      tooltip: 'Detect location',
+                      icon: Icon(
+                        Icons.my_location_rounded,
+                        color: selectedPoliceStation != null
+                            ? AppColors.primary
+                            : AppColors.textHint,
+                        size: 18,
+                      ),
+                      onPressed: onRetryDetect,
+                    ),
                   ),
-                  items: smpPoliceStations
-                      .map((s) => DropdownMenuItem(
-                            value: s,
-                            child: Text(s,
-                                style: GoogleFonts.inter(fontSize: 13)),
-                          ))
-                      .toList(),
+                  items: [
+                    DropdownMenuItem<String?>(
+                      value: null,
+                      child: Text(
+                        'Select police station',
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          color: AppColors.textHint,
+                        ),
+                      ),
+                    ),
+                    ...smpPoliceStations.map((s) => DropdownMenuItem<String?>(
+                          value: s,
+                          child: Text(s,
+                              style: GoogleFonts.inter(fontSize: 13)),
+                        )),
+                  ],
                   onChanged: isDetectingLocation ? null : onPoliceStationChanged,
                 ),
                 if (selectedPoliceStation != null)
@@ -846,11 +1194,14 @@ class _IncidentStep extends StatelessWidget {
 
 class _EvidenceStep extends StatelessWidget {
   final List<XFile> files;
+  final Map<String, Uint8List> webBytes;
   final VoidCallback onPickImage;
   final void Function(int) onRemove;
 
   const _EvidenceStep({
+    super.key,
     required this.files,
+    required this.webBytes,
     required this.onPickImage,
     required this.onRemove,
   });
@@ -875,19 +1226,38 @@ class _EvidenceStep extends StatelessWidget {
             ),
             itemCount: files.length,
             itemBuilder: (ctx, i) {
-              final isImage = files[i].name.toLowerCase().endsWith('.jpg') || 
-                              files[i].name.toLowerCase().endsWith('.jpeg') || 
-                              files[i].name.toLowerCase().endsWith('.png');
+              final file = files[i];
+              final isImage = file.name.toLowerCase().endsWith('.jpg') || 
+                              file.name.toLowerCase().endsWith('.jpeg') || 
+                              file.name.toLowerCase().endsWith('.png');
+              
+              Widget? previewWidget;
+              if (isImage) {
+                if (kIsWeb) {
+                  final bytes = webBytes[file.name];
+                  if (bytes != null) {
+                    previewWidget = Image.memory(
+                      bytes,
+                      fit: BoxFit.cover,
+                      width: double.infinity,
+                      height: double.infinity,
+                    );
+                  }
+                } else {
+                  previewWidget = Image.file(
+                    File(file.path),
+                    fit: BoxFit.cover,
+                    width: double.infinity,
+                    height: double.infinity,
+                  );
+                }
+              }
+
               return Stack(
                 children: [
                   ClipRRect(
                     borderRadius: BorderRadius.circular(10),
-                    child: isImage && !kIsWeb 
-                        ? Image.file(File(files[i].path),
-                            fit: BoxFit.cover,
-                            width: double.infinity,
-                            height: double.infinity)
-                        : Container(
+                    child: previewWidget ?? Container(
                             color: AppColors.primary.withOpacity(0.1),
                             width: double.infinity,
                             height: double.infinity,
@@ -899,7 +1269,7 @@ class _EvidenceStep extends StatelessWidget {
                                 Padding(
                                   padding: const EdgeInsets.symmetric(horizontal: 4),
                                   child: Text(
-                                    files[i].name, 
+                                    file.name, 
                                     maxLines: 1, 
                                     overflow: TextOverflow.ellipsis, 
                                     style: GoogleFonts.inter(fontSize: 10, color: AppColors.textPrimary)

@@ -1,8 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../data/models/profile_model.dart';
 import '../data/services/auth_service.dart';
+import '../core/services/preferences_service.dart';
 
 final authServiceProvider = Provider<AuthService>((ref) => AuthService());
 
@@ -28,8 +28,9 @@ final currentProfileProvider = FutureProvider<ProfileModel?>((ref) async {
 
 class AuthNotifier extends StateNotifier<AsyncValue<ProfileModel?>> {
   final AuthService _service;
+  final Ref _ref;
 
-  AuthNotifier(this._service) : super(const AsyncValue.loading()) {
+  AuthNotifier(this._service, this._ref) : super(const AsyncValue.loading()) {
     _init();
     
     // Listen to Supabase auth state changes to stay in sync automatically
@@ -47,7 +48,21 @@ class AuthNotifier extends StateNotifier<AsyncValue<ProfileModel?>> {
 
   Future<void> _init() async {
     try {
-      final profile = await _service.getCurrentProfile();
+      // 1. Try to fetch the active session profile
+      var profile = await _service.getCurrentProfile();
+      
+      // 2. If no active session, check for saved credentials
+      if (profile == null) {
+        final prefs = _ref.read(preferencesServiceProvider);
+        final email = prefs.getSavedEmail();
+        final password = prefs.getSavedPassword();
+        
+        if (email != null && password != null) {
+          // Perform background sign in
+          await _service.signIn(email: email, password: password);
+          profile = await _service.getCurrentProfile();
+        }
+      }
       state = AsyncValue.data(profile);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
@@ -72,11 +87,12 @@ class AuthNotifier extends StateNotifier<AsyncValue<ProfileModel?>> {
     required String password,
     required String name,
     String? phone,
+    String? nid,
   }) async {
     state = const AsyncValue.loading();
     try {
       await _service.signUp(
-          email: email, password: password, name: name, phone: phone);
+          email: email, password: password, name: name, phone: phone, nid: nid);
       
       // If Supabase auto-logins after signup, fetch the profile
       if (_service.isLoggedIn) {
@@ -116,35 +132,30 @@ class AuthNotifier extends StateNotifier<AsyncValue<ProfileModel?>> {
     }
   }
 
-  Future<bool> completeRegistration({
-    required String email,
-    required String password,
-    required String name,
-    required String phone,
-  }) async {
-    state = const AsyncValue.loading();
+  Future<void> saveMockOtp(String phone, String otp) async {
     try {
-      await _service.completeRegistrationWithEmailPassword(
-        email: email,
-        password: password,
-        name: name,
-        phone: phone,
-      );
-      
-      final profile = await _service.getCurrentProfile();
-      state = AsyncValue.data(profile);
-      return true;
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
+      await _service.saveMockOtp(phone, otp);
+    } catch (e) {
       rethrow;
     }
   }
 
+  Future<bool> verifyMockOtp(String phone, String otp) async {
+    try {
+      return await _service.verifyMockOtp(phone, otp);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+
+
   Future<void> signOut() async {
     await _service.signOut();
     state = const AsyncValue.data(null);
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('last_route');
+    final prefs = _ref.read(preferencesServiceProvider);
+    await prefs.clearLastRoute();
+    await prefs.clearCredentials();
   }
 
   Future<void> refresh() async {
@@ -159,5 +170,5 @@ class AuthNotifier extends StateNotifier<AsyncValue<ProfileModel?>> {
 
 final authNotifierProvider =
     StateNotifierProvider<AuthNotifier, AsyncValue<ProfileModel?>>((ref) {
-  return AuthNotifier(ref.read(authServiceProvider));
+  return AuthNotifier(ref.read(authServiceProvider), ref);
 });

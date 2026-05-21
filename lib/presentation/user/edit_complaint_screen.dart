@@ -51,7 +51,11 @@ class _EditComplaintScreenState extends ConsumerState<EditComplaintScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('This report can no longer be edited.')),
         );
-        context.pop();
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go('/my-complaints');
+        }
       }
       return;
     }
@@ -94,7 +98,11 @@ class _EditComplaintScreenState extends ConsumerState<EditComplaintScreen> {
             backgroundColor: const Color(0xFF00897B),
           ),
         );
-        context.pop();
+        if (context.canPop()) {
+          context.pop();
+        } else {
+          context.go('/my-complaints');
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -144,7 +152,13 @@ class _EditComplaintScreenState extends ConsumerState<EditComplaintScreen> {
         title: Text('Edit Report', style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/my-complaints');
+            }
+          },
         ),
         actions: [
           if (!_isLoading)

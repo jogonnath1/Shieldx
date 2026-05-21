@@ -22,6 +22,7 @@ class ComplaintService {
         .from(AppConstants.complaintsTable)
         .select()
         .eq('user_id', userId)
+        .isFilter('deleted_at', null)
         .order('created_at', ascending: false);
     return (response as List).map((e) => ComplaintModel.fromMap(e)).toList();
   }
@@ -35,6 +36,7 @@ class ComplaintService {
     var query = _client
         .from(AppConstants.complaintsTable)
         .select()
+        .isFilter('deleted_at', null)
         .order('created_at', ascending: false)
         .range(offset, offset + limit - 1);
 
@@ -43,6 +45,7 @@ class ComplaintService {
           .from(AppConstants.complaintsTable)
           .select()
           .eq('status', status)
+          .isFilter('deleted_at', null)
           .order('created_at', ascending: false)
           .range(offset, offset + limit - 1);
     }
@@ -57,6 +60,7 @@ class ComplaintService {
         .from(AppConstants.complaintsTable)
         .select()
         .eq('id', id)
+        .isFilter('deleted_at', null)
         .maybeSingle();
     if (response == null) return null;
     return ComplaintModel.fromMap(response);
@@ -117,7 +121,8 @@ class ComplaintService {
   Future<Map<String, int>> getStats() async {
     final response = await _client
         .from(AppConstants.complaintsTable)
-        .select('status');
+        .select('status')
+        .isFilter('deleted_at', null);
     final list = response as List;
     final stats = <String, int>{
       'total': list.length,
@@ -139,7 +144,8 @@ class ComplaintService {
   Future<Map<String, int>> getCategoryStats() async {
     final response = await _client
         .from(AppConstants.complaintsTable)
-        .select('crime_category');
+        .select('crime_category')
+        .isFilter('deleted_at', null);
     final list = response as List;
     final stats = <String, int>{};
     for (final item in list) {
@@ -152,12 +158,74 @@ class ComplaintService {
     return Map.fromEntries(sorted.take(7));
   }
 
-  // Delete complaint (admin only)
+  // Delete complaint (admin/user - soft delete)
   Future<void> deleteComplaint(String id) async {
     await _client
         .from(AppConstants.complaintsTable)
-        .delete()
+        .update({'deleted_at': DateTime.now().toIso8601String()})
         .eq('id', id);
+  }
+
+  // Get soft-deleted user complaints
+  Future<List<ComplaintModel>> getDeletedUserComplaints(String userId) async {
+    final response = await _client
+        .from(AppConstants.complaintsTable)
+        .select()
+        .eq('user_id', userId)
+        .not('deleted_at', 'is', null)
+        .order('deleted_at', ascending: false);
+    return (response as List).map((e) => ComplaintModel.fromMap(e)).toList();
+  }
+
+  // Get all soft-deleted complaints (admin)
+  Future<List<ComplaintModel>> getDeletedAllComplaints() async {
+    final response = await _client
+        .from(AppConstants.complaintsTable)
+        .select()
+        .not('deleted_at', 'is', null)
+        .order('deleted_at', ascending: false);
+    return (response as List).map((e) => ComplaintModel.fromMap(e)).toList();
+  }
+
+  // Restore complaint
+  Future<void> restoreComplaint(String id) async {
+    await _client
+        .from(AppConstants.complaintsTable)
+        .update({'deleted_at': null})
+        .eq('id', id);
+  }
+
+  // Restore multiple complaints
+  Future<void> restoreComplaints(List<String> ids) async {
+    await _client
+        .from(AppConstants.complaintsTable)
+        .update({'deleted_at': null})
+        .inFilter('id', ids);
+  }
+
+  // Hard delete multiple complaints
+  Future<void> hardDeleteComplaints(List<String> ids) async {
+    await _client
+        .from(AppConstants.complaintsTable)
+        .delete()
+        .inFilter('id', ids);
+  }
+
+  // Hard delete all user's deleted complaints
+  Future<void> hardDeleteAllUserComplaints(String userId) async {
+    await _client
+        .from(AppConstants.complaintsTable)
+        .delete()
+        .eq('user_id', userId)
+        .not('deleted_at', 'is', null);
+  }
+
+  // Hard delete all deleted complaints
+  Future<void> hardDeleteAllComplaints() async {
+    await _client
+        .from(AppConstants.complaintsTable)
+        .delete()
+        .not('deleted_at', 'is', null);
   }
 
   // Get historical complaint coordinates for heatmap
@@ -165,6 +233,7 @@ class ComplaintService {
     final response = await _client
         .from(AppConstants.complaintsTable)
         .select()
+        .isFilter('deleted_at', null)
         .not('latitude', 'is', null)
         .not('longitude', 'is', null);
     return (response as List).map((e) => ComplaintModel.fromMap(e)).toList();
@@ -177,7 +246,10 @@ class ComplaintService {
         .stream(primaryKey: ['id'])
         .eq('user_id', userId)
         .order('created_at', ascending: false)
-        .map((data) => data.map((e) => ComplaintModel.fromMap(e)).toList());
+        .map((data) => data
+            .map((e) => ComplaintModel.fromMap(e))
+            .where((c) => c.deletedAt == null)
+            .toList());
   }
 
   // Real-time stream for all complaints (admin) — optionally scoped to a thana
@@ -186,7 +258,10 @@ class ComplaintService {
         .from(AppConstants.complaintsTable)
         .stream(primaryKey: ['id'])
         .order('created_at', ascending: false)
-        .map((data) => data.map((e) => ComplaintModel.fromMap(e)).toList());
+        .map((data) => data
+            .map((e) => ComplaintModel.fromMap(e))
+            .where((c) => c.deletedAt == null)
+            .toList());
 
     if (stationThana == null || stationThana.isEmpty) return stream;
 
@@ -198,11 +273,41 @@ class ComplaintService {
     }).toList());
   }
 
+  // Admin: Get stats for all stations in a single query optimized in memory
+  Future<Map<String, Map<String, int>>> getAllStationsStats(List<String> thanas) async {
+    final response = await _client
+        .from(AppConstants.complaintsTable)
+        .select('status, location_address')
+        .isFilter('deleted_at', null);
+    final list = response as List;
+
+    final result = <String, Map<String, int>>{};
+    for (final thana in thanas) {
+      final filtered = _filterByThana(list, thana);
+      final stats = <String, int>{
+        'total': filtered.length,
+        'submitted': 0,
+        'in_progress': 0,
+        'under_investigation': 0,
+        'resolved': 0,
+        'closed': 0,
+        'rejected': 0,
+      };
+      for (final item in filtered) {
+        final status = item['status'] as String? ?? 'submitted';
+        stats[status] = (stats[status] ?? 0) + 1;
+      }
+      result[thana] = stats;
+    }
+    return result;
+  }
+
   // Admin: Get stats optionally scoped to a thana
   Future<Map<String, int>> getStatsForStation({String? stationThana}) async {
     final response = await _client
         .from(AppConstants.complaintsTable)
-        .select('status, location_address');
+        .select('status, location_address')
+        .isFilter('deleted_at', null);
     final list = response as List;
     final filtered = _filterByThana(list, stationThana);
     final stats = <String, int>{
@@ -225,7 +330,8 @@ class ComplaintService {
   Future<Map<String, int>> getCategoryStatsForStation({String? stationThana}) async {
     final response = await _client
         .from(AppConstants.complaintsTable)
-        .select('crime_category, location_address');
+        .select('crime_category, location_address')
+        .isFilter('deleted_at', null);
     final list = response as List;
     final filtered = _filterByThana(list, stationThana);
     final stats = <String, int>{};
@@ -258,12 +364,12 @@ class ComplaintService {
   List<String> _thanaKeywords(String thana) {
     // Map each SMP thana to distinguishing location keywords
     const Map<String, List<String>> thanaKeywordsMap = {
-      'Kotwali Model Thana': ['kotwali', 'zindabazar', 'dargah', 'bandar bazar', 'chowhatta', 'mirabazar', 'lamabazar'],
-      'Moglabazar Thana':    ['moglabazar', 'kamalbazar', 'leading university', 'daudpur', 'jalalpur', 'kuchai', 'silam'],
-      'South Surma Thana':   ['south surma', 'kadamtali', 'boroikandi', 'mominkhola', 'shivbari', 'babna'],
+      'Kotwali Model Thana': ['kotwali', 'zindabazar', 'dargah', 'bandar bazar', 'chowhatta', 'mirabazar', 'lamabazar', 'osmani medical', 'kajalshah'],
+      'Moglabazar Thana':    ['moglabazar', 'daudpur', 'jalalpur', 'kuchai', 'silam'],
+      'South Surma Thana':   ['south surma', 'kadamtali', 'boroikandi', 'mominkhola', 'shivbari', 'babna', 'kamalbazar', 'leading university', 'ragibnagar'],
       'Shahporan Thana':     ['shahporan', 'shah poran', 'tilagor', 'baluchar', 'khadimnagar', 'uposhohor'],
-      'Jalalabad Thana':     ['jalalabad', 'akhalia', 'sust', 'kumargaon', 'osmani medical', 'medina market'],
-      'Airport Thana':       ['airport', 'bimanbandar', 'lakkatura', 'osmani international', 'housing estate', 'dhopagul'],
+      'Jalalabad Thana':     ['jalalabad', 'akhalia', 'sust', 'kumargaon', 'medina market', 'housing estate'],
+      'Airport Thana':       ['airport', 'bimanbandar', 'lakkatura', 'osmani international', 'dhopagul'],
     };
     final lower = thana.toLowerCase();
     // Try exact map lookup first

@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -11,13 +10,16 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:geolocator/geolocator.dart';
 
 import 'dart:convert';
+import 'dart:ui' show ImageFilter;
 import 'package:http/http.dart' as http;
 
 import '../../core/constants/app_colors.dart';
+import '../../core/constants/app_constants.dart';
 import '../../data/models/police_station_model.dart';
 import '../../data/models/complaint_model.dart';
 import '../../providers/station_map_provider.dart';
 import '../../providers/complaint_provider.dart';
+import '../../providers/gps_simulation_provider.dart';
 import '../widgets/common/widgets.dart';
 
 class PoliceStationsScreen extends ConsumerStatefulWidget {
@@ -30,14 +32,15 @@ class PoliceStationsScreen extends ConsumerStatefulWidget {
 
 class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
   final MapController _mapController = MapController();
-  // Broadcast stream: safe to add events even when no one is listening
-  final _alignPositionStreamController = StreamController<double>.broadcast();
-  // Position stream initialized once permissions are granted
-  Stream<LocationMarkerPosition?>? _positionStream;
   bool _isMapReady = false;
   bool _isUserLocationHighlighted = false;
   bool _isLocating = false;
   bool _showHeatmap = false;
+  bool _showSafeZones = true;
+  bool _showHotspots = true;
+  String _selectedCategoryFilter = 'All';
+  String _selectedTimelineFilter = 'All';
+  bool _isFilterPanelOpen = false;
 
   LatLng? _searchPinLocation;
   String? _searchPinName;
@@ -45,6 +48,7 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
   // ─── Route state ────────────────────────────────────────────────────────────
   List<LatLng> _routePoints = [];
   bool _isFetchingRoute = false;
+  bool _showRoute = false;
   // Debounce tap events to prevent double-tap from firing two state changes
   Timer? _tapDebounce;
 
@@ -66,29 +70,58 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
     if (mounted) _initPositionStream();
   }
 
+  StreamSubscription? _simSubscription;
+
   void _initPositionStream() {
-    // Guard: only create stream once per screen lifecycle
-    if (!mounted || _positionStream != null) return;
-    final stream =
-        const LocationMarkerDataStreamFactory().fromGeolocatorPositionStream(
-      stream: Geolocator.getPositionStream(
+    _simSubscription?.cancel();
+    _simSubscription = null;
+
+    final simState = ref.read(gpsSimulationProvider);
+
+    if (simState.isSimulationActive) {
+      // Seed initial simulation location immediately
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          ref.read(stationMapProvider.notifier).updateUserLocation(
+            LatLng(simState.latitude, simState.longitude),
+          );
+        }
+      });
+
+      _simSubscription = ref.read(gpsSimulationProvider.notifier).stream.listen((state) {
+        if (state.isSimulationActive && mounted) {
+          ref.read(stationMapProvider.notifier).updateUserLocation(
+            LatLng(state.latitude, state.longitude),
+          );
+        }
+      });
+    } else {
+      final geolocatorStream = Geolocator.getPositionStream(
         locationSettings: const LocationSettings(
-          // medium accuracy: less CPU drain, still accurate enough for city-level
           accuracy: LocationAccuracy.medium,
-          distanceFilter: 10, // only update when moved 10m — reduces UI rebuilds
+          distanceFilter: 10,
         ),
-      ),
-    );
-    if (mounted) {
-      setState(() => _positionStream = stream);
+      );
+
+      _simSubscription = geolocatorStream.listen(
+        (pos) {
+          if (mounted) {
+            ref.read(stationMapProvider.notifier).updateUserLocation(
+              LatLng(pos.latitude, pos.longitude),
+            );
+          }
+        },
+        onError: (e) {
+          debugPrint('[Geolocator Stream] error: $e');
+        },
+      );
     }
   }
 
   @override
   void dispose() {
     _tapDebounce?.cancel();
-    _positionStream = null; // allow re-creation on next screen entry
-    _alignPositionStreamController.close();
+    _simSubscription?.cancel();
     _mapController.dispose();
     super.dispose();
   }
@@ -111,9 +144,6 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
     setState(() => _isLocating = true);
 
     try {
-      // Push a zoom level into the stream — CurrentLocationLayer will center the map
-      _alignPositionStreamController.add(16.0);
-
       // Fetch the live location to ensure the highlight marker is perfectly synced
       Position? pos;
       try {
@@ -157,6 +187,7 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
 
       if (mounted) {
         ref.read(stationMapProvider.notifier).updateUserLocation(liveLoc);
+        _moveMap(liveLoc, 16.0);
         setState(() => _isUserLocationHighlighted = true);
         Future.delayed(const Duration(seconds: 4), () {
           if (mounted) setState(() => _isUserLocationHighlighted = false);
@@ -183,6 +214,7 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
     if (mounted) {
       setState(() {
         _routePoints = [];
+        _showRoute = false;
       });
     }
   }
@@ -223,7 +255,12 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
                     _mapController.fitCamera(
                       CameraFit.bounds(
                         bounds: bounds,
-                        padding: const EdgeInsets.all(30),
+                        padding: const EdgeInsets.only(
+                          top: 100,
+                          bottom: 240,
+                          left: 45,
+                          right: 45,
+                        ),
                         maxZoom: 16.0,
                       ),
                     );
@@ -266,16 +303,60 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
   }
 
   Future<void> _openMaps(PoliceStation s) async {
-    _moveMap(s.location, 16.0);
     ref.read(stationMapProvider.notifier).selectStation(s);
-    // Optionally close the bottom sheet if one is open
-    // Navigator.of(context).pop();
+    
+    final userLoc = ref.read(stationMapProvider).userLocation;
+    if (userLoc != null) {
+      setState(() {
+        _showRoute = true;
+        _isUserLocationHighlighted = true;
+      });
+      Future.delayed(const Duration(seconds: 4), () {
+        if (mounted) setState(() => _isUserLocationHighlighted = false);
+      });
+
+      // Fit bounds immediately to show both user and station with clean padding avoiding overlays
+      if (_isMapReady) {
+        try {
+          final bounds = LatLngBounds.fromPoints([userLoc, s.location]);
+          _mapController.fitCamera(
+            CameraFit.bounds(
+              bounds: bounds,
+              padding: const EdgeInsets.only(
+                top: 100,
+                bottom: 240,
+                left: 45,
+                right: 45,
+              ),
+              maxZoom: 16.0,
+            ),
+          );
+        } catch (e) {
+          debugPrint('[Navigate] Immediate fitCamera error: $e');
+        }
+      }
+
+      await _fetchRoute(userLoc, s.location);
+    } else {
+      _moveMap(s.location, 16.0);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(stationMapProvider);
     final notifier = ref.read(stationMapProvider.notifier);
+
+    ref.listen<GpsSimulationState>(gpsSimulationProvider, (prev, next) {
+      if (prev?.isSimulationActive != next.isSimulationActive ||
+          prev?.latitude != next.latitude ||
+          prev?.longitude != next.longitude) {
+        _initPositionStream();
+        if (next.isSimulationActive && prev?.isSimulationActive != next.isSimulationActive) {
+          _moveMap(LatLng(next.latitude, next.longitude), 15.0);
+        }
+      }
+    });
 
     // Auto-pan and initialize stream when permission/location becomes available
     // Using Future.microtask instead of addPostFrameCallback to avoid accumulation
@@ -306,15 +387,23 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
               ref.read(stationMapProvider.notifier).resetPanFlag();
             }
           }
+        }
 
-          // Fetch route only when station actually changes
-          if (stationChanged && next.userLocation != null) {
+        // Update route line reactively to location or selected station changes
+        if (next.selectedStation != null && next.userLocation != null) {
+          final stationChanged =
+              prev?.selectedStation?.id != next.selectedStation?.id;
+          final locationChanged = prev?.userLocation != next.userLocation;
+          if (stationChanged || locationChanged) {
+            setState(() => _showRoute = true);
             _fetchRoute(next.userLocation!, next.selectedStation!.location);
-          } else if (stationChanged) {
-            _clearRoute();
           }
         } else {
-          if (prev?.selectedStation != null) _clearRoute();
+          final stationChanged =
+              prev?.selectedStation?.id != next.selectedStation?.id;
+          if (stationChanged) {
+            _clearRoute();
+          }
         }
 
         // Pan to user location the first time it becomes available
@@ -322,9 +411,6 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
           Future.delayed(const Duration(milliseconds: 300), () {
             if (mounted && _isMapReady) _moveMap(next.userLocation!, 14.0);
           });
-          if (next.selectedStation != null) {
-            _fetchRoute(next.userLocation!, next.selectedStation!.location);
-          }
         }
       });
     });
@@ -337,6 +423,7 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
         children: [
           _buildMap(state, notifier),
           _buildSearchOverlay(state),
+          _buildHeatmapFilterPanel(state),
           if (state.isLoading) _buildLoadingOverlay(state),
           if (!state.isLoading &&
               (state.isPermissionDenied ||
@@ -369,7 +456,13 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
       ),
       leading: IconButton(
         icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
-        onPressed: () => context.pop(),
+        onPressed: () {
+          if (context.canPop()) {
+            context.pop();
+          } else {
+            context.go('/home');
+          }
+        },
       ),
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -634,6 +727,29 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
           _tapDebounce?.cancel();
           _tapDebounce = Timer(const Duration(milliseconds: 300), () {
             if (!mounted) return;
+
+            final sim = ref.read(gpsSimulationProvider);
+            if (sim.isSimulationActive) {
+              ref.read(gpsSimulationProvider.notifier).updatePosition(
+                    latLng.latitude,
+                    latLng.longitude,
+                    'Custom Location',
+                  );
+              ScaffoldMessenger.of(context).clearSnackBars();
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Updated simulated location to: ${latLng.latitude.toStringAsFixed(5)}, ${latLng.longitude.toStringAsFixed(5)}',
+                    style: GoogleFonts.inter(
+                        fontWeight: FontWeight.bold, color: Colors.white),
+                  ),
+                  backgroundColor: const Color(0xFF10B981),
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+              return;
+            }
+
             setState(() {
               _searchPinLocation = null;
               _searchPinName = null;
@@ -670,7 +786,7 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
                 error: (e, s) => const CircleLayer<Object>(circles: []),
               ),
         // Route polyline — drawn below the user dot
-        if (_routePoints.length > 1)
+        if (_showRoute && _routePoints.length > 1)
           PolylineLayer(
             polylines: [
               // Thick shadow/border line
@@ -698,27 +814,18 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
               ),
             ],
           ),
-        // User Location Layer — Google Maps-style blue GPS dot.
-        if (_positionStream != null)
-          CurrentLocationLayer(
-            alignPositionOnUpdate: AlignOnUpdate.once,
-            alignDirectionOnUpdate: AlignOnUpdate.never,
-            alignPositionStream: _alignPositionStreamController.stream,
-            positionStream: _positionStream,
-            errorHandler: (e) {
-              debugPrint('[LocationLayer] error: $e');
-              return null;
-            },
-            style: LocationMarkerStyle(
-              marker: const DefaultLocationMarker(
-                color: Colors.blue,
+        // User Location Layer — Custom glowing double-pulse blue GPS dot.
+        if (state.userLocation != null)
+          MarkerLayer(
+            markers: [
+              Marker(
+                point: state.userLocation!,
+                width: 80,
+                height: 80,
+                alignment: Alignment.center,
+                child: const _GpsUserLocationMarker(),
               ),
-              markerSize: const Size(20, 20),
-              markerDirection: MarkerDirection.heading,
-              accuracyCircleColor: Colors.blue.withValues(alpha: 0.18),
-              headingSectorColor: Colors.blue.withValues(alpha: 0.35),
-              headingSectorRadius: 52,
-            ),
+            ],
           ),
         // User location highlight marker — shown when "go to my location" is tapped
         if (_isUserLocationHighlighted && state.userLocation != null)
@@ -870,66 +977,197 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
       List<ComplaintModel> complaints, List<PoliceStation> stations) {
     final circles = <CircleMarker<Object>>[];
 
-    // 1. Add Safe Zones around Police Stations
-    for (final s in stations) {
-      circles.add(
-        CircleMarker(
-          point: s.location,
-          radius: 400, // 400 meters safe zone
-          useRadiusInMeter: true,
-          color: HSLColor.fromAHSL(0.12, 120, 0.8, 0.45).toColor(),
-          borderColor: HSLColor.fromAHSL(0.35, 120, 0.9, 0.4).toColor(),
-          borderStrokeWidth: 1.5,
-        ),
-      );
+    // 1. Add Safe Zones around Police Stations (concentric soft green shields)
+    if (_showSafeZones) {
+      for (final s in stations) {
+        final point = s.location;
+        const radius = 400.0;
+        final baseColor = HSLColor.fromAHSL(1.0, 140, 0.85, 0.45); // vibrant green
+
+        // concentric ring 1: Outer faint green glow
+        circles.add(
+          CircleMarker(
+            point: point,
+            radius: radius,
+            useRadiusInMeter: true,
+            color: baseColor.withAlpha(0.04).toColor(),
+            borderStrokeWidth: 0,
+          ),
+        );
+
+        // concentric ring 2: Middle green shield
+        circles.add(
+          CircleMarker(
+            point: point,
+            radius: radius * 0.625, // 250m
+            useRadiusInMeter: true,
+            color: baseColor.withAlpha(0.09).toColor(),
+            borderStrokeWidth: 0,
+          ),
+        );
+
+        // concentric ring 3: Inner core shield
+        circles.add(
+          CircleMarker(
+            point: point,
+            radius: radius * 0.25, // 100m
+            useRadiusInMeter: true,
+            color: baseColor.withAlpha(0.18).toColor(),
+            borderColor: baseColor.withLightness(0.35).withAlpha(0.4).toColor(),
+            borderStrokeWidth: 1.0,
+          ),
+        );
+      }
     }
 
-    // 2. Add Crime Hotspots
+    // Helper functions for complaint filtering
+    bool matchesCategory(ComplaintModel c) {
+      if (_selectedCategoryFilter == 'All') return true;
+      final cat = (c.crimeCategory ?? 'Other').toLowerCase();
+      return cat == _selectedCategoryFilter.toLowerCase();
+    }
+
+    bool matchesTimeline(ComplaintModel c) {
+      if (_selectedTimelineFilter == 'All') return true;
+      final date = c.incidentDatetime ?? c.createdAt;
+      if (date == null) return false;
+      final diff = DateTime.now().difference(date).inDays;
+      if (_selectedTimelineFilter == '30days') return diff <= 30;
+      if (_selectedTimelineFilter == '90days') return diff <= 90;
+      return true;
+    }
+
+    // 2. Perform density spatial clustering
+    final distance = const Distance();
+    final clusters = <_HotspotCluster>[];
+
     for (final c in complaints) {
       if (c.latitude == null || c.longitude == null) continue;
+      if (!matchesCategory(c) || !matchesTimeline(c)) continue;
+
       final point = LatLng(c.latitude!, c.longitude!);
-      final category = c.crimeCategory ?? 'Other';
-      final catLower = category.toLowerCase();
-
-      double radius = 150.0; // default 150m
-      HSLColor hslColor = const HSLColor.fromAHSL(0.2, 55, 1.0, 0.5); // yellow
-
-      if (catLower.contains('murder') ||
-          catLower.contains('kill') ||
-          catLower.contains('violence') ||
-          catLower.contains('assault') ||
-          catLower.contains('weapon') ||
-          catLower.contains('armed') ||
-          catLower.contains('shooting') ||
-          catLower.contains('riot')) {
-        // High severity: Red
-        radius = 280.0;
-        hslColor = const HSLColor.fromAHSL(0.32, 0, 1.0, 0.5);
-      } else if (catLower.contains('robbery') ||
-          catLower.contains('hijack') ||
-          catLower.contains('theft') ||
-          catLower.contains('burglary') ||
-          catLower.contains('harassment') ||
-          catLower.contains('drug') ||
-          catLower.contains('kidnap')) {
-        // Medium severity: Orange
-        radius = 220.0;
-        hslColor = const HSLColor.fromAHSL(0.27, 30, 1.0, 0.5);
+      
+      // Determine complaint weight based on severity
+      final cat = (c.crimeCategory ?? 'Other').toLowerCase();
+      double weight = 1.0;
+      if (cat.contains('murder') ||
+          cat.contains('kill') ||
+          cat.contains('violence') ||
+          cat.contains('assault') ||
+          cat.contains('weapon') ||
+          cat.contains('armed') ||
+          cat.contains('shooting') ||
+          cat.contains('riot')) {
+        weight = 3.0; // High severity
+      } else if (cat.contains('robbery') ||
+          cat.contains('hijack') ||
+          cat.contains('theft') ||
+          cat.contains('burglary') ||
+          cat.contains('harassment') ||
+          cat.contains('drug') ||
+          cat.contains('kidnap')) {
+        weight = 2.0; // Medium severity
       }
 
-      circles.add(
-        CircleMarker(
-          point: point,
-          radius: radius,
-          useRadiusInMeter: true,
-          color: hslColor.toColor(),
-          borderColor: hslColor
-              .withLightness(hslColor.lightness * 0.8)
-              .toColor()
-              .withValues(alpha: 0.6),
-          borderStrokeWidth: 1.5,
-        ),
-      );
+      _HotspotCluster? nearestCluster;
+      double minDistance = double.infinity;
+
+      for (final cluster in clusters) {
+        final dist = distance.as(LengthUnit.Meter, cluster.center, point);
+        if (dist < minDistance) {
+          minDistance = dist;
+          nearestCluster = cluster;
+        }
+      }
+
+      // If within 150 meters, aggregate to nearest cluster
+      if (nearestCluster != null && minDistance < 150.0) {
+        nearestCluster.sumLat += point.latitude;
+        nearestCluster.sumLng += point.longitude;
+        nearestCluster.count++;
+        nearestCluster.totalWeight += weight;
+        nearestCluster.complaints.add(c);
+      } else {
+        // Create new cluster
+        clusters.add(
+          _HotspotCluster()
+            ..sumLat = point.latitude
+            ..sumLng = point.longitude
+            ..count = 1
+            ..totalWeight = weight
+            ..complaints.add(c),
+        );
+      }
+    }
+
+    // 3. Draw Crime Hotspots (with concentric glowing circles)
+    if (_showHotspots) {
+      for (final cluster in clusters) {
+        final w = cluster.totalWeight;
+        final point = cluster.center;
+
+        double radius;
+        HSLColor hslColor;
+
+        if (w < 2.0) {
+          // Low severity / Single incident: Yellow
+          radius = 160.0;
+          hslColor = const HSLColor.fromAHSL(1.0, 48, 1.0, 0.5);
+        } else if (w < 5.0) {
+          // Medium severity / 2-3 incidents: Orange
+          radius = 220.0;
+          hslColor = const HSLColor.fromAHSL(1.0, 28, 1.0, 0.5);
+        } else {
+          // High severity / 4+ incidents: Red/Crimson
+          radius = 290.0;
+          hslColor = const HSLColor.fromAHSL(1.0, 0, 1.0, 0.48);
+        }
+
+        // concentric ring 1: Outer faint glow
+        circles.add(
+          CircleMarker(
+            point: point,
+            radius: radius,
+            useRadiusInMeter: true,
+            color: hslColor.withAlpha(0.06).toColor(),
+            borderStrokeWidth: 0,
+          ),
+        );
+
+        // concentric ring 2: Middle glow
+        circles.add(
+          CircleMarker(
+            point: point,
+            radius: radius * 0.65,
+            useRadiusInMeter: true,
+            color: hslColor.withAlpha(0.14).toColor(),
+            borderStrokeWidth: 0,
+          ),
+        );
+
+        // concentric ring 3: Inner core glow
+        circles.add(
+          CircleMarker(
+            point: point,
+            radius: radius * 0.35,
+            useRadiusInMeter: true,
+            color: hslColor.withAlpha(0.24).toColor(),
+            borderStrokeWidth: 0,
+          ),
+        );
+
+        // concentric ring 4: Hotspot center core
+        circles.add(
+          CircleMarker(
+            point: point,
+            radius: radius * 0.15,
+            useRadiusInMeter: true,
+            color: hslColor.withAlpha(0.42).toColor(),
+            borderColor: hslColor.withLightness(hslColor.lightness * 0.7).withAlpha(0.7).toColor(),
+            borderStrokeWidth: 1.0,
+          ),
+        );
+      }
     }
 
     return circles;
@@ -981,22 +1219,29 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
           );
         },
         suggestionsBuilder: (context, controller) {
-          final query = controller.text.toLowerCase();
+          final query = controller.text;
+          final normalizedQuery = query.toLowerCase().trim();
+          final queryWords = normalizedQuery.split(RegExp(r'\s+')).where((word) => word.isNotEmpty).toList();
 
-          final filteredStations = query.isEmpty
+          final filteredStations = queryWords.isEmpty
               ? state.stations
               : state.stations
-                  .where((s) =>
-                      s.name.toLowerCase().contains(query) ||
-                      s.address.toLowerCase().contains(query))
+                  .where((s) {
+                    final nameLower = s.name.toLowerCase();
+                    final addressLower = s.address.toLowerCase();
+                    return queryWords.every((word) => nameLower.contains(word) || addressLower.contains(word));
+                  })
                   .toList();
 
-          final filteredLandmarks = query.isEmpty
+          final filteredLandmarks = queryWords.isEmpty
               ? cityLandmarks
               : cityLandmarks
-                  .where((lm) =>
-                      lm.name.toLowerCase().contains(query) ||
-                      (query.contains('leading') && lm.name.contains('LU')))
+                  .where((lm) {
+                    final nameLower = lm.name.toLowerCase();
+                    return queryWords.every((word) => nameLower.contains(word) || 
+                                                     (word == 'leading' && nameLower.contains('lu')) ||
+                                                     (word == 'lu' && nameLower.contains('leading')));
+                  })
                   .toList();
 
           final stationTiles = filteredStations.map((s) {
@@ -1110,10 +1355,15 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
                 future:
                     Future.delayed(const Duration(milliseconds: 400), () async {
                   try {
+                    String searchQ = query;
+                    final lowerQ = query.toLowerCase();
+                    if (!lowerQ.contains('sylhet') && !lowerQ.contains('bangladesh')) {
+                      searchQ = '$query, Sylhet';
+                    }
                     return await http.get(
                       Uri.parse(
-                          'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(query)}&format=json&limit=5&viewbox=91.80,24.95,91.95,24.85&bounded=1'),
-                      headers: {'User-Agent': 'ShieldX Application'},
+                          'https://nominatim.openstreetmap.org/search?q=${Uri.encodeComponent(searchQ)}&format=json&limit=8&viewbox=91.75,24.98,92.00,24.80'),
+                      headers: {'User-Agent': 'ShieldX_Safety_Application/1.0.0 (contact: support@shieldx.com)'},
                     );
                   } catch (e) {
                     // Return empty json array on failure to prevent app crash
@@ -1592,9 +1842,476 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
 
   // ─── Zoom Controls ─────────────────────────────────────────────────────────
 
+
+  // ─── Heatmap Filter Overlay ──────────────────────────────────────────────────
+
+  Widget _buildHeatmapFilterPanel(StationMapState state) {
+    if (!_showHeatmap) return const SizedBox.shrink();
+
+    return Positioned(
+      top: kToolbarHeight + MediaQuery.of(context).padding.top + 70, // Sits nicely below the search bar
+      left: 16,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeInOut,
+        width: _isFilterPanelOpen ? 250 : 42,
+        height: _isFilterPanelOpen ? 370 : 42,
+        decoration: BoxDecoration(
+          color: AppColors.card.withValues(alpha: 0.85),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.cardBorder.withValues(alpha: 0.55)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.25),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            )
+          ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: _isFilterPanelOpen
+              ? _buildExpandedFilterPanel()
+              : _buildCollapsedFilterPanel(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCollapsedFilterPanel() {
+    return InkWell(
+      onTap: () => setState(() => _isFilterPanelOpen = true),
+      child: const Center(
+        child: Icon(
+          Icons.tune_rounded,
+          color: Colors.white,
+          size: 18,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExpandedFilterPanel() {
+    return Padding(
+      padding: const EdgeInsets.all(12.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.local_fire_department_rounded,
+                      color: AppColors.error, size: 16),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Heatmap Settings',
+                    style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              GestureDetector(
+                onTap: () => setState(() => _isFilterPanelOpen = false),
+                child: const Icon(Icons.close_rounded,
+                    color: AppColors.textHint, size: 16),
+              ),
+            ],
+          ),
+          const Divider(color: AppColors.cardBorder, height: 16),
+          
+          // Layer Toggles
+          Text(
+            'LAYERS',
+            style: GoogleFonts.inter(
+              color: AppColors.textHint,
+              fontSize: 9,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.8,
+            ),
+          ),
+          const SizedBox(height: 4),
+          _buildFilterSwitchRow(
+            label: 'Safe Zones',
+            color: Colors.greenAccent,
+            value: _showSafeZones,
+            onChanged: (val) => setState(() => _showSafeZones = val),
+          ),
+          _buildFilterSwitchRow(
+            label: 'Crime Hotspots',
+            color: AppColors.error,
+            value: _showHotspots,
+            onChanged: (val) => setState(() => _showHotspots = val),
+          ),
+          const SizedBox(height: 12),
+
+          // Crime Category Filter
+          Text(
+            'CRIME TYPE',
+            style: GoogleFonts.inter(
+              color: AppColors.textHint,
+              fontSize: 9,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.8,
+            ),
+          ),
+          const SizedBox(height: 6),
+          InkWell(
+            onTap: () => _showCrimeTypePicker(context),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: AppColors.cardBorder.withValues(alpha: 0.35),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        Icon(
+                          _selectedCategoryFilter == 'All'
+                              ? Icons.grid_view_rounded
+                              : _getIconForCategory(_selectedCategoryFilter),
+                          color: _selectedCategoryFilter == 'All'
+                              ? AppColors.primaryLight
+                              : _getColorForCategory(_selectedCategoryFilter),
+                          size: 14,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _selectedCategoryFilter == 'All'
+                                ? 'All Crime Types'
+                                : _selectedCategoryFilter,
+                            style: GoogleFonts.inter(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: AppColors.textHint,
+                    size: 16,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Recency / Time Filter
+          Text(
+            'RECENCY',
+            style: GoogleFonts.inter(
+              color: AppColors.textHint,
+              fontSize: 9,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.8,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              _buildTimelineChip('All', 'All Time'),
+              const SizedBox(width: 4),
+              _buildTimelineChip('90days', '90 Days'),
+              const SizedBox(width: 4),
+              _buildTimelineChip('30days', '30 Days'),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Legend description
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AppColors.cardBorder.withValues(alpha: 0.3)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildLegendItem(Colors.greenAccent, 'Safe Zone (Station Buffer)'),
+                const SizedBox(height: 4),
+                _buildLegendItem(Colors.yellow, 'Low Risk (1 Incident)'),
+                const SizedBox(height: 4),
+                _buildLegendItem(Colors.orange, 'Moderate Risk (2-3 Incidents)'),
+                const SizedBox(height: 4),
+                _buildLegendItem(Colors.red, 'High Risk (4+ / Major Crimes)'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterSwitchRow({
+    required String label,
+    required Color color,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 1.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: GoogleFonts.inter(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w500),
+              ),
+            ],
+          ),
+          Transform.scale(
+            scale: 0.65,
+            child: SizedBox(
+              height: 16,
+              width: 28,
+              child: Switch(
+                value: value,
+                activeColor: color,
+                activeTrackColor: color.withValues(alpha: 0.3),
+                inactiveThumbColor: Colors.grey.shade400,
+                inactiveTrackColor: Colors.grey.shade700,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                onChanged: onChanged,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _getIconForCategory(String cat) {
+    switch (cat) {
+      case 'Theft': return Icons.shopping_bag_outlined;
+      case 'Robbery': return Icons.dangerous_outlined;
+      case 'Assault': return Icons.flash_on_rounded;
+      case 'Fraud': return Icons.credit_card_off_rounded;
+      case 'Cybercrime': return Icons.phonelink_lock_rounded;
+      case 'Drug Offense': return Icons.medical_services_outlined;
+      case 'Murder': return Icons.gavel_rounded;
+      case 'Kidnapping': return Icons.person_search_rounded;
+      case 'Sexual Harassment': return Icons.warning_amber_rounded;
+      case 'Domestic Violence': return Icons.home_repair_service_rounded;
+      case 'Vandalism': return Icons.format_paint_rounded;
+      case 'Corruption': return Icons.monetization_on_outlined;
+      case 'Traffic Violation': return Icons.traffic_rounded;
+      case 'Other':
+      default: return Icons.help_outline_rounded;
+    }
+  }
+
+  Color _getColorForCategory(String cat) {
+    switch (cat) {
+      case 'Theft': return const Color(0xFFF59E0B);
+      case 'Robbery': return const Color(0xFFEF4444);
+      case 'Assault': return const Color(0xFFFF5252);
+      case 'Fraud': return const Color(0xFFAB47BC);
+      case 'Cybercrime': return const Color(0xFF29B6F6);
+      case 'Drug Offense': return const Color(0xFF66BB6A);
+      case 'Murder': return const Color(0xFFD32F2F);
+      case 'Kidnapping': return const Color(0xFF78909C);
+      case 'Sexual Harassment': return const Color(0xFFFF4081);
+      case 'Domestic Violence': return const Color(0xFFEC407A);
+      case 'Vandalism': return const Color(0xFF8D6E63);
+      case 'Corruption': return const Color(0xFFFFB300);
+      case 'Traffic Violation': return const Color(0xFF26A69A);
+      case 'Other':
+      default: return const Color(0xFF90A4AE);
+    }
+  }
+
+  void _showCrimeTypePicker(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (BuildContext context) {
+        final categories = ['All', ...AppConstants.crimeCategories];
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          minChildSize: 0.4,
+          maxChildSize: 0.85,
+          builder: (context, scrollController) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Color(0xFF1E293B),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+              child: Column(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.24),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Select Crime Type',
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: ListView.separated(
+                      controller: scrollController,
+                      itemCount: categories.length,
+                      separatorBuilder: (context, index) => Divider(
+                        color: Colors.white.withValues(alpha: 0.1),
+                        height: 1,
+                      ),
+                      itemBuilder: (context, index) {
+                        final cat = categories[index];
+                        final isSelected = _selectedCategoryFilter == cat;
+                        return ListTile(
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                          leading: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? (cat == 'All' ? AppColors.primary : _getColorForCategory(cat)).withValues(alpha: 0.15)
+                                  : Colors.white.withValues(alpha: 0.05),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              cat == 'All' ? Icons.grid_view_rounded : _getIconForCategory(cat),
+                              color: isSelected
+                                  ? (cat == 'All' ? AppColors.primaryLight : _getColorForCategory(cat))
+                                  : Colors.white.withValues(alpha: 0.6),
+                              size: 16,
+                            ),
+                          ),
+                          title: Text(
+                            cat == 'All' ? 'All Crime Types' : cat,
+                            style: GoogleFonts.inter(
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                              color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.7),
+                              fontSize: 13,
+                            ),
+                          ),
+                          trailing: isSelected
+                              ? const Icon(Icons.check_circle_rounded, color: AppColors.success, size: 18)
+                              : null,
+                          onTap: () {
+                            setState(() => _selectedCategoryFilter = cat);
+                            Navigator.pop(context);
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+
+  Widget _buildTimelineChip(String code, String label) {
+    final active = _selectedTimelineFilter == code;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _selectedTimelineFilter = code),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          decoration: BoxDecoration(
+            color: active ? AppColors.primary : Colors.white.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: active ? AppColors.primaryLight : Colors.transparent,
+              width: 1,
+            ),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: GoogleFonts.inter(
+              color: active ? Colors.white : AppColors.textSecondary,
+              fontSize: 8,
+              fontWeight: active ? FontWeight.bold : FontWeight.w500,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLegendItem(Color color, String label) {
+    return Row(
+      children: [
+        Container(
+          width: 6,
+          height: 6,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: 0.6),
+                blurRadius: 4,
+                spreadRadius: 1,
+              )
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            label,
+            style: GoogleFonts.inter(color: AppColors.textSecondary, fontSize: 8, fontWeight: FontWeight.w500),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ─── Zoom Controls ─────────────────────────────────────────────────────────
+
   Widget _buildZoomControls(StationMapState state) {
     // Offset the zoom buttons so they sit above the Thana chips and Station list
     final bottomOffset = state.selectedStation != null ? 215.0 : 16.0;
+    final simActive = ref.watch(gpsSimulationProvider).isSimulationActive;
 
     return AnimatedPositioned(
       duration: const Duration(milliseconds: 300),
@@ -1605,6 +2322,22 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           FloatingActionButton.small(
+            heroTag: 'gps_simulation_toggle',
+            backgroundColor: simActive
+                ? const Color(0xFF10B981)
+                : Colors.white.withValues(alpha: 0.95),
+            foregroundColor: simActive ? Colors.white : AppColors.primary,
+            elevation: 3,
+            onPressed: _showGpsControlPanel,
+            child: Icon(
+              simActive
+                  ? Icons.sensors_rounded
+                  : Icons.sensors_off_rounded,
+              size: 20,
+            ),
+          ),
+          const SizedBox(height: 12),
+          FloatingActionButton.small(
             heroTag: 'heatmap_toggle',
             backgroundColor: _showHeatmap
                 ? AppColors.error
@@ -1614,6 +2347,9 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
             onPressed: () {
               setState(() {
                 _showHeatmap = !_showHeatmap;
+                if (_showHeatmap) {
+                  _isFilterPanelOpen = true; // Auto-open settings overlay
+                }
               });
               ScaffoldMessenger.of(context).clearSnackBars();
               ScaffoldMessenger.of(context).showSnackBar(
@@ -1669,6 +2405,246 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
             child: const Icon(Icons.remove_rounded, size: 24),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showGpsControlPanel() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final currentSimState = ref.watch(gpsSimulationProvider);
+            return Container(
+              decoration: const BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                border: Border(
+                  top: BorderSide(color: AppColors.cardBorder, width: 1.5),
+                ),
+              ),
+              padding: const EdgeInsets.only(
+                top: 16,
+                left: 20,
+                right: 20,
+                bottom: 32,
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 48,
+                      height: 5,
+                      decoration: BoxDecoration(
+                        color: AppColors.textHint.withValues(alpha: 0.4),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.sensors_rounded,
+                        color: AppColors.accent,
+                        size: 28,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'GPS Simulation Panel',
+                              style: GoogleFonts.inter(
+                                color: AppColors.textPrimary,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              'Override browser GPS with live simulated coordinates',
+                              style: GoogleFonts.inter(
+                                color: AppColors.textSecondary,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 24),
+                  _buildGpsOptionTile(
+                    title: 'Real Browser GPS',
+                    subtitle: 'Use default device/browser geolocation sensor',
+                    icon: Icons.gps_off_rounded,
+                    isActive: !currentSimState.isSimulationActive,
+                    onTap: () {
+                      ref.read(gpsSimulationProvider.notifier).disableSimulation();
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).clearSnackBars();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Switched to Real Browser GPS mode.',
+                            style: GoogleFonts.inter(
+                                color: Colors.white, fontWeight: FontWeight.w600),
+                          ),
+                          backgroundColor: AppColors.primary,
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  _buildGpsOptionTile(
+                    title: 'Simulate Kajolshah beside Medinova',
+                    subtitle: '24.89996, 91.87030 (Your Actual Location)',
+                    icon: Icons.location_on_rounded,
+                    isActive: currentSimState.isSimulationActive &&
+                        currentSimState.latitude == 24.89996 &&
+                        currentSimState.longitude == 91.87030,
+                    onTap: () {
+                      ref.read(gpsSimulationProvider.notifier).enableSimulation(
+                            lat: 24.89996,
+                            lng: 91.87030,
+                            name: 'Kajolshah (beside Medinova)',
+                          );
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).clearSnackBars();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Simulating location: Kajolshah beside Medinova Diagnostic Center',
+                            style: GoogleFonts.inter(
+                                color: Colors.white, fontWeight: FontWeight.w600),
+                          ),
+                          backgroundColor: const Color(0xFF10B981),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  _buildGpsOptionTile(
+                    title: 'Custom Map Pin',
+                    subtitle: currentSimState.isSimulationActive &&
+                            (currentSimState.latitude != 24.89996 ||
+                                currentSimState.longitude != 91.87030)
+                        ? 'Active: ${currentSimState.latitude.toStringAsFixed(5)}, ${currentSimState.longitude.toStringAsFixed(5)}'
+                        : 'Tap anywhere on the map to place your custom pin',
+                    icon: Icons.touch_app_rounded,
+                    isActive: currentSimState.isSimulationActive &&
+                        (currentSimState.latitude != 24.89996 ||
+                            currentSimState.longitude != 91.87030),
+                    onTap: () {
+                      ref.read(gpsSimulationProvider.notifier).enableSimulation(
+                            lat: currentSimState.latitude,
+                            lng: currentSimState.longitude,
+                            name: 'Custom Location',
+                          );
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).clearSnackBars();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Custom location override enabled. Tap anywhere on the map to set coordinates.',
+                            style: GoogleFonts.inter(
+                                color: Colors.white, fontWeight: FontWeight.w600),
+                          ),
+                          backgroundColor: Colors.indigoAccent,
+                          duration: const Duration(seconds: 4),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildGpsOptionTile({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required bool isActive,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        decoration: BoxDecoration(
+          color: isActive
+              ? AppColors.accent.withValues(alpha: 0.1)
+              : AppColors.card,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isActive
+                ? AppColors.accent
+                : AppColors.cardBorder.withValues(alpha: 0.5),
+            width: isActive ? 2 : 1,
+          ),
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              decoration: BoxDecoration(
+                color: isActive
+                    ? AppColors.accent.withValues(alpha: 0.2)
+                    : AppColors.surfaceLight,
+                shape: BoxShape.circle,
+              ),
+              padding: const EdgeInsets.all(12),
+              child: Icon(
+                icon,
+                color: isActive ? AppColors.accent : AppColors.textSecondary,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.inter(
+                      color: isActive ? AppColors.accent : AppColors.textPrimary,
+                      fontSize: 15,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.inter(
+                      color: AppColors.textSecondary,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (isActive)
+              const Icon(
+                Icons.check_circle_rounded,
+                color: AppColors.accent,
+                size: 20,
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -1753,7 +2729,78 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
   }
 }
 
-// ─── Sub-widgets ──────────────────────────────────────────────────────────────
+class _GpsUserLocationMarker extends StatelessWidget {
+  const _GpsUserLocationMarker();
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        // Outer pulsing ring 1: wide soft glow
+        Container(
+          width: 72,
+          height: 72,
+          decoration: BoxDecoration(
+            color: Colors.blue.withValues(alpha: 0.12),
+            shape: BoxShape.circle,
+          ),
+        )
+            .animate(onPlay: (c) => c.repeat())
+            .scale(
+              begin: const Offset(0.4, 0.4),
+              end: const Offset(1.0, 1.0),
+              duration: 1600.ms,
+              curve: Curves.easeOutCubic,
+            )
+            .fadeOut(begin: 0.8, duration: 1600.ms),
+        // Outer pulsing ring 2: tighter glow
+        Container(
+          width: 50,
+          height: 50,
+          decoration: BoxDecoration(
+            color: Colors.blue.withValues(alpha: 0.25),
+            shape: BoxShape.circle,
+          ),
+        )
+            .animate(onPlay: (c) => c.repeat())
+            .scale(
+              begin: const Offset(0.5, 0.5),
+              end: const Offset(1.0, 1.0),
+              duration: 1600.ms,
+              delay: 350.ms,
+              curve: Curves.easeOutCubic,
+            )
+            .fadeOut(begin: 1.0, duration: 1600.ms, delay: 350.ms),
+        // Static white background circle for contrast/border
+        Container(
+          width: 32,
+          height: 32,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.3),
+                blurRadius: 6,
+                offset: const Offset(0, 2.0),
+              ),
+            ],
+          ),
+        ),
+        // Central bright blue solid dot - beautiful and BIG!
+        Container(
+          width: 22,
+          height: 22,
+          decoration: const BoxDecoration(
+            color: Colors.blue,
+            shape: BoxShape.circle,
+          ),
+        ),
+      ],
+    );
+  }
+}
 
 class _UserLocationHighlightMarker extends StatelessWidget {
   const _UserLocationHighlightMarker();
@@ -2097,3 +3144,14 @@ const cityLandmarks = [
       type: PlaceType.shopping),
   CityLandmark('Bilarpar', LatLng(24.8630, 91.8520), type: PlaceType.general),
 ];
+
+class _HotspotCluster {
+  double sumLat = 0;
+  double sumLng = 0;
+  int count = 0;
+  double totalWeight = 0;
+  final List<ComplaintModel> complaints = [];
+
+  LatLng get center => LatLng(sumLat / count, sumLng / count);
+}
+

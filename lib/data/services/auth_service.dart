@@ -6,7 +6,6 @@ class AuthService {
   final SupabaseClient _client = Supabase.instance.client;
 
   User? get currentUser => _client.auth.currentUser;
-  Session? get currentSession => _client.auth.currentSession;
   bool get isLoggedIn => currentUser != null;
 
   Stream<AuthState> get authStateChanges => _client.auth.onAuthStateChange;
@@ -47,11 +46,12 @@ class AuthService {
     required String password,
     required String name,
     String? phone,
+    String? nid,
   }) async {
     final response = await _client.auth.signUp(
       email: email,
       password: password,
-      data: {'name': name, 'phone': phone},
+      data: {'name': name, 'phone': phone, 'nid': nid},
     );
     return response;
   }
@@ -68,20 +68,29 @@ class AuthService {
     );
   }
 
-  Future<UserResponse> completeRegistrationWithEmailPassword({
-    required String email,
-    required String password,
-    required String name,
-    required String phone,
-  }) async {
-    return await _client.auth.updateUser(
-      UserAttributes(
-        email: email,
-        password: password,
-        data: {'name': name, 'phone': phone},
-      ),
-    );
+  Future<void> saveMockOtp(String phone, String otp) async {
+    await _client.from('phone_verifications').upsert({
+      'phone': phone,
+      'otp': otp,
+      'created_at': DateTime.now().toUtc().toIso8601String(),
+    });
   }
+
+  Future<bool> verifyMockOtp(String phone, String otp) async {
+    try {
+      final res = await _client
+          .from('phone_verifications')
+          .select()
+          .eq('phone', phone)
+          .eq('otp', otp)
+          .maybeSingle();
+      return res != null;
+    } catch (e) {
+      return false;
+    }
+  }
+
+
 
   Future<AuthResponse> signIn({
     required String email,

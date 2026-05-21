@@ -47,11 +47,19 @@ class AdminDashboardScreen extends ConsumerWidget {
                                     style: GoogleFonts.inter(
                                         color: AppColors.textHint, fontSize: 13)),
                                 const SizedBox(height: 4),
-                                Text('Welcome, ${profile?.displayName.split(' ').first ?? 'Admin'} 👑',
-                                    style: GoogleFonts.inter(
-                                        fontSize: 22,
-                                        fontWeight: FontWeight.w800,
-                                        color: AppColors.textPrimary)),
+                                Wrap(
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  spacing: 8,
+                                  runSpacing: 6,
+                                  children: [
+                                    Text('Welcome, ${profile?.displayName.split(' ').first ?? 'Admin'} 👑',
+                                        style: GoogleFonts.inter(
+                                            fontSize: 22,
+                                            fontWeight: FontWeight.w800,
+                                            color: AppColors.textPrimary)),
+                                    _buildAdminDesignationBadge(profile?.isMainAdmin ?? false),
+                                  ],
+                                ),
                               ],
                             ),
                           ),
@@ -144,8 +152,23 @@ class AdminDashboardScreen extends ConsumerWidget {
                                       blurRadius: 12)
                                 ],
                               ),
-                              child: const Icon(Icons.admin_panel_settings_rounded,
-                                  color: Colors.white, size: 22),
+                              child: ClipOval(
+                                child: profile?.avatarUrl != null && profile!.avatarUrl!.isNotEmpty
+                                    ? Image.network(
+                                        profile.avatarUrl!,
+                                        width: 42,
+                                        height: 42,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (context, error, stackTrace) => const Center(
+                                          child: Icon(Icons.admin_panel_settings_rounded,
+                                              color: Colors.white, size: 22),
+                                        ),
+                                      )
+                                    : const Center(
+                                        child: Icon(Icons.admin_panel_settings_rounded,
+                                            color: Colors.white, size: 22),
+                                      ),
+                              ),
                             ),
                           ),
                         ],
@@ -337,6 +360,50 @@ class AdminDashboardScreen extends ConsumerWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildAdminDesignationBadge(bool isMainAdmin) {
+    final color = isMainAdmin ? const Color(0xFFFFB300) : const Color(0xFFC084FC); // Vibrant Gold, Soft Light Purple for dark mode
+    final bgColor = isMainAdmin 
+        ? const Color(0xFFFFB300).withOpacity(0.12) 
+        : const Color(0xFFC084FC).withOpacity(0.12);
+    final borderColor = isMainAdmin 
+        ? const Color(0xFFFFB300).withOpacity(0.35) 
+        : const Color(0xFFC084FC).withOpacity(0.35);
+    final label = isMainAdmin ? 'Main Admin' : 'Admin';
+    final icon = isMainAdmin ? Icons.workspace_premium_rounded : Icons.admin_panel_settings_rounded;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: borderColor, width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.08),
+            blurRadius: 6,
+            spreadRadius: 1,
+          )
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: color, size: 12),
+          const SizedBox(width: 4),
+          Text(
+            label.toUpperCase(),
+            style: GoogleFonts.inter(
+              fontSize: 9,
+              fontWeight: FontWeight.w900,
+              color: color,
+              letterSpacing: 0.8,
+            ),
+          ),
+        ],
       ),
     );
   }

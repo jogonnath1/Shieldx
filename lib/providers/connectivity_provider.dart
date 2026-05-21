@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import '../core/constants/app_constants.dart';
@@ -19,6 +20,12 @@ class ConnectivityNotifier extends StateNotifier<bool> {
   }
 
   Future<bool> checkConnection() async {
+    if (kIsWeb) {
+      if (!state) {
+        state = true;
+      }
+      return true;
+    }
     if (_isChecking) return state;
     _isChecking = true;
     try {
@@ -38,8 +45,8 @@ class ConnectivityNotifier extends StateNotifier<bool> {
         state = isNowOnline;
       }
     } catch (e, stack) {
-      print('Connectivity check failed with error: $e');
-      print('Stacktrace: $stack');
+      debugPrint('Connectivity check failed with error: $e');
+      debugPrint('Stacktrace: $stack');
       if (state) {
         state = false;
       }

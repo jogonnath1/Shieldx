@@ -57,7 +57,13 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
         title: const Text('Change Password'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/profile');
+            }
+          },
         ),
       ),
       body: Container(

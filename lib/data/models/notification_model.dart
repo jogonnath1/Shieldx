@@ -7,6 +7,7 @@ class NotificationModel {
   final String? relatedId;
   final bool isRead;
   final DateTime createdAt;
+  final DateTime? deletedAt;
 
   const NotificationModel({
     required this.id,
@@ -17,6 +18,7 @@ class NotificationModel {
     this.relatedId,
     required this.isRead,
     required this.createdAt,
+    this.deletedAt,
   });
 
   factory NotificationModel.fromJson(Map<String, dynamic> json) {
@@ -31,6 +33,9 @@ class NotificationModel {
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
           : DateTime.now(),
+      deletedAt: json['deleted_at'] != null
+          ? DateTime.parse(json['deleted_at'] as String)
+          : null,
     );
   }
 
@@ -48,13 +53,14 @@ class NotificationModel {
       'related_id': relatedId,
       'is_read': isRead,
       'created_at': createdAt.toIso8601String(),
+      'deleted_at': deletedAt?.toIso8601String(),
     };
   }
 
   bool get isSos => type == 'sos';
   bool get isComplaint => type == 'complaint';
 
-  NotificationModel copyWith({bool? isRead}) {
+  NotificationModel copyWith({bool? isRead, DateTime? deletedAt}) {
     return NotificationModel(
       id: id,
       userId: userId,
@@ -64,6 +70,8 @@ class NotificationModel {
       relatedId: relatedId,
       isRead: isRead ?? this.isRead,
       createdAt: createdAt,
+      deletedAt: deletedAt ?? this.deletedAt,
     );
   }
 }
+

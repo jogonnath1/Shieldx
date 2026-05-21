@@ -17,6 +17,7 @@ import '../../presentation/user/change_password_screen.dart';
 import '../../presentation/user/police_stations_screen.dart';
 import '../../presentation/user/chat_screen.dart';
 import '../../presentation/user/edit_complaint_screen.dart';
+import '../../presentation/user/recycle_bin_screen.dart';
 import '../../presentation/admin/admin_shell.dart';
 import '../../presentation/admin/admin_dashboard_screen.dart';
 import '../../presentation/admin/admin_complaints_screen.dart';
@@ -25,6 +26,7 @@ import '../../presentation/admin/admin_users_screen.dart';
 import '../../presentation/admin/admin_officers_screen.dart';
 import '../../presentation/admin/admin_profile_screen.dart';
 import '../../presentation/admin/admin_stations_screen.dart';
+import '../../presentation/admin/admin_recycle_bin_screen.dart';
 import '../../presentation/common/notifications_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -61,13 +63,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (isOnAuthRoute) {
         // If profileId is still null but not loading, allow home (could be a missing profile row fallback)
         if (profileId == null) return '/home';
-        
-        final savedRoute = prefsService.getLastRoute();
-        if (savedRoute != null && savedRoute.isNotEmpty && !authRoutes.contains(savedRoute)) {
-          return savedRoute;
-        }
 
         final isAdmin = profileRole == 'admin';
+
+        // Restore the last route they were visiting
+        final lastRoute = prefsService.getLastRoute();
+        if (lastRoute != null && lastRoute.isNotEmpty) {
+          final isRouteAdmin = lastRoute.startsWith('/admin');
+          if (isAdmin == isRouteAdmin) {
+            return lastRoute;
+          }
+        }
+
         return isAdmin ? '/admin/dashboard' : '/home';
       }
       
@@ -131,6 +138,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const ProfileScreen(),
       ),
       GoRoute(
+        path: '/recycle-bin',
+        builder: (context, state) => const RecycleBinScreen(),
+      ),
+      GoRoute(
         path: '/edit-profile',
         builder: (context, state) => const EditProfileScreen(),
       ),
@@ -185,6 +196,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => AdminComplaintDetailScreen(
           complaintId: state.pathParameters['id']!,
         ),
+      ),
+      GoRoute(
+        path: '/admin/recycle-bin',
+        builder: (context, state) => const AdminRecycleBinScreen(),
       ),
     ],
   );

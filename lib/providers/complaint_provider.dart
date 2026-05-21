@@ -50,8 +50,9 @@ final categoryStatsProvider = FutureProvider<Map<String, int>>((ref) {
   return ref.watch(complaintServiceProvider).getCategoryStatsForStation(stationThana: thana);
 });
 
-final crimeHotspotProvider = FutureProvider<List<ComplaintModel>>((ref) async {
-  return ref.watch(complaintServiceProvider).getHistoricalCrimeCoordinates();
+final crimeHotspotProvider = StreamProvider<List<ComplaintModel>>((ref) {
+  return ref.watch(complaintServiceProvider).watchAllComplaints().map((list) =>
+      list.where((c) => c.latitude != null && c.longitude != null && c.deletedAt == null).toList());
 });
 
 final monthlyTrendsProvider = Provider<AsyncValue<List<int>>>((ref) {
@@ -268,7 +269,6 @@ final userFilteredComplaintsProvider =
 final allStationsStatsProvider =
     FutureProvider<Map<String, Map<String, int>>>((ref) async {
   final service = ref.watch(complaintServiceProvider);
-  final result = <String, Map<String, int>>{};
   final thanas = [
     'Kotwali Model Thana',
     'Moglabazar Thana',
@@ -277,8 +277,5 @@ final allStationsStatsProvider =
     'Jalalabad Thana',
     'Airport Thana',
   ];
-  for (final thana in thanas) {
-    result[thana] = await service.getStatsForStation(stationThana: thana);
-  }
-  return result;
+  return service.getAllStationsStats(thanas);
 });

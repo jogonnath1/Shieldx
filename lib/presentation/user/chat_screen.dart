@@ -38,11 +38,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final currentUser = Supabase.instance.client.auth.currentUser;
     if (currentUser != null) {
       try {
-        print('MARK AS READ: marking messages for complaint ${widget.complaintId} by user ${currentUser.id}');
+        debugPrint('MARK AS READ: marking messages for complaint ${widget.complaintId} by user ${currentUser.id}');
         await _service.markAsRead(widget.complaintId, currentUser.id);
-        print('MARK AS READ: successfully marked as read');
+        debugPrint('MARK AS READ: successfully marked as read');
       } catch (e, st) {
-        print('MARK AS READ ERROR: $e\n$st');
+        debugPrint('MARK AS READ ERROR: $e\n$st');
       }
     }
   }
@@ -93,7 +93,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
         title: const Text('Case Chat'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          onPressed: () => context.pop(),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/my-complaints');
+            }
+          },
         ),
       ),
       body: Container(

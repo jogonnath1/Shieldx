@@ -21,8 +21,6 @@ class MessageModel {
     this.senderName,
   });
 
-  bool get isAdmin => senderRole == 'admin';
-
   factory MessageModel.fromMap(Map<String, dynamic> map) {
     return MessageModel(
       id: map['id'] as String,

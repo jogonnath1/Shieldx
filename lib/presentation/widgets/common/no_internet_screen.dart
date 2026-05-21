@@ -17,21 +17,22 @@ class _NoInternetScreenState extends ConsumerState<NoInternetScreen> {
   bool _isChecking = false;
 
   Future<void> _retryConnection() async {
+    final messenger = ScaffoldMessenger.of(context);
     setState(() => _isChecking = true);
     // Artificially delay slightly for a premium feel and animation feedback
     await Future.delayed(const Duration(milliseconds: 800));
     final isOnline = await ref.read(connectivityProvider.notifier).checkConnection();
-    if (mounted) {
+    if (context.mounted) {
       setState(() => _isChecking = false);
       if (isOnline) {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           const SnackBar(
             content: Text('🎉 Internet connection restored!'),
             backgroundColor: AppColors.success,
           ),
         );
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
+        messenger.showSnackBar(
           const SnackBar(
             content: Text('Connection failed. Please check your internet settings.'),
             backgroundColor: AppColors.error,

@@ -29,11 +29,10 @@ class MessageService {
   }
 
   Future<void> markAsRead(String complaintId, String currentUserId) async {
-    await _client
-        .from(AppConstants.messagesTable)
-        .update({'is_read': true})
-        .eq('complaint_id', complaintId)
-        .neq('sender_id', currentUserId);
+    await _client.rpc(
+      'mark_messages_as_read',
+      params: {'target_complaint_id': complaintId},
+    );
   }
 
   Stream<List<MessageModel>> watchMessages(String complaintId) {
