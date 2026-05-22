@@ -42,6 +42,7 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
   String _selectedCategoryFilter = 'All';
   String _selectedTimelineFilter = 'All';
   bool _isFilterPanelOpen = false;
+  bool _onDutyExpanded = false;
 
   LatLng? _searchPinLocation;
   String? _searchPinName;
@@ -188,6 +189,7 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
 
       if (mounted) {
         ref.read(stationMapProvider.notifier).updateUserLocation(liveLoc);
+        ref.read(stationMapProvider.notifier).selectUserJurisdiction();
         _moveMap(liveLoc, 16.0);
         setState(() => _isUserLocationHighlighted = true);
         Future.delayed(const Duration(seconds: 4), () {
@@ -365,7 +367,14 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
       Future.microtask(() {
         if (!mounted) return;
 
-        // If permission was previously denied and now granted, start the stream
+        final stationChanged =
+            prev?.selectedStation?.id != next.selectedStation?.id;
+        if (stationChanged) {
+          setState(() {
+            _onDutyExpanded = false;
+          });
+        }
+
         if ((prev == null || prev.isPermissionDenied) &&
             !next.isPermissionDenied) {
           _initPositionStream();
@@ -431,7 +440,7 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
                   (state.errorMessage != null && state.stations.isEmpty)))
             _buildErrorOverlay(state, notifier),
           if (state.hasStations) _buildThanaChips(state, notifier),
-          if (state.hasStations) _buildStationList(state, notifier),
+
           _buildZoomControls(state),
           if (state.selectedStation != null) _buildStationDetailCard(state),
         ],
@@ -465,21 +474,10 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
           }
         },
       ),
-      title: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Station Map',
-            style: GoogleFonts.inter(
-                fontWeight: FontWeight.w700, fontSize: 18, color: Colors.white),
-          ),
-          if (!state.isLoading)
-            Text(
-              state.activeThana ?? 'Sylhet Metropolitan Police',
-              style: GoogleFonts.inter(
-                  fontSize: 11, color: AppColors.primaryLight),
-            ),
-        ],
+      title: Text(
+        'Station Map',
+        style: GoogleFonts.inter(
+            fontWeight: FontWeight.w700, fontSize: 18, color: Colors.white),
       ),
       actions: [
         if (state.activeThana != null &&
@@ -1178,7 +1176,7 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
 
   Widget _buildSearchOverlay(StationMapState state) {
     return Positioned(
-      top: kToolbarHeight + MediaQuery.of(context).padding.top + 8,
+      top: kToolbarHeight + MediaQuery.of(context).padding.top + 12,
       left: 16,
       right: 16,
       child: SearchAnchor(
@@ -1464,9 +1462,41 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
   Widget _buildThanaChips(StationMapState state, StationMapNotifier notifier) {
     final thanas = state.availableThanas;
     if (thanas.isEmpty) return const SizedBox.shrink();
-    final bottomOffset = state.selectedStation != null ? 215.0 : 16.0;
-    return Positioned(
-      bottom: bottomOffset + 124,
+    // Check if the current selected station has assigned officers to know if the collapsible is shown
+    final hasAssignedOfficers = state.selectedStation != null &&
+        ref.watch(officersProvider).when(
+          data: (allOfficers) {
+            final s = state.selectedStation!;
+            final assigned = allOfficers.where((o) {
+              if (o.station == null || o.station!.isEmpty) return false;
+              final oStation = o.station!.toLowerCase().trim();
+              final sName = s.name.toLowerCase();
+              final sThana = s.thana.toLowerCase();
+              final sJurisdiction = (s.jurisdiction ?? '').toLowerCase();
+
+              return oStation.contains(sThana) ||
+                  sThana.contains(oStation) ||
+                  oStation.contains(sName) ||
+                  sName.contains(oStation) ||
+                  (sJurisdiction.isNotEmpty && (oStation.contains(sJurisdiction) || sJurisdiction.contains(oStation))) ||
+                  (sThana.contains('kotwali') && (oStation.contains('kawt') || oStation.contains('kotw') || oStation.contains('qotw')));
+            }).toList();
+            return assigned.isNotEmpty;
+          },
+          loading: () => false,
+          error: (_, __) => false,
+        );
+
+    final bottomOffset = state.selectedStation != null
+        ? (hasAssignedOfficers
+            ? (_onDutyExpanded ? 310.0 : 255.0)
+            : 220.0) // If no officers, card is much shorter!
+        : 16.0;
+
+    return AnimatedPositioned(
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
+      bottom: bottomOffset,
       left: 0,
       right: 0,
       height: 40,
@@ -1532,162 +1562,22 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
     );
   }
 
-  // ─── Horizontal Station List ─────────────────────────────────────────────────
-
-  Widget _buildStationList(StationMapState state, StationMapNotifier notifier) {
-    final visibleStations = state.stations; // All 6 SMP stations always shown
-    final bottomOffset = state.selectedStation != null ? 215.0 : 16.0;
-    return Positioned(
-      bottom: bottomOffset,
-      left: 0,
-      right: 0,
-      height: 116,
-      child: ListView.builder(
-        padding: const EdgeInsets.symmetric(horizontal: 16),
-        scrollDirection: Axis.horizontal,
-        itemCount: visibleStations.length,
-        itemBuilder: (context, index) {
-          final s = visibleStations[index];
-          final isSelected = state.selectedStation?.id == s.id;
-          final accent =
-              s.isAutoSelected ? AppColors.accent : AppColors.primary;
-
-          return GestureDetector(
-            onTap: () {
-              notifier.selectStation(s);
-              // ref.listen handles _fetchRoute automatically
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 250),
-              width: 210,
-              margin: const EdgeInsets.only(right: 12),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? Colors.blue.shade50.withValues(alpha: 0.9)
-                    : Colors.white.withValues(alpha: 0.95),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isSelected ? accent : Colors.grey.shade300,
-                  width: isSelected ? 2 : 1,
-                ),
-                boxShadow: [
-                  if (isSelected)
-                    BoxShadow(
-                        color: accent.withValues(alpha: 0.25), blurRadius: 12)
-                  else
-                    BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.05),
-                        blurRadius: 6,
-                        offset: const Offset(0, 4))
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          s.name,
-                          style: GoogleFonts.inter(
-                              color: Colors.black87,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                      if (s.isAutoSelected)
-                        Container(
-                          margin: const EdgeInsets.only(left: 4),
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 5, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: accent,
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: Text(
-                            state.selectionSource ==
-                                    SelectionSource.jurisdiction
-                                ? 'YOURS'
-                                : 'NEAREST',
-                            style: GoogleFonts.inter(
-                                color: Colors.white,
-                                fontSize: 7,
-                                fontWeight: FontWeight.bold),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  if (s.thana.isNotEmpty)
-                    Container(
-                      margin: const EdgeInsets.only(bottom: 3),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        s.thana,
-                        style: GoogleFonts.inter(
-                            color: AppColors.primaryLight,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  Row(
-                    children: [
-                      const Icon(Icons.location_on_rounded,
-                          color: AppColors.textHint, size: 11),
-                      const SizedBox(width: 3),
-                      Expanded(
-                        child: Text(
-                          s.address,
-                          style: GoogleFonts.inter(
-                              color: Colors.black54, fontSize: 11),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    _distLabel(state.userLocation, s.location),
-                    style: GoogleFonts.inter(
-                        color: accent,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 11),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.2, duration: 400.ms),
-    );
-  }
 
   // ─── Station Detail Card ─────────────────────────────────────────────────────
 
   Widget _buildStationDetailCard(StationMapState state) {
     final s = state.selectedStation!;
-    final isJurisdiction = s.isAutoSelected &&
-        state.selectionSource == SelectionSource.jurisdiction;
+    final isJurisdiction = s.isAutoSelected;
 
     return Positioned(
       bottom: 16,
       left: 16,
       right: 16,
       child: Container(
-        padding: const EdgeInsets.all(18),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.98),
-            borderRadius: BorderRadius.circular(24),
+            borderRadius: BorderRadius.circular(20),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.1),
@@ -1699,18 +1589,20 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // ── Header row: icon + name + close ───────────────────────
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Icon(Icons.local_police_rounded,
-                      color: AppColors.primaryLight, size: 26),
+                      color: AppColors.primaryLight, size: 20),
                 ),
-                const SizedBox(width: 14),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1719,12 +1611,12 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
                         s.name,
                         style: GoogleFonts.inter(
                             fontWeight: FontWeight.w800,
-                            fontSize: 16,
+                            fontSize: 13,
                             color: Colors.black87),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 1),
                       Row(
                         children: [
                           Text(
@@ -1732,13 +1624,13 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
                             style: GoogleFonts.inter(
                                 color: AppColors.primaryLight,
                                 fontWeight: FontWeight.w600,
-                                fontSize: 12),
+                                fontSize: 11),
                           ),
                           if (isJurisdiction) ...[
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 6),
                             Container(
                               padding: const EdgeInsets.symmetric(
-                                  horizontal: 7, vertical: 2),
+                                  horizontal: 5, vertical: 1),
                               decoration: BoxDecoration(
                                 color: AppColors.accent,
                                 borderRadius: BorderRadius.circular(20),
@@ -1747,7 +1639,7 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
                                 'Your Jurisdiction',
                                 style: GoogleFonts.inter(
                                     color: Colors.white,
-                                    fontSize: 9,
+                                    fontSize: 8,
                                     fontWeight: FontWeight.bold),
                               ),
                             ),
@@ -1757,24 +1649,74 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
                     ],
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close_rounded,
-                      color: Colors.black54, size: 20),
-                  onPressed: () {
+                GestureDetector(
+                  onTap: () {
                     ref.read(stationMapProvider.notifier).selectStation(null);
                   },
+                  child: const Icon(Icons.close_rounded,
+                      color: Colors.black38, size: 18),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            Text(
-              s.details,
-              style: GoogleFonts.inter(
-                  color: Colors.black54, fontSize: 12, height: 1.5),
-              maxLines: 4,
-              overflow: TextOverflow.ellipsis,
+            const SizedBox(height: 10),
+
+            // ── Info Section (address / hours / phone) ──────────────────
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _infoRow(Icons.location_on_outlined,
+                    s.address.isNotEmpty ? s.address : '—'),
+                const SizedBox(height: 5),
+                _infoRow(Icons.access_time_rounded,
+                    s.details.isNotEmpty ? s.details : 'Open 24 Hours'),
+                const SizedBox(height: 5),
+                _infoRow(Icons.phone_outlined,
+                    s.phone.isNotEmpty ? s.phone : '—'),
+              ],
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
+
+            // ── Buttons Row (horizontal, side by side, full width) ────
+            Row(
+              children: [
+                Expanded(
+                  child: _compactActionButton(
+                    icon: Icons.phone_in_talk_rounded,
+                    label: 'Call',
+                    color: AppColors.primary,
+                    filled: true,
+                    onTap: s.phone.isNotEmpty
+                        ? () => _callStation(s.phone)
+                        : null,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _compactActionButton(
+                    icon: Icons.report_problem_rounded,
+                    label: 'Report',
+                    color: const Color(0xFFE65100),
+                    filled: true,
+                    onTap: () {
+                      final stationName = Uri.encodeComponent(s.name);
+                      context.push('/submit-complaint?station=$stationName');
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _compactActionButton(
+                    icon: Icons.directions_rounded,
+                    label: 'Navigate',
+                    color: AppColors.primary,
+                    filled: true,
+                    onTap: () => _openMaps(s),
+                  ),
+                ),
+              ],
+            ),
+
+            // ── On-Duty Officers collapsible ──────────────────────────
             ref.watch(officersProvider).when(
               data: (allOfficers) {
                 final assigned = allOfficers.where((o) {
@@ -1797,181 +1739,224 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Divider(height: 16, color: Colors.black12),
-                    Row(
-                      children: [
-                        const Icon(Icons.badge_outlined, size: 13, color: AppColors.primary),
-                        const SizedBox(width: 6),
-                        Text(
-                          'On-Duty Officers (${assigned.length})',
-                          style: GoogleFonts.inter(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.black87,
-                          ),
+                    const Divider(height: 14, color: Colors.black12),
+                    InkWell(
+                      onTap: () {
+                        setState(() {
+                          _onDutyExpanded = !_onDutyExpanded;
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 2.0),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.badge_outlined, size: 12, color: AppColors.primary),
+                            const SizedBox(width: 5),
+                            Expanded(
+                              child: Text(
+                                'On-Duty Officers (${assigned.length})',
+                                style: GoogleFonts.inter(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.black87,
+                                ),
+                              ),
+                            ),
+                            AnimatedRotation(
+                              turns: _onDutyExpanded ? 0.5 : 0.0,
+                              duration: const Duration(milliseconds: 200),
+                              child: const Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                size: 15,
+                                color: Colors.black54,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      height: 52,
-                      child: ListView.builder(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: assigned.length,
-                        itemBuilder: (context, index) {
-                          final officer = assigned[index];
-                          return Container(
-                            margin: const EdgeInsets.only(right: 8),
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.grey.shade100,
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: Colors.grey.shade200),
-                            ),
-                            child: Row(
-                              children: [
-                                CircleAvatar(
-                                  radius: 12,
-                                  backgroundColor: AppColors.primary.withOpacity(0.1),
-                                  child: const Icon(Icons.person_rounded, size: 12, color: AppColors.primary),
-                                ),
-                                const SizedBox(width: 8),
-                                Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Text(
-                                          officer.name ?? 'Officer',
-                                          style: GoogleFonts.inter(
-                                            fontSize: 10,
-                                            fontWeight: FontWeight.w700,
-                                            color: Colors.black87,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
-                                          decoration: BoxDecoration(
-                                            color: (officer.isActive ? AppColors.success : AppColors.textHint)
-                                                .withOpacity(0.12),
-                                            borderRadius: BorderRadius.circular(6),
-                                          ),
-                                          child: Text(
-                                            officer.isActive ? 'Active' : 'Off Duty',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 7,
-                                              fontWeight: FontWeight.w800,
-                                              color: officer.isActive ? AppColors.success : AppColors.textHint,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 1),
-                                    Text(
-                                      officer.rank ?? 'Constable',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 9,
-                                        color: Colors.black54,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                if (officer.contact != null && officer.contact!.isNotEmpty) ...[
-                                  const SizedBox(width: 8),
-                                  GestureDetector(
-                                    onTap: () => _callStation(officer.contact!),
-                                    child: const Icon(Icons.phone_in_talk_rounded, size: 13, color: AppColors.primary),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          );
-                        },
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    AnimatedSize(
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeInOut,
+                      child: _onDutyExpanded
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const SizedBox(height: 6),
+                                SizedBox(
+                                  height: 48,
+                                  child: ListView.builder(
+                                    scrollDirection: Axis.horizontal,
+                                    itemCount: assigned.length,
+                                    itemBuilder: (context, index) {
+                                      final officer = assigned[index];
+                                      return Container(
+                                        margin: const EdgeInsets.only(right: 8),
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey.shade100,
+                                          borderRadius: BorderRadius.circular(10),
+                                          border: Border.all(color: Colors.grey.shade200),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            CircleAvatar(
+                                              radius: 11,
+                                              backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                                              child: const Icon(Icons.person_rounded, size: 11, color: AppColors.primary),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Column(
+                                              crossAxisAlignment: CrossAxisAlignment.start,
+                                              mainAxisAlignment: MainAxisAlignment.center,
+                                              children: [
+                                                Row(
+                                                  children: [
+                                                    Text(
+                                                      officer.name ?? 'Officer',
+                                                      style: GoogleFonts.inter(
+                                                        fontSize: 9,
+                                                        fontWeight: FontWeight.w700,
+                                                        color: Colors.black87,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 3),
+                                                    Container(
+                                                      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                                                      decoration: BoxDecoration(
+                                                        color: (officer.isActive ? AppColors.success : AppColors.textHint)
+                                                            .withValues(alpha: 0.12),
+                                                        borderRadius: BorderRadius.circular(4),
+                                                      ),
+                                                      child: Text(
+                                                        officer.isActive ? 'Active' : 'Off',
+                                                        style: GoogleFonts.inter(
+                                                          fontSize: 6,
+                                                          fontWeight: FontWeight.w800,
+                                                          color: officer.isActive ? AppColors.success : AppColors.textHint,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                                Text(
+                                                  officer.rank ?? 'Constable',
+                                                  style: GoogleFonts.inter(
+                                                    fontSize: 8,
+                                                    color: Colors.black54,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                            if (officer.contact != null && officer.contact!.isNotEmpty) ...[
+                                              const SizedBox(width: 6),
+                                              GestureDetector(
+                                                onTap: () => _callStation(officer.contact!),
+                                                child: const Icon(Icons.phone_in_talk_rounded, size: 12, color: AppColors.primary),
+                                              ),
+                                            ],
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                              ],
+                            )
+                          : const SizedBox.shrink(),
+                    ),
                   ],
                 );
               },
               loading: () => const Padding(
                 padding: EdgeInsets.symmetric(vertical: 4),
                 child: SizedBox(
-                  height: 16,
-                  width: 16,
+                  height: 14,
+                  width: 14,
                   child: CircularProgressIndicator(strokeWidth: 1.5, color: AppColors.primary),
                 ),
               ),
               error: (_, __) => const SizedBox.shrink(),
-            ),
-            const SizedBox(height: 16),
-            // ── Action Buttons: Call | Report | Navigate ──────────────
-            Row(
-              children: [
-                Expanded(
-                  child: GradientButton(
-                    label: 'Call',
-                    icon: Icons.phone_in_talk_rounded,
-                    onTap: s.phone.isNotEmpty
-                        ? () => _callStation(s.phone)
-                        : null,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: ElevatedButton.icon(
-                    onPressed: () {
-                      final stationName = Uri.encodeComponent(s.name);
-                      context.push(
-                          '/submit-complaint?station=$stationName');
-                    },
-                    icon: const Icon(Icons.report_problem_rounded,
-                        size: 15, color: Colors.white),
-                    label: Text(
-                      'Report',
-                      style: GoogleFonts.inter(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                        color: Colors.white,
-                      ),
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE65100),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 13),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      elevation: 2,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: () => _openMaps(s),
-                    icon: const Icon(Icons.directions_rounded,
-                        size: 15, color: AppColors.primary),
-                    label: const Text('Navigate',
-                        style: TextStyle(
-                            color: AppColors.primary, fontSize: 13)),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.primary,
-                      side: const BorderSide(color: AppColors.primary),
-                      padding: const EdgeInsets.symmetric(vertical: 13),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ),
-                  ),
-                ),
-              ],
             ),
           ],
         ),
       ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.1, duration: 300.ms),
     );
   }
+
+  Widget _infoRow(IconData icon, String text) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 11, color: Colors.black45),
+        const SizedBox(width: 4),
+        Expanded(
+          child: Text(
+            text,
+            style: GoogleFonts.inter(fontSize: 10, color: Colors.black54, height: 1.4),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _compactActionButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required bool filled,
+    required VoidCallback? onTap,
+    double width = double.infinity,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        width: width,
+        padding: const EdgeInsets.symmetric(vertical: 7),
+        decoration: BoxDecoration(
+          color: onTap == null
+              ? Colors.grey.shade200
+              : filled
+                  ? color
+                  : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: filled ? null : Border.all(color: color, width: 1.2),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon,
+                size: 12,
+                color: onTap == null
+                    ? Colors.grey
+                    : filled
+                        ? Colors.white
+                        : color),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: onTap == null
+                    ? Colors.grey
+                    : filled
+                        ? Colors.white
+                        : color,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ─── Zoom Controls ─────────────────────────────────────────────────────────
 
   // ─── Zoom Controls ─────────────────────────────────────────────────────────
 
@@ -1982,7 +1967,7 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
     if (!_showHeatmap) return const SizedBox.shrink();
 
     return Positioned(
-      top: kToolbarHeight + MediaQuery.of(context).padding.top + 70, // Sits nicely below the search bar
+      top: kToolbarHeight + MediaQuery.of(context).padding.top + 74, // Sits nicely below the search bar
       left: 16,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),

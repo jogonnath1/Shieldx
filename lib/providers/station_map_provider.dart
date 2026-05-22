@@ -374,6 +374,31 @@ class StationMapNotifier extends StateNotifier<StationMapState> {
       // purely cosmetic — silently ignore timeouts and errors
     }
   }
+
+  void selectUserJurisdiction() {
+    final loc = state.userLocation;
+    if (loc == null || state.stations.isEmpty) return;
+
+    final detectedThana = resolveSmpThana(loc.latitude, loc.longitude);
+
+    final updatedStations = state.stations.map((s) {
+      final isDetected = s.thana == detectedThana;
+      return s.copyWith(isAutoSelected: isDetected);
+    }).toList();
+
+    final autoSelected = updatedStations.firstWhere(
+      (s) => s.thana == detectedThana,
+      orElse: () => updatedStations.first,
+    );
+
+    state = state.copyWith(
+      stations: updatedStations,
+      selectedStation: autoSelected,
+      selectionSource: SelectionSource.jurisdiction,
+      activeThana: detectedThana,
+      shouldPanToStation: true,
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
