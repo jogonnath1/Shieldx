@@ -13,13 +13,13 @@ import '../../providers/complaint_provider.dart';
 import '../../providers/navigation_trigger_provider.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/selected_station_provider.dart';
-import '../../providers/activity_log_provider.dart';
 import '../../data/models/activity_log_model.dart';
+import '../../providers/activity_log_provider.dart';
 import '../widgets/admin/station_switcher_widget.dart';
 import '../widgets/common/widgets.dart';
 import 'admin_sos_alert_widget.dart';
 
-final dashboardTabProvider = StateProvider.autoDispose<int>((ref) => 0);
+final dashboardTabProvider = StateProvider.autoDispose<int>((ref) => 1);
 
 class AdminDashboardScreen extends ConsumerWidget {
   const AdminDashboardScreen({super.key});
@@ -1173,70 +1173,91 @@ class _SystemActivitySection extends ConsumerWidget {
     final double screenWidth = MediaQuery.of(context).size.width;
     final bool isWide = screenWidth > 950;
 
+    final hasWarning = (metricsAsync.valueOrNull?['suspicious_logins'] ?? 0) > 0;
+    final double leftSideHeight = hasWarning ? 368.0 : 252.0;
+
     Widget content;
     if (isWide) {
-      content = Row(
+      content = Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Left Column (60% width)
-          Expanded(
-            flex: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                metricsAsync.hasValue
-                    ? Column(
-                        children: [
-                          _ActiveUsersGrid(metrics: metricsAsync.value!),
-                          _SuspiciousLoginsWarning(count: metricsAsync.value!['suspicious_logins'] ?? 0),
-                        ],
-                      )
-                    : metricsAsync.when(
-                        data: (metrics) => Column(
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Top-Left: Active Users Stats Grid
+              Expanded(
+                flex: 3,
+                child: SizedBox(
+                  height: leftSideHeight,
+                  child: metricsAsync.hasValue
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _ActiveUsersGrid(metrics: metrics),
-                            _SuspiciousLoginsWarning(count: metrics['suspicious_logins'] ?? 0),
+                            _ActiveUsersGrid(metrics: metricsAsync.value!),
+                            _SuspiciousLoginsWarning(count: metricsAsync.value!['suspicious_logins'] ?? 0),
                           ],
+                        )
+                      : metricsAsync.when(
+                          data: (metrics) => Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _ActiveUsersGrid(metrics: metrics),
+                              _SuspiciousLoginsWarning(count: metrics['suspicious_logins'] ?? 0),
+                            ],
+                          ),
+                          loading: () => SizedBox(
+                            height: leftSideHeight,
+                            child: const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                          ),
+                          error: (e, _) => SizedBox(
+                            height: leftSideHeight,
+                            child: Center(child: Text('Error loading metrics: $e', style: const TextStyle(color: AppColors.error))),
+                          ),
                         ),
-                        loading: () => const SizedBox(
-                          height: 120,
-                          child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
-                        ),
-                        error: (e, _) => Text('Error loading metrics: $e', style: const TextStyle(color: AppColors.error)),
-                      ),
-                const SizedBox(height: 24),
-                const _ActivityTrendsChart(),
-              ],
-            ),
-          ),
-          const SizedBox(width: 24),
-          // Right Column (40% width)
-          Expanded(
-            flex: 2,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                logsAsync.hasValue
-                    ? _CurrentlyActiveUsersList(logs: logsAsync.value!, isVertical: true)
-                    : logsAsync.when(
-                        data: (logs) => _CurrentlyActiveUsersList(logs: logs, isVertical: true),
-                        loading: () => const SizedBox(
-                          height: 80,
-                          child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
-                        ),
-                        error: (e, _) => Text('Error loading active users: $e', style: const TextStyle(color: AppColors.error)),
-                      ),
-                const SizedBox(height: 24),
-                officersStatsAsync.hasValue
-                    ? _MostActiveOfficersList(officersStats: officersStatsAsync.value!)
+                ),
+              ),
+              const SizedBox(width: 24),
+              // Top-Right: Officers Caseload List
+              Expanded(
+                flex: 2,
+                child: officersStatsAsync.hasValue
+                    ? _MostActiveOfficersList(officersStats: officersStatsAsync.value!, height: leftSideHeight)
                     : officersStatsAsync.when(
-                        data: (stats) => _MostActiveOfficersList(officersStats: stats),
-                        loading: () => const SizedBox(
-                          height: 150,
-                          child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                        data: (stats) => _MostActiveOfficersList(officersStats: stats, height: leftSideHeight),
+                        loading: () => SizedBox(
+                          height: leftSideHeight,
+                          child: const GlassCard(
+                            child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                          ),
                         ),
-                        error: (e, _) => Text('Error loading officers: $e', style: const TextStyle(color: AppColors.error)),
+                        error: (e, _) => SizedBox(
+                          height: leftSideHeight,
+                          child: GlassCard(
+                            child: Center(child: Text('Error loading officers: $e', style: const TextStyle(color: AppColors.error))),
+                          ),
+                        ),
                       ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          // Bottom Row: Trends Chart & Peak Usage Chart aligned perfectly in height
+          SizedBox(
+            height: 320,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Bottom-Left: Activity Trends Chart
+                const Expanded(
+                  flex: 3,
+                  child: _ActivityTrendsChart(),
+                ),
+                const SizedBox(width: 24),
+                // Bottom-Right: Peak Usage Chart matching left side height exactly
+                const Expanded(
+                  flex: 2,
+                  child: _HourlyPeakUsageChart(expand: true),
+                ),
               ],
             ),
           ),
@@ -1269,18 +1290,6 @@ class _SystemActivitySection extends ConsumerWidget {
                   error: (e, _) => Text('Error loading metrics: $e', style: const TextStyle(color: AppColors.error)),
                 ),
           const SizedBox(height: 24),
-          // Active users online list
-          logsAsync.hasValue
-              ? _CurrentlyActiveUsersList(logs: logsAsync.value!, isVertical: false)
-              : logsAsync.when(
-                  data: (logs) => _CurrentlyActiveUsersList(logs: logs, isVertical: false),
-                  loading: () => const SizedBox(
-                    height: 80,
-                    child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
-                  ),
-                  error: (e, _) => Text('Error loading active users: $e', style: const TextStyle(color: AppColors.error)),
-                ),
-          const SizedBox(height: 24),
           // Trends Chart
           const _ActivityTrendsChart(),
           const SizedBox(height: 24),
@@ -1295,6 +1304,8 @@ class _SystemActivitySection extends ConsumerWidget {
                   ),
                   error: (e, _) => Text('Error loading officers: $e', style: const TextStyle(color: AppColors.error)),
                 ),
+          const SizedBox(height: 24),
+          const _HourlyPeakUsageChart(),
         ],
       );
     }
@@ -1321,6 +1332,130 @@ class _SystemActivitySection extends ConsumerWidget {
   }
 }
 
+class _ActiveUserCard extends StatelessWidget {
+  final String name;
+  final int count;
+  final IconData icon;
+  final Color startColor;
+  final double height;
+
+  const _ActiveUserCard({
+    required this.name,
+    required this.count,
+    required this.icon,
+    required this.startColor,
+    required this.height,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: height,
+      decoration: BoxDecoration(
+        gradient: AppColors.cardGradient,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.cardBorder),
+        boxShadow: [
+          BoxShadow(
+            color: startColor.withOpacity(0.03),
+            blurRadius: 8,
+            spreadRadius: 1,
+          )
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Stack(
+          children: [
+            Positioned(
+              right: -15,
+              bottom: -15,
+              child: Container(
+                width: 50,
+                height: 50,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [startColor.withOpacity(0.1), Colors.transparent],
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(5),
+                        decoration: BoxDecoration(
+                          color: startColor.withOpacity(0.08),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: startColor.withOpacity(0.2), width: 0.8),
+                        ),
+                        child: Icon(icon, color: startColor, size: 14),
+                      ),
+                      if (name.contains('Threats') && count > 0)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF1744).withOpacity(0.12),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'ALERT',
+                            style: GoogleFonts.inter(
+                              fontSize: 7,
+                              fontWeight: FontWeight.w900,
+                              color: const Color(0xFFFF1744),
+                            ),
+                          ),
+                        ).animate(onPlay: (c) => c.repeat(reverse: true))
+                         .fadeIn(duration: 500.ms)
+                    ],
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '$count',
+                        style: GoogleFonts.inter(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.textPrimary,
+                          height: 1.0,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        name,
+                        style: GoogleFonts.inter(
+                          fontSize: 9.5,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ).animate().scale(
+          begin: const Offset(0.97, 0.97),
+          end: const Offset(1.0, 1.0),
+          duration: 400.ms,
+          curve: Curves.easeOutBack,
+        );
+  }
+}
+
 class _ActiveUsersGrid extends StatelessWidget {
   final Map<String, int> metrics;
 
@@ -1334,557 +1469,137 @@ class _ActiveUsersGrid extends StatelessWidget {
     final suspicious = metrics['suspicious_logins'] ?? 0;
 
     final cards = [
-      ('Active (24h)', active24h, Icons.query_builder_rounded, const Color(0xFF00E676), const Color(0xFF00B0FF)),
-      ('Active (7d)', active7d, Icons.calendar_view_week_rounded, const Color(0xFF2979FF), const Color(0xFF00B0FF)),
-      ('Active (30d)', active30d, Icons.calendar_today_rounded, const Color(0xFFD500F9), const Color(0xFF2979FF)),
-      ('Threats Blocked', suspicious, Icons.shield_rounded, const Color(0xFFFF1744), const Color(0xFFFF5252)),
+      ('Active (24h)', active24h, Icons.query_builder_rounded, const Color(0xFF00E676)),
+      ('Active (7d)', active7d, Icons.calendar_view_week_rounded, const Color(0xFF2979FF)),
+      ('Active (30d)', active30d, Icons.calendar_today_rounded, const Color(0xFFD500F9)),
+      ('Threats Blocked', suspicious, Icons.shield_rounded, const Color(0xFFFF1744)),
     ];
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final double width = constraints.maxWidth;
-        final bool isDesktop = width > 900;
-        final int crossAxisCount = isDesktop ? 4 : 2;
-        final double itemWidth = (width - (crossAxisCount - 1) * 12) / crossAxisCount;
-        final double itemHeight = isDesktop ? 125.0 : 120.0;
-        final double childAspectRatio = itemWidth / itemHeight;
-
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: childAspectRatio > 0 ? childAspectRatio : 1.4,
-          ),
-          itemCount: cards.length,
-          itemBuilder: (ctx, i) {
-            final card = cards[i];
-            final name = card.$1;
-            final count = card.$2;
-            final icon = card.$3;
-            final startColor = card.$4;
-
-            return Container(
-              decoration: BoxDecoration(
-                gradient: AppColors.cardGradient,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.cardBorder),
-                boxShadow: [
-                  BoxShadow(
-                    color: startColor.withOpacity(0.03),
-                    blurRadius: 8,
-                    spreadRadius: 1,
-                  )
-                ],
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _ActiveUserCard(
+                name: cards[0].$1,
+                count: cards[0].$2,
+                icon: cards[0].$3,
+                startColor: cards[0].$4,
+                height: 120,
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Stack(
-                  children: [
-                    Positioned(
-                      right: -15,
-                      bottom: -15,
-                      child: Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: RadialGradient(
-                            colors: [startColor.withOpacity(0.1), Colors.transparent],
-                          ),
-                        ),
-                      ),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 10.0),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(5),
-                                decoration: BoxDecoration(
-                                  color: startColor.withOpacity(0.08),
-                                  borderRadius: BorderRadius.circular(8),
-                                  border: Border.all(color: startColor.withOpacity(0.2), width: 0.8),
-                                ),
-                                child: Icon(icon, color: startColor, size: 14),
-                              ),
-                              if (name.contains('Threats') && count > 0)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFFF1744).withOpacity(0.12),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    'ALERT',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 7,
-                                      fontWeight: FontWeight.w900,
-                                      color: const Color(0xFFFF1744),
-                                    ),
-                                  ),
-                                ).animate(onPlay: (c) => c.repeat(reverse: true))
-                                 .fadeIn(duration: 500.ms)
-                            ],
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '$count',
-                                style: GoogleFonts.inter(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w900,
-                                  color: AppColors.textPrimary,
-                                  height: 1.0,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                name,
-                                style: GoogleFonts.inter(
-                                  fontSize: 9.5,
-                                  color: AppColors.textSecondary,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _ActiveUserCard(
+                name: cards[1].$1,
+                count: cards[1].$2,
+                icon: cards[1].$3,
+                startColor: cards[1].$4,
+                height: 120,
               ),
-            ).animate().scale(
-                  begin: const Offset(0.97, 0.97),
-                  end: const Offset(1.0, 1.0),
-                  duration: 400.ms,
-                  curve: Curves.easeOutBack,
-                );
-          },
-        );
-      },
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _ActiveUserCard(
+                name: cards[2].$1,
+                count: cards[2].$2,
+                icon: cards[2].$3,
+                startColor: cards[2].$4,
+                height: 120,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _ActiveUserCard(
+                name: cards[3].$1,
+                count: cards[3].$2,
+                icon: cards[3].$3,
+                startColor: cards[3].$4,
+                height: 120,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 }
 
-class _CurrentlyActiveUsersList extends ConsumerWidget {
-  final List<ActivityLogModel> logs;
-  final bool isVertical;
 
-  const _CurrentlyActiveUsersList({required this.logs, required this.isVertical});
+
+final suspiciousLoginTriggerProvider = StateProvider.autoDispose<bool>((ref) => false);
+
+class _SuspiciousLoginsWarning extends ConsumerWidget {
+  final int count;
+  const _SuspiciousLoginsWarning({super.key, required this.count});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final profilesAsync = ref.watch(allProfilesStreamProvider);
-    final profiles = profilesAsync.valueOrNull ?? [];
-    final profileMap = {for (var p in profiles) p.id: p};
+    if (count == 0) return const SizedBox.shrink();
 
-    final now = DateTime.now();
-    final Map<String, ActivityLogModel> activeUsersMap = {};
-    for (final log in logs) {
-      if (log.userId == null || log.userId!.isEmpty) continue;
-      final diff = now.toUtc().difference(log.createdAt.toUtc()).inMinutes;
-      final ageMinutes = diff < 0 ? 0 : diff;
-      if (ageMinutes <= 15) {
-        if (!activeUsersMap.containsKey(log.userId)) {
-          activeUsersMap[log.userId!] = log;
-        }
-      }
-    }
-
-    final activeUsers = activeUsersMap.entries.toList();
-
-    Widget contentWidget;
-
-    if (activeUsers.isEmpty) {
-      contentWidget = Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16.0),
-        child: Center(
-          child: Text(
-            'No users active online in the last 15 minutes.',
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              color: AppColors.textHint,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
+    return GestureDetector(
+      onTap: () {
+        ref.read(suspiciousLoginTriggerProvider.notifier).state = true;
+      },
+      child: Container(
+        height: 100,
+        margin: const EdgeInsets.only(top: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFFF1744).withOpacity(0.06),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: const Color(0xFFFF1744).withOpacity(0.25), width: 1.2),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFFFF1744).withOpacity(0.04),
+              blurRadius: 10,
+              spreadRadius: 2,
+            )
+          ],
         ),
-      );
-    } else if (isVertical) {
-      contentWidget = ListView.separated(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: activeUsers.length > 5 ? 5 : activeUsers.length,
-        separatorBuilder: (context, index) => Divider(color: AppColors.cardBorder.withOpacity(0.3), height: 12),
-        itemBuilder: (context, index) {
-          final entry = activeUsers[index];
-          final userId = entry.key;
-          final lastLog = entry.value;
-          final profile = profileMap[userId];
-          
-          final name = profile?.name ?? lastLog.userName ?? 'User';
-          final isVerified = profile?.isVerified ?? false;
-          final role = profile != null
-              ? (profile.isMainAdmin ? 'main_admin' : profile.role)
-              : lastLog.role;
-          final diff = now.toUtc().difference(lastLog.createdAt.toUtc()).inMinutes;
-          final ageMinutes = diff < 0 ? 0 : diff;
-          final dotColor = ageMinutes <= 5 ? const Color(0xFF00E676) : const Color(0xFFFFB300);
-
-          return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4.0),
-            child: Row(
-              children: [
-                Stack(
-                  children: [
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: role == 'main_admin'
-                              ? [const Color(0xFFFFB300), const Color(0xFFFF9100)]
-                              : role == 'admin'
-                                  ? [const Color(0xFFC084FC), const Color(0xFF8B5CF6)]
-                                  : [const Color(0xFF2979FF), const Color(0xFF00E5FF)],
-                        ),
-                      ),
-                      child: Center(
-                        child: Text(
-                          profile?.initials ?? lastLog.userName?[0].toUpperCase() ?? 'U',
-                          style: GoogleFonts.inter(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 12,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      right: 0,
-                      bottom: 0,
-                      child: Container(
-                        width: 9,
-                        height: 9,
-                        decoration: BoxDecoration(
-                          color: AppColors.background,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Container(
-                            width: 6,
-                            height: 6,
-                            decoration: BoxDecoration(
-                              color: dotColor,
-                              shape: BoxShape.circle,
-                            ),
-                          ).animate(onPlay: (c) => c.repeat(reverse: true))
-                           .scale(begin: const Offset(0.8, 0.8), end: const Offset(1.2, 1.2), delay: (index * 150).ms, duration: 800.ms),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Flexible(
-                            child: Text(
-                              name,
-                              style: GoogleFonts.inter(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                                color: AppColors.textPrimary,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          if (isVerified) ...[
-                            const SizedBox(width: 4),
-                            const Icon(
-                              Icons.verified_rounded,
-                              size: 12,
-                              color: Color(0xFF2979FF),
-                            ),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        role.toUpperCase().replaceAll('_', ' '),
-                        style: GoogleFonts.inter(
-                          fontSize: 8,
-                          fontWeight: FontWeight.w700,
-                          color: role == 'main_admin'
-                              ? const Color(0xFFFFB300)
-                              : role == 'admin'
-                                  ? const Color(0xFFC084FC)
-                                  : const Color(0xFF00E676),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Text(
-                  ageMinutes == 0 ? 'Active now' : '$ageMinutes m ago',
-                  style: GoogleFonts.inter(
-                    fontSize: 10,
-                    color: AppColors.textHint,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      );
-    } else {
-      contentWidget = SizedBox(
-        height: 54,
-        child: ListView.builder(
-          scrollDirection: Axis.horizontal,
-          itemCount: activeUsers.length,
-          itemBuilder: (context, index) {
-            final entry = activeUsers[index];
-            final userId = entry.key;
-            final lastLog = entry.value;
-            final profile = profileMap[userId];
-            
-            final name = profile?.name ?? lastLog.userName ?? 'User';
-            final isVerified = profile?.isVerified ?? false;
-            final role = profile != null
-                ? (profile.isMainAdmin ? 'main_admin' : profile.role)
-                : lastLog.role;
-            final diff = now.toUtc().difference(lastLog.createdAt.toUtc()).inMinutes;
-            final ageMinutes = diff < 0 ? 0 : diff;
-            final dotColor = ageMinutes <= 5 ? const Color(0xFF00E676) : const Color(0xFFFFB300);
-
-            return Container(
-              margin: const EdgeInsets.only(right: 12),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: AppColors.surface.withOpacity(0.4),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.cardBorder.withOpacity(0.5)),
+                color: const Color(0xFFFF1744).withOpacity(0.12),
+                shape: BoxShape.circle,
+                border: Border.all(color: const Color(0xFFFF1744).withOpacity(0.3), width: 1),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
+              child: const Icon(Icons.warning_amber_rounded, color: Color(0xFFFF1744), size: 22),
+            ).animate(onPlay: (c) => c.repeat(reverse: true))
+             .scale(begin: const Offset(0.9, 0.9), end: const Offset(1.1, 1.1), duration: 800.ms),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Stack(
-                    children: [
-                      Container(
-                        width: 30,
-                        height: 30,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: role == 'main_admin'
-                                ? [const Color(0xFFFFB300), const Color(0xFFFF9100)]
-                                : role == 'admin'
-                                    ? [const Color(0xFFC084FC), const Color(0xFF8B5CF6)]
-                                    : [const Color(0xFF2979FF), const Color(0xFF00E5FF)],
-                          ),
-                        ),
-                        child: Center(
-                          child: Text(
-                            profile?.initials ?? lastLog.userName?[0].toUpperCase() ?? 'U',
-                            style: GoogleFonts.inter(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 11,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        right: 0,
-                        bottom: 0,
-                        child: Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: AppColors.background,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: Container(
-                              width: 5,
-                              height: 5,
-                              decoration: BoxDecoration(
-                                color: dotColor,
-                                shape: BoxShape.circle,
-                              ),
-                            ).animate(onPlay: (c) => c.repeat(reverse: true))
-                             .scale(begin: const Offset(0.8, 0.8), end: const Offset(1.2, 1.2), delay: (index * 150).ms, duration: 800.ms),
-                          ),
-                        ),
-                      ),
-                    ],
+                  Text(
+                    'Critical security threat alert',
+                    style: GoogleFonts.inter(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      color: const Color(0xFFFF1744),
+                    ),
                   ),
-                  const SizedBox(width: 8),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            name,
-                            style: GoogleFonts.inter(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 11,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                          if (isVerified) ...[
-                            const SizedBox(width: 4),
-                            const Icon(
-                              Icons.verified_rounded,
-                              size: 10,
-                              color: Color(0xFF2979FF),
-                            ),
-                          ],
-                        ],
-                      ),
-                      const SizedBox(height: 1),
-                      Text(
-                        ageMinutes == 0 ? 'Active now' : '$ageMinutes m ago',
-                        style: GoogleFonts.inter(
-                          fontSize: 8,
-                          color: AppColors.textHint,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
+                  const SizedBox(height: 2),
+                  Text(
+                    'Detected $count suspicious pre-auth/failed login attempts in the past 30 days. Review the system audit log below immediately.',
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                      height: 1.4,
+                    ),
                   ),
                 ],
               ),
-            );
-          },
+            ),
+          ],
         ),
-      );
-    }
-
-    return GlassCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 6,
-                height: 6,
-                decoration: const BoxDecoration(
-                  color: Color(0xFF00E676),
-                  shape: BoxShape.circle,
-                ),
-              ).animate(onPlay: (c) => c.repeat(reverse: true))
-               .scale(begin: const Offset(0.8, 0.8), end: const Offset(1.4, 1.4), duration: 1000.ms)
-               .boxShadow(end: const BoxShadow(color: Color(0xFF00E676), blurRadius: 4)),
-              const SizedBox(width: 8),
-              Text(
-                'Active Users Online (${activeUsers.length})',
-                style: GoogleFonts.inter(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                'Last 15m',
-                style: GoogleFonts.inter(
-                  fontSize: 10,
-                  color: AppColors.textHint,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          contentWidget,
-        ],
-      ),
-    );
-  }
-}
-
-class _SuspiciousLoginsWarning extends StatelessWidget {
-  final int count;
-  const _SuspiciousLoginsWarning({required this.count});
-
-  @override
-  Widget build(BuildContext context) {
-    if (count == 0) return const SizedBox.shrink();
-
-    return Container(
-      margin: const EdgeInsets.only(top: 16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFF1744).withOpacity(0.06),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFFF1744).withOpacity(0.25), width: 1.2),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFFF1744).withOpacity(0.04),
-            blurRadius: 10,
-            spreadRadius: 2,
-          )
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFF1744).withOpacity(0.12),
-              shape: BoxShape.circle,
-              border: Border.all(color: const Color(0xFFFF1744).withOpacity(0.3), width: 1),
-            ),
-            child: const Icon(Icons.warning_amber_rounded, color: Color(0xFFFF1744), size: 22),
-          ).animate(onPlay: (c) => c.repeat(reverse: true))
-           .scale(begin: const Offset(0.9, 0.9), end: const Offset(1.1, 1.1), duration: 800.ms),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Critical security threat alert',
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.w800,
-                    fontSize: 14,
-                    color: const Color(0xFFFF1744),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Detected $count suspicious pre-auth/failed login attempts in the past 30 days. Review the system audit log below immediately.',
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    color: AppColors.textSecondary,
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     ).animate().slideX(begin: -0.1, end: 0.0, duration: 500.ms, curve: Curves.easeOutQuad).fadeIn();
   }
@@ -2238,47 +1953,375 @@ class _ActivityTrendsChartBodyState extends ConsumerState<_ActivityTrendsChartBo
 
 class _MostActiveOfficersList extends StatelessWidget {
   final List<Map<String, dynamic>> officersStats;
+  final double? height;
 
-  const _MostActiveOfficersList({required this.officersStats});
+  const _MostActiveOfficersList({required this.officersStats, this.height});
 
   @override
   Widget build(BuildContext context) {
+    // debugPrint('DEBUG: _MostActiveOfficersList build called with height: $height, officersStats: ${officersStats.length} items');
     if (officersStats.isEmpty) {
-      return GlassCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Active Officers Caseload',
-              style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.textPrimary),
+      final emptyContent = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Active Officers Caseload',
+            style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.textPrimary),
+          ),
+          const SizedBox(height: 16),
+          const Center(
+            child: Padding(
+              padding: EdgeInsets.symmetric(vertical: 20),
+              child: Text('No officer assignments recorded yet', style: TextStyle(color: AppColors.textHint)),
             ),
-            const SizedBox(height: 16),
-            const Center(
-              child: Padding(
-                padding: EdgeInsets.symmetric(vertical: 20),
-                child: Text('No officer assignments recorded yet', style: TextStyle(color: AppColors.textHint)),
+          ),
+        ],
+      );
+
+      if (height != null) {
+        return SizedBox(
+          height: height,
+          child: GlassCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Active Officers Caseload',
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.textPrimary),
+                ),
+                const SizedBox(height: 16),
+                const Expanded(
+                  child: Center(
+                    child: Text('No officer assignments recorded yet', style: TextStyle(color: AppColors.textHint)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+      return GlassCard(child: emptyContent);
+    }
+
+    final topOfficers = officersStats.take(5).toList();
+
+    Widget listContent = Column(
+      children: List.generate(topOfficers.length, (index) {
+        final item = topOfficers[index];
+        final officer = item['officer'];
+        final caseCount = item['case_count'] as int;
+        final resolvedCount = item['resolved_count'] as int;
+
+        final name = officer.name ?? 'Unknown Officer';
+        final rank = officer.rank ?? 'N/A';
+        final stationName = officer.station ?? 'General Duty';
+
+        Widget rankLeading;
+        if (index == 0) {
+          rankLeading = const Text('🥇', style: TextStyle(fontSize: 18));
+        } else if (index == 1) {
+          rankLeading = const Text('🥈', style: TextStyle(fontSize: 18));
+        } else if (index == 2) {
+          rankLeading = const Text('🥉', style: TextStyle(fontSize: 18));
+        } else {
+          rankLeading = Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              color: AppColors.surface.withOpacity(0.6),
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: Text(
+                '${index + 1}',
+                style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.textSecondary),
               ),
             ),
+          );
+        }
+
+        return Column(
+          children: [
+            Row(
+              children: [
+                rankLeading,
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        name,
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          Text(
+                            'Rank: $rank',
+                            style: GoogleFonts.inter(fontSize: 10, color: AppColors.textHint),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(width: 3, height: 3, decoration: const BoxDecoration(color: AppColors.textHint, shape: BoxShape.circle)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              stationName,
+                              style: GoogleFonts.inter(fontSize: 10, color: AppColors.textHint),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.assignment_ind_rounded, size: 12, color: AppColors.primary),
+                        const SizedBox(width: 4),
+                        Text(
+                          '$caseCount cases',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$resolvedCount resolved',
+                      style: GoogleFonts.inter(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF00E676),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            if (index < topOfficers.length - 1)
+              Divider(color: AppColors.cardBorder.withOpacity(0.3), height: 16),
           ],
+        );
+      }),
+    );
+
+    if (height != null) {
+      listContent = Expanded(
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: listContent,
         ),
       );
     }
 
-    final topOfficers = officersStats.take(5).toList();
+    final cardContent = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.badge_rounded, color: Color(0xFFC084FC), size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'Active Officers Caseload',
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFC084FC).withOpacity(0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFC084FC).withOpacity(0.2)),
+              ),
+              child: Text(
+                'TOP ACTIVE',
+                style: GoogleFonts.inter(
+                  fontSize: 8,
+                  fontWeight: FontWeight.w800,
+                  color: const Color(0xFFC084FC),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        listContent,
+      ],
+    );
+
+    if (height != null) {
+      return SizedBox(
+        height: height,
+        child: GlassCard(
+          child: cardContent,
+        ),
+      );
+    }
+
+    return GlassCard(
+      child: cardContent,
+    );
+  }
+}
+
+class _HourlyPeakUsageChart extends ConsumerWidget {
+  final bool expand;
+  const _HourlyPeakUsageChart({super.key, this.expand = false});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return _HourlyPeakUsageChartBody(expand: expand);
+  }
+}
+
+class _HourlyPeakUsageChartBody extends ConsumerStatefulWidget {
+  final bool expand;
+  const _HourlyPeakUsageChartBody({super.key, this.expand = false});
+
+  @override
+  ConsumerState<_HourlyPeakUsageChartBody> createState() => _HourlyPeakUsageChartBodyState();
+}
+
+class _HourlyPeakUsageChartBodyState extends ConsumerState<_HourlyPeakUsageChartBody>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animCtrl;
+  late Animation<double> _fadeAnim;
+  List<Map<String, dynamic>>? _cachedTrends;
+
+  @override
+  void initState() {
+    super.initState();
+    _animCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 350),
+    );
+    _fadeAnim = CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
+    _animCtrl.forward();
+  }
+
+  @override
+  void dispose() {
+    _animCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final trendsAsync = ref.watch(activityTrendsProvider(ChartRange.day));
+
+    // Listen to changes to cache data
+    ref.listen(activityTrendsProvider(ChartRange.day), (prev, next) {
+      next.whenData((data) {
+        if (mounted) {
+          setState(() {
+            _cachedTrends = data;
+          });
+        }
+      });
+    });
+
+    final isLoading = trendsAsync.isLoading;
+    final displayTrends = trendsAsync.valueOrNull ?? _cachedTrends;
+
+    if (displayTrends == null) {
+      return GlassCard(
+        child: SizedBox(
+          height: widget.expand ? double.infinity : 200,
+          child: const Center(
+            child: CircularProgressIndicator(
+              color: AppColors.primary,
+              strokeWidth: 2,
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (displayTrends.isEmpty) {
+      return GlassCard(
+        child: SizedBox(
+          height: widget.expand ? double.infinity : 200,
+          child: Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.bar_chart_rounded,
+                    color: AppColors.textHint.withOpacity(0.3), size: 40),
+                const SizedBox(height: 8),
+                Text(
+                  'No activity logs today',
+                  style: GoogleFonts.inter(
+                      color: AppColors.textHint, fontSize: 13),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Calculate sum and peak
+    int totalCount = 0;
+    int maxCount = 0;
+    String peakHourLabel = 'N/A';
+
+    for (final e in displayTrends) {
+      final count = e['count'] as int;
+      totalCount += count;
+      if (count > maxCount) {
+        maxCount = count;
+        peakHourLabel = e['day'] as String;
+      }
+    }
+
+    final maxVal = displayTrends
+        .map((e) => e['count'] as int)
+        .reduce((a, b) => a > b ? a : b)
+        .toDouble();
+    final maxY = maxVal > 0 ? maxVal + (maxVal * 0.25).ceilToDouble() : 5.0;
+
+    final spots = <FlSpot>[
+      for (int i = 0; i < displayTrends.length; i++)
+        FlSpot(i.toDouble(), (displayTrends[i]['count'] as int).toDouble()),
+    ];
+
+    // Every 4 hours bottom label interval logic
+    const int labelInterval = 4;
 
     return GlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header Row
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 children: [
-                  const Icon(Icons.badge_rounded, color: Color(0xFFC084FC), size: 20),
+                  const Icon(Icons.schedule_rounded, color: Color(0xFFC084FC), size: 20),
                   const SizedBox(width: 8),
                   Text(
-                    'Active Officers Caseload',
+                    'Peak App Usage Times',
                     style: GoogleFonts.inter(
                       fontWeight: FontWeight.w700,
                       fontSize: 15,
@@ -2287,134 +2330,289 @@ class _MostActiveOfficersList extends StatelessWidget {
                   ),
                 ],
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFC084FC).withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFC084FC).withOpacity(0.2)),
-                ),
-                child: Text(
-                  'TOP ACTIVE',
-                  style: GoogleFonts.inter(
-                    fontSize: 8,
-                    fontWeight: FontWeight.w800,
-                    color: const Color(0xFFC084FC),
+              if (maxCount > 0)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFC084FC).withOpacity(0.08),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFC084FC).withOpacity(0.2)),
                   ),
+                  child: Text(
+                    'PEAK: $peakHourLabel',
+                    style: GoogleFonts.inter(
+                      fontSize: 8,
+                      fontWeight: FontWeight.w800,
+                      color: const Color(0xFFC084FC),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 14),
+
+          // Short summary KPIs
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'TOTAL SESSIONS',
+                      style: GoogleFonts.inter(fontSize: 8, fontWeight: FontWeight.w700, color: AppColors.textHint),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$totalCount',
+                      style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'PEAK ACTIVITY HOUR',
+                      style: GoogleFonts.inter(fontSize: 8, fontWeight: FontWeight.w700, color: AppColors.textHint),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      maxCount > 0 ? '$peakHourLabel ($maxCount events)' : 'N/A',
+                      style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                    ),
+                  ],
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
-          ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: topOfficers.length,
-            separatorBuilder: (context, index) => Divider(color: AppColors.cardBorder.withOpacity(0.3), height: 16),
-            itemBuilder: (context, index) {
-              final item = topOfficers[index];
-              final officer = item['officer'];
-              final caseCount = item['case_count'] as int;
-              final resolvedCount = item['resolved_count'] as int;
 
-              final name = officer.name ?? 'Unknown Officer';
-              final rank = officer.rank ?? 'N/A';
-              final stationName = officer.station ?? 'General Duty';
-
-              Widget rankLeading;
-              if (index == 0) {
-                rankLeading = const Text('🥇', style: TextStyle(fontSize: 18));
-              } else if (index == 1) {
-                rankLeading = const Text('🥈', style: TextStyle(fontSize: 18));
-              } else if (index == 2) {
-                rankLeading = const Text('🥉', style: TextStyle(fontSize: 18));
-              } else {
-                rankLeading = Container(
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    color: AppColors.surface.withOpacity(0.6),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: Text(
-                      '${index + 1}',
-                      style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.textSecondary),
-                    ),
-                  ),
-                );
-              }
-
-              return Row(
-                children: [
-                  rankLeading,
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          name,
-                          style: GoogleFonts.inter(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 13,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Row(
-                          children: [
-                            Text(
-                              'Rank: $rank',
-                              style: GoogleFonts.inter(fontSize: 10, color: AppColors.textHint),
+          // Line Chart
+          widget.expand
+              ? Expanded(
+                  child: AnimatedOpacity(
+                    opacity: isLoading ? 0.55 : 1.0,
+                    duration: const Duration(milliseconds: 250),
+                    child: FadeTransition(
+                      opacity: _fadeAnim,
+                      child: LineChart(
+                        LineChartData(
+                          gridData: FlGridData(
+                            show: true,
+                            drawVerticalLine: false,
+                            horizontalInterval: maxY > 0 ? (maxY / 3).ceilToDouble() : 1.0,
+                            getDrawingHorizontalLine: (value) => FlLine(
+                              color: AppColors.cardBorder.withOpacity(0.4),
+                              strokeWidth: 1,
                             ),
-                            const SizedBox(width: 8),
-                            Container(width: 3, height: 3, decoration: const BoxDecoration(color: AppColors.textHint, shape: BoxShape.circle)),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: Text(
-                                stationName,
-                                style: GoogleFonts.inter(fontSize: 10, color: AppColors.textHint),
-                                overflow: TextOverflow.ellipsis,
+                          ),
+                          titlesData: FlTitlesData(
+                            show: true,
+                            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                reservedSize: 22,
+                                interval: labelInterval.toDouble(),
+                                getTitlesWidget: (value, meta) {
+                                  final idx = value.toInt();
+                                  if (idx < 0 || idx >= displayTrends.length || idx % labelInterval != 0) {
+                                    return const SizedBox.shrink();
+                                  }
+                                  return Padding(
+                                    padding: const EdgeInsets.only(top: 6.0),
+                                    child: Text(
+                                      displayTrends[idx]['day'] as String,
+                                      style: GoogleFonts.inter(
+                                        color: AppColors.textHint,
+                                        fontSize: 8,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            leftTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                interval: maxY > 3 ? (maxY / 3).ceilToDouble() : 1.0,
+                                reservedSize: 24,
+                                getTitlesWidget: (value, meta) => Text(
+                                  value.toInt().toString(),
+                                  style: GoogleFonts.inter(color: AppColors.textHint, fontSize: 8),
+                                ),
+                              ),
+                            ),
+                          ),
+                          borderData: FlBorderData(show: false),
+                          minX: 0,
+                          maxX: (displayTrends.length - 1).toDouble(),
+                          minY: 0,
+                          maxY: maxY.toDouble(),
+                          lineTouchData: LineTouchData(
+                            touchTooltipData: LineTouchTooltipData(
+                              getTooltipColor: (_) => const Color(0xFF1E1E2E).withOpacity(0.95),
+                              tooltipRoundedRadius: 10,
+                              getTooltipItems: (spots) => spots.map((s) {
+                                final idx = s.x.toInt();
+                                final label = idx < displayTrends.length ? displayTrends[idx]['day'] as String : '';
+                                return LineTooltipItem(
+                                  '$label\n${s.y.toInt()} active',
+                                  GoogleFonts.inter(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                          lineBarsData: [
+                            LineChartBarData(
+                              spots: spots,
+                              isCurved: true,
+                              curveSmoothness: 0.35,
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF818CF8), Color(0xFFC084FC)],
+                              ),
+                              barWidth: 2.5,
+                              isStrokeCapRound: true,
+                              dotData: const FlDotData(show: false),
+                              belowBarData: BarAreaData(
+                                show: true,
+                                gradient: LinearGradient(
+                                  colors: [
+                                    const Color(0xFF818CF8).withOpacity(0.2),
+                                    const Color(0xFFC084FC).withOpacity(0.0),
+                                  ],
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                ),
                               ),
                             ),
                           ],
                         ),
-                      ],
+                        duration: const Duration(milliseconds: 300),
+                      ),
                     ),
                   ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.assignment_ind_rounded, size: 12, color: AppColors.primary),
-                          const SizedBox(width: 4),
-                          Text(
-                            '$caseCount cases',
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary,
+                )
+              : SizedBox(
+                  height: 140,
+                  child: AnimatedOpacity(
+                    opacity: isLoading ? 0.55 : 1.0,
+                    duration: const Duration(milliseconds: 250),
+                    child: FadeTransition(
+                      opacity: _fadeAnim,
+                      child: LineChart(
+                        LineChartData(
+                          gridData: FlGridData(
+                            show: true,
+                            drawVerticalLine: false,
+                            horizontalInterval: maxY > 0 ? (maxY / 3).ceilToDouble() : 1.0,
+                            getDrawingHorizontalLine: (value) => FlLine(
+                              color: AppColors.cardBorder.withOpacity(0.4),
+                              strokeWidth: 1,
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '$resolvedCount resolved',
-                        style: GoogleFonts.inter(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: const Color(0xFF00E676),
+                          titlesData: FlTitlesData(
+                            show: true,
+                            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                reservedSize: 22,
+                                interval: labelInterval.toDouble(),
+                                getTitlesWidget: (value, meta) {
+                                  final idx = value.toInt();
+                                  if (idx < 0 || idx >= displayTrends.length || idx % labelInterval != 0) {
+                                    return const SizedBox.shrink();
+                                  }
+                                  return Padding(
+                                    padding: const EdgeInsets.only(top: 6.0),
+                                    child: Text(
+                                      displayTrends[idx]['day'] as String,
+                                      style: GoogleFonts.inter(
+                                        color: AppColors.textHint,
+                                        fontSize: 8,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                            leftTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                interval: maxY > 3 ? (maxY / 3).ceilToDouble() : 1.0,
+                                reservedSize: 24,
+                                getTitlesWidget: (value, meta) => Text(
+                                  value.toInt().toString(),
+                                  style: GoogleFonts.inter(color: AppColors.textHint, fontSize: 8),
+                                ),
+                              ),
+                            ),
+                          ),
+                          borderData: FlBorderData(show: false),
+                          minX: 0,
+                          maxX: (displayTrends.length - 1).toDouble(),
+                          minY: 0,
+                          maxY: maxY.toDouble(),
+                          lineTouchData: LineTouchData(
+                            touchTooltipData: LineTouchTooltipData(
+                              getTooltipColor: (_) => const Color(0xFF1E1E2E).withOpacity(0.95),
+                              tooltipRoundedRadius: 10,
+                              getTooltipItems: (spots) => spots.map((s) {
+                                final idx = s.x.toInt();
+                                final label = idx < displayTrends.length ? displayTrends[idx]['day'] as String : '';
+                                return LineTooltipItem(
+                                  '$label\n${s.y.toInt()} active',
+                                  GoogleFonts.inter(
+                                    color: Colors.white,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                          lineBarsData: [
+                            LineChartBarData(
+                              spots: spots,
+                              isCurved: true,
+                              curveSmoothness: 0.35,
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF818CF8), Color(0xFFC084FC)],
+                              ),
+                              barWidth: 2.5,
+                              isStrokeCapRound: true,
+                              dotData: const FlDotData(show: false),
+                              belowBarData: BarAreaData(
+                                show: true,
+                                gradient: LinearGradient(
+                                  colors: [
+                                    const Color(0xFF818CF8).withOpacity(0.2),
+                                    const Color(0xFFC084FC).withOpacity(0.0),
+                                  ],
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
+                        duration: const Duration(milliseconds: 300),
                       ),
-                    ],
+                    ),
                   ),
-                ],
-              );
-            },
-          ),
+                ),
         ],
       ),
     );
@@ -2436,6 +2634,9 @@ class _ActivityTimelineState extends ConsumerState<_ActivityTimeline> {
   String _actionFilter = 'all'; // 'all', 'auth', 'usage', 'reports', 'profile'
   int _displayLimit = 10;
   final TextEditingController _searchController = TextEditingController();
+
+  final GlobalKey _suspiciousLoginKey = GlobalKey();
+  bool _highlightSuspicious = false;
 
   // ── Selection Mode State ──────────────────────────────────────────────────
   bool _isSelectionMode = false;
@@ -2530,6 +2731,39 @@ class _ActivityTimelineState extends ConsumerState<_ActivityTimeline> {
 
   @override
   Widget build(BuildContext context) {
+    ref.listen<bool>(suspiciousLoginTriggerProvider, (previous, next) {
+      if (next) {
+        setState(() {
+          _searchQuery = '';
+          _searchController.clear();
+          _roleFilter = 'all';
+          _actionFilter = 'all';
+          _displayLimit = 20;
+          _highlightSuspicious = true;
+        });
+
+        ref.read(suspiciousLoginTriggerProvider.notifier).state = false;
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_suspiciousLoginKey.currentContext != null) {
+            Scrollable.ensureVisible(
+              _suspiciousLoginKey.currentContext!,
+              duration: const Duration(milliseconds: 1000),
+              curve: Curves.easeInOutCubic,
+            );
+          }
+        });
+
+        Future.delayed(const Duration(milliseconds: 2500), () {
+          if (mounted) {
+            setState(() {
+              _highlightSuspicious = false;
+            });
+          }
+        });
+      }
+    });
+
     final profilesAsync = ref.watch(allProfilesStreamProvider);
     final profiles = profilesAsync.valueOrNull ?? [];
     final profileMap = {for (var p in profiles) p.id: p};
@@ -2851,157 +3085,181 @@ class _ActivityTimelineState extends ConsumerState<_ActivityTimeline> {
                   }
                 }
 
+                final isSuspiciousLogin = log.actionType == 'suspicious_login';
+                final firstSuspiciousIndex = visibleLogs.indexWhere((l) => l.actionType == 'suspicious_login');
+                final isFirstSuspicious = isSuspiciousLogin && index == firstSuspiciousIndex;
+                final isHighlighted = _highlightSuspicious && isSuspiciousLogin;
+
                 return GestureDetector(
+                  key: isFirstSuspicious ? _suspiciousLoginKey : null,
                   onLongPress: () => _enterSelectionMode(log.id),
                   onTap: _isSelectionMode ? () => _toggleSelection(log.id) : null,
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    curve: Curves.easeOut,
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
                     decoration: BoxDecoration(
                       color: isSelected
                           ? const Color(0xFFFF1744).withOpacity(0.06)
-                          : Colors.transparent,
+                          : isHighlighted
+                              ? const Color(0xFFFF1744).withOpacity(0.12)
+                              : Colors.transparent,
                       borderRadius: BorderRadius.circular(10),
                       border: isSelected
                           ? Border.all(color: const Color(0xFFFF1744).withOpacity(0.3), width: 1)
-                          : Border.all(color: Colors.transparent),
+                          : isHighlighted
+                              ? Border.all(color: const Color(0xFFFF1744).withOpacity(0.8), width: 1.5)
+                              : Border.all(color: Colors.transparent),
+                      boxShadow: isHighlighted
+                          ? [
+                              BoxShadow(
+                                color: const Color(0xFFFF1744).withOpacity(0.25),
+                                blurRadius: 12,
+                                spreadRadius: 2,
+                              )
+                            ]
+                          : null,
                     ),
                     child: Padding(
-                      padding: EdgeInsets.all(isSelected ? 6 : 0),
-                      child: IntrinsicHeight(
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                          Column(
-                            children: [
-                              AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                width: 32,
-                                height: 32,
-                                decoration: BoxDecoration(
-                                  color: isSelected
-                                      ? const Color(0xFFFF1744).withOpacity(0.15)
-                                      : color.withOpacity(0.08),
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: isSelected
-                                        ? const Color(0xFFFF1744)
-                                        : color.withOpacity(0.35),
-                                    width: isSelected ? 2.0 : 1.2,
-                                  ),
-                                ),
-                                child: Icon(
-                                  isSelected ? Icons.check_rounded : icon,
-                                  color: isSelected ? const Color(0xFFFF1744) : color,
-                                  size: 16,
-                                ),
+                      padding: EdgeInsets.all(isSelected || isHighlighted ? 6 : 0),
+                      child: Stack(
+                        children: [
+                          if (!isLast)
+                            Positioned(
+                              left: 15.25, // Centered horizontally in the 32px wide column
+                              top: 32,
+                              bottom: 0,
+                              child: Container(
+                                width: 1.5,
+                                color: AppColors.cardBorder.withOpacity(0.3),
                               ),
-                              if (!isLast)
-                                Expanded(
-                                  child: Container(
-                                    width: 1.5,
-                                    color: AppColors.cardBorder.withOpacity(0.3),
-                                  ),
-                                ),
-                            ],
-                          ),
-                          const SizedBox(width: 14),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.only(bottom: 18.0),
-                          child: Column(
+                            ),
+                          Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.center,
+                              Column(
                                 children: [
-                                  Expanded(
-                                    child: Row(
-                                      children: [
-                                        Flexible(
-                                          child: Text(
-                                            userLabel,
-                                            style: GoogleFonts.inter(
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: 13,
-                                              color: AppColors.textPrimary,
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                        if (role == 'user' && isVerified) ...[
-                                          const SizedBox(width: 4),
-                                          const Icon(
-                                            Icons.verified_rounded,
-                                            size: 13,
-                                            color: Color(0xFF2979FF),
-                                          ),
-                                        ],
-                                      ],
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    width: 32,
+                                    height: 32,
                                     decoration: BoxDecoration(
-                                      color: roleBgColor,
-                                      borderRadius: BorderRadius.circular(8),
-                                      border: Border.all(color: roleColor.withOpacity(0.2), width: 0.8),
-                                    ),
-                                    child: Text(
-                                      roleLabel,
-                                      style: GoogleFonts.inter(
-                                        fontSize: 8,
-                                        fontWeight: FontWeight.w800,
-                                        color: roleColor,
+                                      color: isSelected
+                                          ? const Color(0xFFFF1744).withOpacity(0.15)
+                                          : color.withOpacity(0.08),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? const Color(0xFFFF1744)
+                                            : color.withOpacity(0.35),
+                                        width: isSelected ? 2.0 : 1.2,
                                       ),
                                     ),
+                                    child: Icon(
+                                      isSelected ? Icons.check_rounded : icon,
+                                      color: isSelected ? const Color(0xFFFF1744) : color,
+                                      size: 16,
+                                    ),
                                   ),
                                 ],
                               ),
-                              const SizedBox(height: 3),
-                              Text(
-                                log.actionDescription,
-                                style: GoogleFonts.inter(
-                                  fontSize: 12,
-                                  color: log.actionType == 'suspicious_login' ? const Color(0xFFFF1744) : AppColors.textSecondary,
-                                  fontWeight: log.actionType == 'suspicious_login' ? FontWeight.w700 : FontWeight.w500,
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.only(bottom: 18.0),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        crossAxisAlignment: CrossAxisAlignment.center,
+                                        children: [
+                                          Expanded(
+                                            child: Row(
+                                              children: [
+                                                Flexible(
+                                                  child: Text(
+                                                    userLabel,
+                                                    style: GoogleFonts.inter(
+                                                      fontWeight: FontWeight.w700,
+                                                      fontSize: 13,
+                                                      color: AppColors.textPrimary,
+                                                    ),
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                                if (role == 'user' && isVerified) ...[
+                                                  const SizedBox(width: 4),
+                                                  const Icon(
+                                                    Icons.verified_rounded,
+                                                    size: 13,
+                                                    color: Color(0xFF2979FF),
+                                                  ),
+                                                ],
+                                              ],
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              color: roleBgColor,
+                                              borderRadius: BorderRadius.circular(8),
+                                              border: Border.all(color: roleColor.withOpacity(0.2), width: 0.8),
+                                            ),
+                                            child: Text(
+                                              roleLabel,
+                                              style: GoogleFonts.inter(
+                                                fontSize: 8,
+                                                fontWeight: FontWeight.w800,
+                                                color: roleColor,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        log.actionDescription,
+                                        style: GoogleFonts.inter(
+                                          fontSize: 12,
+                                          color: log.actionType == 'suspicious_login' ? const Color(0xFFFF1744) : AppColors.textSecondary,
+                                          fontWeight: log.actionType == 'suspicious_login' ? FontWeight.w700 : FontWeight.w500,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Row(
+                                        children: [
+                                          Icon(Icons.access_time_rounded, size: 10, color: AppColors.textHint),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            DateFormat('hh:mm:ss a').format(bdtTime),
+                                            style: GoogleFonts.inter(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w600,
+                                              color: AppColors.textHint,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Container(width: 2, height: 2, decoration: const BoxDecoration(color: AppColors.textHint, shape: BoxShape.circle)),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            DateFormat('dd MMM yyyy').format(bdtTime),
+                                            style: GoogleFonts.inter(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w600,
+                                              color: AppColors.textHint,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  Icon(Icons.access_time_rounded, size: 10, color: AppColors.textHint),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    DateFormat('hh:mm:ss a').format(bdtTime),
-                                    style: GoogleFonts.inter(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.textHint,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Container(width: 2, height: 2, decoration: const BoxDecoration(color: AppColors.textHint, shape: BoxShape.circle)),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    DateFormat('dd MMM yyyy').format(bdtTime),
-                                    style: GoogleFonts.inter(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.textHint,
-                                    ),
-                                  ),
-                                ],
                               ),
                             ],
                           ),
-                        ),
-                      ),
                         ],
                       ),
                     ),
-                  ),
                   ),
                 );
               },
@@ -3265,3 +3523,4 @@ class _ActivityTimelineState extends ConsumerState<_ActivityTimeline> {
     );
   }
 }
+

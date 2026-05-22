@@ -69,6 +69,7 @@ class ActivityLogService {
             .from('activity_logs')
             .select()
             .isFilter('deleted_at', null)
+            .neq('action_type', 'app_heartbeat')
             .order('created_at', ascending: false)
             .limit(limit);
         yield (response as List).map((e) => ActivityLogModel.fromMap(e)).toList();
@@ -86,6 +87,7 @@ class ActivityLogService {
         .from('activity_logs')
         .select()
         .isFilter('deleted_at', null)
+        .neq('action_type', 'app_heartbeat')
         .order('created_at', ascending: false)
         .limit(limit);
     return (response as List).map((e) => ActivityLogModel.fromMap(e)).toList();
@@ -312,6 +314,52 @@ class ActivityLogService {
     } catch (e) {
       debugPrint('ERROR in getActivityTrends: $e');
       return [];
+    }
+  }
+
+  /// Fetches all activity logs created today (since midnight local time).
+  Future<List<ActivityLogModel>> getTodayLogs() async {
+    try {
+      final now = DateTime.now();
+      final startOfToday = DateTime(now.year, now.month, now.day).toUtc().toIso8601String();
+
+      final response = await _client
+          .from('activity_logs')
+          .select()
+          .gte('created_at', startOfToday)
+          .isFilter('deleted_at', null)
+          .order('created_at', ascending: false);
+
+      final list = response as List;
+      return list.map((e) => ActivityLogModel.fromMap(e)).toList();
+    } catch (e) {
+      debugPrint('ERROR in getTodayLogs: $e');
+      return [];
+    }
+  }
+
+  /// Calculates a specific user's total active duration (in seconds) today.
+  Future<int> getUserTodayActiveDuration(String userId) async {
+    try {
+      final now = DateTime.now();
+      final startOfToday = DateTime(now.year, now.month, now.day).toUtc().toIso8601String();
+
+      final response = await _client
+          .from('activity_logs')
+          .select('duration_seconds')
+          .eq('user_id', userId)
+          .gte('created_at', startOfToday)
+          .isFilter('deleted_at', null);
+
+      final list = response as List;
+      int totalSeconds = 0;
+      for (final row in list) {
+        totalSeconds += (row['duration_seconds'] as int? ?? 0);
+      }
+      return totalSeconds;
+    } catch (e) {
+      debugPrint('ERROR in getUserTodayActiveDuration: $e');
+      return 0;
     }
   }
 }

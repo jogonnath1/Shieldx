@@ -128,3 +128,87 @@ final userSecurityLogsProvider = FutureProvider.autoDispose<List<ActivityLogMode
 final deletedAuditLogsProvider = FutureProvider.autoDispose<List<ActivityLogModel>>((ref) async {
   return ref.watch(activityLogServiceProvider).getDeletedAuditLogs();
 });
+
+/// Reactively fetches all activity logs created today (refreshed when the live stream updates)
+final todayActivityLogsProvider = FutureProvider<List<ActivityLogModel>>((ref) async {
+  ref.watch(activityLogsStreamProvider);
+  return ref.read(activityLogServiceProvider).getTodayLogs();
+});
+
+/// Computes total active usage time in seconds today for each user profile ID.
+final todayActiveTimeProvider = FutureProvider<Map<String, int>>((ref) async {
+  final logs = await ref.watch(todayActivityLogsProvider.future);
+  final profilesAsync = ref.watch(allProfilesStreamProvider);
+  final profiles = profilesAsync.valueOrNull ?? [];
+  
+  final Map<String, int> activeTimes = {};
+  final now = DateTime.now();
+  
+  for (final profile in profiles) {
+    final userLogs = logs.where((l) => l.userId == profile.id).toList();
+    if (userLogs.isEmpty) {
+      activeTimes[profile.id] = 0;
+      continue;
+    }
+    
+    // 1. Sum up all completed durations from app_close and app_heartbeat events today
+    int completedSeconds = 0;
+    for (final log in userLogs) {
+      if (log.actionType == 'app_close' || log.actionType == 'app_heartbeat') {
+        completedSeconds += log.durationSeconds;
+      }
+    }
+    
+    // 2. Check for ongoing live session duration
+    final sortedLogs = List<ActivityLogModel>.from(userLogs)
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+    
+    final latestLog = sortedLogs.first;
+    int ongoingSeconds = 0;
+    
+    if (latestLog.actionType != 'app_close' && latestLog.actionType != 'logout') {
+      final elapsed = now.difference(latestLog.createdAt).inSeconds;
+      if (elapsed > 0 && elapsed < 75) {
+        ongoingSeconds = elapsed;
+      }
+    }
+    
+    activeTimes[profile.id] = completedSeconds + ongoingSeconds;
+  }
+  
+  return activeTimes;
+});
+
+/// Family provider to reactively compute today's cumulative active time in seconds for a specific user ID.
+final userTodayActiveTimeProvider = FutureProvider.family<int, String>((ref, userId) async {
+  final logs = await ref.watch(todayActivityLogsProvider.future);
+  final userLogs = logs.where((l) => l.userId == userId).toList();
+  if (userLogs.isEmpty) return 0;
+  
+  final now = DateTime.now();
+  
+  // 1. Sum up all completed durations from app_close and app_heartbeat events today
+  int completedSeconds = 0;
+  for (final log in userLogs) {
+    if (log.actionType == 'app_close' || log.actionType == 'app_heartbeat') {
+      completedSeconds += log.durationSeconds;
+    }
+  }
+  
+  // 2. Check for ongoing live session duration
+  final sortedLogs = List<ActivityLogModel>.from(userLogs)
+    ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+  
+  final latestLog = sortedLogs.first;
+  int ongoingSeconds = 0;
+  
+  if (latestLog.actionType != 'app_close' && latestLog.actionType != 'logout') {
+    final elapsed = now.difference(latestLog.createdAt).inSeconds;
+    if (elapsed > 0 && elapsed < 75) {
+      ongoingSeconds = elapsed;
+    }
+  }
+  
+  return completedSeconds + ongoingSeconds;
+});
+

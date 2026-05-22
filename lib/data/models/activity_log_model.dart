@@ -90,6 +90,8 @@ class ActivityLogModel {
         return 'Updated profile';
       case 'suspicious_login':
         return 'Suspicious login: ${details['reason'] ?? 'Failed credentials'}';
+      case 'app_heartbeat':
+        return 'Active session heartbeat';
       default:
         return 'Performed action: $actionType';
     }

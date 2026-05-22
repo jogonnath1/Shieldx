@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:latlong2/latlong.dart';
 import '../../core/constants/app_colors.dart';
 import '../../data/models/officer_model.dart';
+import '../../data/models/police_station_model.dart';
 import '../../providers/officer_provider.dart';
 import '../widgets/common/widgets.dart';
 
@@ -19,9 +21,46 @@ class _AdminOfficersScreenState extends ConsumerState<AdminOfficersScreen> {
   void _showAddDialog([OfficerModel? existing]) {
     final nameCtrl = TextEditingController(text: existing?.name);
     final rankCtrl = TextEditingController(text: existing?.rank);
-    final stationCtrl = TextEditingController(text: existing?.station);
     final contactCtrl = TextEditingController(text: existing?.contact);
     final formKey = GlobalKey<FormState>();
+
+    final officialStations = dummyPoliceStations.map((s) => s.name).toList();
+    String? selectedStation;
+    if (existing != null && existing.station != null && existing.station!.isNotEmpty) {
+      final currentVal = existing.station!.trim();
+      final matched = dummyPoliceStations.firstWhere(
+        (s) {
+          final oStation = currentVal.toLowerCase();
+          final sName = s.name.toLowerCase();
+          final sThana = s.thana.toLowerCase();
+          return oStation.contains(sThana) ||
+                 sThana.contains(oStation) ||
+                 oStation.contains(sName) ||
+                 sName.contains(oStation) ||
+                 (sThana.contains('kotwali') && (oStation.contains('kawt') || oStation.contains('kotw') || oStation.contains('qotw')));
+        },
+        orElse: () => const PoliceStation(
+          id: '',
+          name: '',
+          address: '',
+          phone: '',
+          location: LatLng(0, 0),
+          details: '',
+          jurisdiction: '',
+          thana: '',
+        ),
+      );
+      if (matched.name.isNotEmpty) {
+        selectedStation = matched.name;
+      } else {
+        if (!officialStations.contains(currentVal)) {
+          officialStations.add(currentVal);
+        }
+        selectedStation = currentVal;
+      }
+    } else {
+      selectedStation = officialStations.first;
+    }
 
     showDialog(
       context: context,
@@ -46,10 +85,28 @@ class _AdminOfficersScreenState extends ConsumerState<AdminOfficersScreen> {
                   prefixIcon: Icons.military_tech_outlined,
                 ),
                 const SizedBox(height: 10),
-                CustomTextField(
-                  label: 'Station',
-                  controller: stationCtrl,
-                  prefixIcon: Icons.location_city_outlined,
+                DropdownButtonFormField<String>(
+                  initialValue: selectedStation,
+                  decoration: const InputDecoration(
+                    labelText: 'Station',
+                    prefixIcon: Icon(Icons.location_city_outlined, color: AppColors.textHint, size: 20),
+                  ),
+                  dropdownColor: AppColors.card,
+                  icon: const Icon(Icons.arrow_drop_down_rounded, color: AppColors.textHint),
+                  style: GoogleFonts.inter(
+                    color: AppColors.textPrimary,
+                    fontSize: 14,
+                  ),
+                  items: officialStations.map((stationName) {
+                    return DropdownMenuItem<String>(
+                      value: stationName,
+                      child: Text(stationName),
+                    );
+                  }).toList(),
+                  onChanged: (val) {
+                    selectedStation = val;
+                  },
+                  validator: (v) => v == null || v.isEmpty ? 'Required' : null,
                 ),
                 const SizedBox(height: 10),
                 CustomTextField(
@@ -74,7 +131,7 @@ class _AdminOfficersScreenState extends ConsumerState<AdminOfficersScreen> {
               final data = {
                 'name': nameCtrl.text.trim(),
                 'rank': rankCtrl.text.trim(),
-                'station': stationCtrl.text.trim(),
+                'station': selectedStation ?? '',
                 'contact': contactCtrl.text.trim(),
               };
               final service = ref.read(officerServiceProvider);

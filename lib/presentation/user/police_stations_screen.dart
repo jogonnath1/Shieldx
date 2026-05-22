@@ -20,6 +20,7 @@ import '../../data/models/complaint_model.dart';
 import '../../providers/station_map_provider.dart';
 import '../../providers/complaint_provider.dart';
 import '../../providers/gps_simulation_provider.dart';
+import '../../providers/officer_provider.dart';
 import '../widgets/common/widgets.dart';
 
 class PoliceStationsScreen extends ConsumerStatefulWidget {
@@ -1772,6 +1773,138 @@ class _PoliceStationsScreenState extends ConsumerState<PoliceStationsScreen> {
                   color: Colors.black54, fontSize: 12, height: 1.5),
               maxLines: 4,
               overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 8),
+            ref.watch(officersProvider).when(
+              data: (allOfficers) {
+                final assigned = allOfficers.where((o) {
+                  if (o.station == null || o.station!.isEmpty) return false;
+                  final oStation = o.station!.toLowerCase().trim();
+                  final sName = s.name.toLowerCase();
+                  final sThana = s.thana.toLowerCase();
+                  final sJurisdiction = (s.jurisdiction ?? '').toLowerCase();
+
+                  return oStation.contains(sThana) ||
+                      sThana.contains(oStation) ||
+                      oStation.contains(sName) ||
+                      sName.contains(oStation) ||
+                      (sJurisdiction.isNotEmpty && (oStation.contains(sJurisdiction) || sJurisdiction.contains(oStation))) ||
+                      (sThana.contains('kotwali') && (oStation.contains('kawt') || oStation.contains('kotw') || oStation.contains('qotw')));
+                }).toList();
+
+                if (assigned.isEmpty) return const SizedBox.shrink();
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Divider(height: 16, color: Colors.black12),
+                    Row(
+                      children: [
+                        const Icon(Icons.badge_outlined, size: 13, color: AppColors.primary),
+                        const SizedBox(width: 6),
+                        Text(
+                          'On-Duty Officers (${assigned.length})',
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      height: 52,
+                      child: ListView.builder(
+                        scrollDirection: Axis.horizontal,
+                        itemCount: assigned.length,
+                        itemBuilder: (context, index) {
+                          final officer = assigned[index];
+                          return Container(
+                            margin: const EdgeInsets.only(right: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.grey.shade200),
+                            ),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 12,
+                                  backgroundColor: AppColors.primary.withOpacity(0.1),
+                                  child: const Icon(Icons.person_rounded, size: 12, color: AppColors.primary),
+                                ),
+                                const SizedBox(width: 8),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Text(
+                                          officer.name ?? 'Officer',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w700,
+                                            color: Colors.black87,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                                          decoration: BoxDecoration(
+                                            color: (officer.isActive ? AppColors.success : AppColors.textHint)
+                                                .withOpacity(0.12),
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: Text(
+                                            officer.isActive ? 'Active' : 'Off Duty',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 7,
+                                              fontWeight: FontWeight.w800,
+                                              color: officer.isActive ? AppColors.success : AppColors.textHint,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 1),
+                                    Text(
+                                      officer.rank ?? 'Constable',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 9,
+                                        color: Colors.black54,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (officer.contact != null && officer.contact!.isNotEmpty) ...[
+                                  const SizedBox(width: 8),
+                                  GestureDetector(
+                                    onTap: () => _callStation(officer.contact!),
+                                    child: const Icon(Icons.phone_in_talk_rounded, size: 13, color: AppColors.primary),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                  ],
+                );
+              },
+              loading: () => const Padding(
+                padding: EdgeInsets.symmetric(vertical: 4),
+                child: SizedBox(
+                  height: 16,
+                  width: 16,
+                  child: CircularProgressIndicator(strokeWidth: 1.5, color: AppColors.primary),
+                ),
+              ),
+              error: (_, __) => const SizedBox.shrink(),
             ),
             const SizedBox(height: 16),
             // ── Action Buttons: Call | Report | Navigate ──────────────

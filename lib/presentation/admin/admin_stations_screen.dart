@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../core/constants/app_colors.dart';
 import '../../data/models/police_station_model.dart';
 import '../../providers/complaint_provider.dart';
 import '../../providers/selected_station_provider.dart';
+import '../../providers/officer_provider.dart';
 
 class AdminStationsScreen extends ConsumerWidget {
   const AdminStationsScreen({super.key});
@@ -222,7 +224,7 @@ const _cardColors = [
 
 const _stationEmojis = ['🏙️', '🎓', '🏗️', '🕌', '🏫', '✈️'];
 
-class _StationCard extends StatelessWidget {
+class _StationCard extends ConsumerWidget {
   final PoliceStation station;
   final Map<String, int> stats;
   final bool isActive;
@@ -237,14 +239,23 @@ class _StationCard extends StatelessWidget {
     required this.onTap,
   });
 
+  Future<void> _callOfficer(String phone) async {
+    final uri = Uri.parse('tel:${phone.replaceAll(' ', '')}');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
+  }
+
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final color = _cardColors[colorIndex % _cardColors.length];
     final emoji = _stationEmojis[colorIndex % _stationEmojis.length];
     final total = stats['total'] ?? 0;
     final resolved = stats['resolved'] ?? 0;
     final active = (stats['in_progress'] ?? 0) + (stats['under_investigation'] ?? 0);
     final submitted = stats['submitted'] ?? 0;
+
+    final officersAsync = ref.watch(officersProvider);
 
     return GestureDetector(
       onTap: onTap,
@@ -406,6 +417,150 @@ class _StationCard extends StatelessWidget {
                   ),
                 ],
               ),
+
+              // Assigned Officers Section (expanded only)
+              if (isActive) ...[
+                const Divider(color: AppColors.cardBorder, height: 24),
+                Row(
+                  children: [
+                    const Icon(Icons.badge_outlined, size: 14, color: AppColors.primaryLight),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Assigned Officers',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                officersAsync.when(
+                  data: (officers) {
+                    final assigned = officers.where((o) {
+                      if (o.station == null || o.station!.isEmpty) return false;
+                      final oStation = o.station!.toLowerCase().trim();
+                      final sName = station.name.toLowerCase();
+                      final sThana = station.thana.toLowerCase();
+                      final sJurisdiction = (station.jurisdiction ?? '').toLowerCase();
+
+                      return oStation.contains(sThana) ||
+                          sThana.contains(oStation) ||
+                          oStation.contains(sName) ||
+                          sName.contains(oStation) ||
+                          (sJurisdiction.isNotEmpty && (oStation.contains(sJurisdiction) || sJurisdiction.contains(oStation))) ||
+                          (sThana.contains('kotwali') && (oStation.contains('kawt') || oStation.contains('kotw') || oStation.contains('qotw')));
+                    }).toList();
+
+                    if (assigned.isEmpty) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Text(
+                          'No officers assigned to this station yet.',
+                          style: GoogleFonts.inter(fontSize: 11, color: AppColors.textHint),
+                        ),
+                      );
+                    }
+
+                    return ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: assigned.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (context, idx) {
+                        final officer = assigned[idx];
+                        return Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.cardBorder.withOpacity(0.5)),
+                          ),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 16,
+                                backgroundColor: color.withOpacity(0.2),
+                                child: Icon(Icons.person_rounded, size: 16, color: color),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            officer.name ?? 'Officer',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.w700,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                        ),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
+                                          decoration: BoxDecoration(
+                                            color: (officer.isActive ? AppColors.success : AppColors.textHint)
+                                                .withOpacity(0.15),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Text(
+                                            officer.isActive ? 'On Duty' : 'Off Duty',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 8,
+                                              fontWeight: FontWeight.w800,
+                                              color: officer.isActive ? AppColors.success : AppColors.textHint,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      officer.rank ?? 'Constable',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 10,
+                                        color: AppColors.textHint,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              if (officer.contact != null && officer.contact!.isNotEmpty) ...[
+                                const SizedBox(width: 10),
+                                IconButton(
+                                  icon: const Icon(Icons.phone_in_talk_rounded, size: 16, color: AppColors.primaryLight),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                  onPressed: () => _callOfficer(officer.contact!),
+                                ),
+                              ],
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                  },
+                  loading: () => const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(12),
+                      child: SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                      ),
+                    ),
+                  ),
+                  error: (e, _) => Text(
+                    'Error: $e',
+                    style: GoogleFonts.inter(fontSize: 11, color: AppColors.error),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

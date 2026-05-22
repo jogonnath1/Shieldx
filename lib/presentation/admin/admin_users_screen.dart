@@ -6,8 +6,12 @@ import 'package:intl/intl.dart';
 import '../../core/utils/date_time_extensions.dart';
 import '../../core/constants/app_colors.dart';
 import '../../data/services/profile_service.dart';
+import '../../data/services/activity_log_service.dart';
 import '../../data/models/profile_model.dart';
 import '../widgets/common/widgets.dart';
+import '../widgets/common/user_profile_dialog.dart';
+import '../widgets/common/currently_active_users_list.dart';
+import '../../providers/activity_log_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AdminUsersScreen extends ConsumerStatefulWidget {
@@ -21,6 +25,8 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
   List<ProfileModel> _users = [];
   bool _isLoading = true;
   String _search = '';
+  bool _viewingAdmins = true;
+  String _verificationFilter = 'all';
 
   @override
   void initState() {
@@ -34,9 +40,20 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
   }
 
   List<ProfileModel> get _filtered {
-    if (_search.isEmpty) return _users;
+    var list = _users.where((u) {
+      final isUserAdmin = u.isAdmin || u.isMainAdmin;
+      return _viewingAdmins ? isUserAdmin : !isUserAdmin;
+    }).toList();
+
+    if (_verificationFilter == 'verified') {
+      list = list.where((u) => u.isVerified).toList();
+    } else if (_verificationFilter == 'unverified') {
+      list = list.where((u) => !u.isVerified).toList();
+    }
+
+    if (_search.isEmpty) return list;
     final q = _search.toLowerCase();
-    return _users.where((u) =>
+    return list.where((u) =>
         (u.name?.toLowerCase().contains(q) ?? false) ||
         (u.email?.toLowerCase().contains(q) ?? false) ||
         (u.phone?.contains(q) ?? false)).toList();
@@ -320,262 +337,205 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
   }
 
   void _showUserDetails(ProfileModel u) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        final hasAvatar = u.avatarUrl != null && u.avatarUrl!.isNotEmpty;
-        return Dialog(
-          backgroundColor: const Color(0xFF0F172A), // Premium dark slate background
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(24),
-            side: const BorderSide(color: AppColors.cardBorder, width: 1),
+    UserProfileDialog.show(context, u);
+  }
+
+  Widget _buildRoleSegmentedControl() {
+    final adminCount = _users.where((u) => u.isAdmin || u.isMainAdmin).length;
+    final userCount = _users.where((u) => !u.isAdmin && !u.isMainAdmin).length;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+      child: Container(
+        height: 46,
+        decoration: BoxDecoration(
+          color: const Color(0xFF0D1224),
+          borderRadius: BorderRadius.circular(23),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.05),
+            width: 1,
           ),
-          insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 450),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Header with close button
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 20, 16, 0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'User Profile Details',
-                        style: GoogleFonts.inter(
-                          color: AppColors.textPrimary,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(23),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final double width = constraints.maxWidth;
+              final double tabWidth = width / 2;
+              return Stack(
+                children: [
+                  // Animated sliding gradient indicator (perfectly flush)
+                  AnimatedAlign(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeInOutCubic,
+                    alignment: _viewingAdmins
+                        ? Alignment.centerLeft
+                        : Alignment.centerRight,
+                    child: Container(
+                      width: tabWidth,
+                      height: 46,
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Color(0xFF8B5CF6), // Vibrant Purple
+                            Color(0xFF2563EB), // Electric Blue
+                          ],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
                         ),
                       ),
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close_rounded, color: AppColors.textHint),
-                        splashRadius: 20,
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-                const Divider(color: AppColors.cardBorder, height: 1),
-                
-                // Content
-                Flexible(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                  // Text Labels row on top
+                  Positioned.fill(
+                    child: Row(
                       children: [
-                        // Avatar and name header
-                        Center(
-                          child: Column(
-                            children: [
-                              Container(
-                                width: 84,
-                                height: 84,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  gradient: u.isAdmin
-                                      ? const LinearGradient(colors: [Color(0xFF7B1FA2), Color(0xFF1565C0)])
-                                      : AppColors.primaryGradient,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: (u.isAdmin ? const Color(0xFF7B1FA2) : AppColors.primary).withValues(alpha: 0.25),
-                                      blurRadius: 16,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                  border: Border.all(
-                                    color: u.isAdmin ? const Color(0xFF9C27B0) : AppColors.primaryLight,
-                                    width: 2,
-                                  ),
-                                ),
-                                child: ClipOval(
-                                  child: hasAvatar
-                                      ? Image.network(
-                                          u.avatarUrl!,
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (context, error, stackTrace) => Center(
-                                            child: Text(
-                                              u.initials,
-                                              style: GoogleFonts.inter(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.w700,
-                                                fontSize: 28,
-                                              ),
-                                            ),
-                                          ),
-                                        )
-                                      : Center(
-                                          child: Text(
-                                            u.initials,
-                                            style: GoogleFonts.inter(
-                                              color: Colors.white,
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: 28,
-                                            ),
-                                          ),
-                                        ),
+                        Expanded(
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () {
+                              setState(() {
+                                _viewingAdmins = true;
+                              });
+                            },
+                            child: Center(
+                              child: Text(
+                                'Admins ($adminCount)',
+                                style: GoogleFonts.inter(
+                                  color: _viewingAdmins ? Colors.white : Colors.white.withValues(alpha: 0.5),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13.5,
                                 ),
                               ),
-                              const SizedBox(height: 12),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Flexible(
-                                    child: Text(
-                                      u.displayName,
-                                      textAlign: TextAlign.center,
-                                      style: GoogleFonts.inter(
-                                        color: AppColors.textPrimary,
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 6),
-                                  Icon(
-                                    u.isVerified
-                                        ? Icons.verified_rounded
-                                        : Icons.gpp_maybe_rounded,
-                                    color: u.isVerified
-                                        ? const Color(0xFF2196F3)
-                                        : const Color(0xFFFFB300),
-                                    size: 20,
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: u.isMainAdmin
-                                      ? const Color(0xFFE53935).withValues(alpha: 0.15)
-                                      : (u.isAdmin
-                                          ? AppColors.warning.withValues(alpha: 0.15)
-                                          : AppColors.primary.withValues(alpha: 0.15)),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: u.isMainAdmin
-                                        ? const Color(0xFFE53935).withValues(alpha: 0.3)
-                                        : (u.isAdmin
-                                            ? AppColors.warning.withValues(alpha: 0.3)
-                                            : AppColors.primaryLight.withValues(alpha: 0.3)),
-                                    width: 1,
-                                  ),
-                                ),
-                                child: Text(
-                                  u.isMainAdmin
-                                      ? '👑 Main Admin'
-                                      : (u.isAdmin ? 'Admin' : 'User Account'),
-                                  style: GoogleFonts.inter(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.bold,
-                                    color: u.isMainAdmin
-                                        ? const Color(0xFFEF5350)
-                                        : (u.isAdmin ? AppColors.warning : AppColors.primaryLight),
-                                  ),
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
                         ),
-                        const SizedBox(height: 16),
-                        
-                        _buildSectionHeader('Registration Info'),
-                        _buildDetailRow(
-                          Icons.fingerprint_rounded,
-                          'USER ID',
-                          u.id,
-                        ),
-                        _buildDetailRow(
-                          Icons.calendar_today_rounded,
-                          'REGISTRATION DATE & TIME',
-                          u.createdAt != null
-                              ? u.createdAt!.formatBDT('dd MMMM yyyy, hh:mm:ss a')
-                              : 'Not Available',
-                        ),
-                        
-                        _buildSectionHeader('Contact Details'),
-                        _buildDetailRow(
-                          Icons.email_outlined,
-                          'EMAIL ADDRESS',
-                          u.email,
-                        ),
-                        _buildDetailRow(
-                          Icons.phone_outlined,
-                          'PHONE NUMBER',
-                          u.phone,
-                        ),
-                        
-                        _buildSectionHeader('Personal Information'),
-                        _buildDetailRow(
-                          Icons.badge_outlined,
-                          'NATIONAL ID (NID)',
-                          u.nid,
-                        ),
-                        _buildDetailRow(
-                          Icons.work_outline_rounded,
-                          'PROFESSION',
-                          u.profession,
-                        ),
-                        _buildDetailRow(
-                          Icons.location_on_outlined,
-                          'PRESENT ADDRESS',
-                          u.presentAddress,
-                        ),
-                        _buildDetailRow(
-                          Icons.home_outlined,
-                          'PERMANENT ADDRESS',
-                          u.permanentAddress,
+                        Expanded(
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () {
+                              setState(() {
+                                _viewingAdmins = false;
+                              });
+                            },
+                            child: Center(
+                              child: Text(
+                                'Users ($userCount)',
+                                style: GoogleFonts.inter(
+                                  color: !_viewingAdmins ? Colors.white : Colors.white.withValues(alpha: 0.5),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13.5,
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
                       ],
                     ),
                   ),
-                ),
-                
-                const Divider(color: AppColors.cardBorder, height: 1),
-                Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.pop(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primary,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      child: Text(
-                        'Dismiss',
-                        style: GoogleFonts.inter(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
+                ],
+              );
+            },
           ),
-        );
-      },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVerificationFilterRow() {
+    final currentRoleUsers = _users.where((u) {
+      final isUserAdmin = u.isAdmin || u.isMainAdmin;
+      return _viewingAdmins ? isUserAdmin : !isUserAdmin;
+    }).toList();
+
+    final allCount = currentRoleUsers.length;
+    final verifiedCount = currentRoleUsers.where((u) => u.isVerified).length;
+    final unverifiedCount = currentRoleUsers.where((u) => !u.isVerified).length;
+
+    Widget buildFilterChip(String filterType, String label, IconData icon, Color iconColor) {
+      final isSelected = _verificationFilter == filterType;
+      return GestureDetector(
+        onTap: () {
+          setState(() {
+            _verificationFilter = filterType;
+          });
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFF0D1224) : Colors.transparent,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: isSelected ? const Color(0xFF8B5CF6) : Colors.white.withValues(alpha: 0.05),
+              width: isSelected ? 1.5 : 1,
+            ),
+            boxShadow: isSelected ? [
+              BoxShadow(
+                color: const Color(0xFF8B5CF6).withValues(alpha: 0.2),
+                blurRadius: 6,
+                offset: const Offset(0, 2),
+              ),
+            ] : null,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, color: isSelected ? iconColor : iconColor.withValues(alpha: 0.5), size: 14),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: GoogleFonts.inter(
+                  color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.5),
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  fontSize: 12,
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: Row(
+        children: [
+          buildFilterChip('all', 'All ($allCount)', Icons.layers_rounded, Colors.white),
+          const SizedBox(width: 8),
+          buildFilterChip('verified', 'Verified ($verifiedCount)', Icons.verified_rounded, const Color(0xFF2196F3)),
+          const SizedBox(width: 8),
+          buildFilterChip('unverified', 'Unverified ($unverifiedCount)', Icons.gpp_maybe_rounded, const Color(0xFFFFB300)),
+        ],
+      ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final logsAsync = ref.watch(activityLogsStreamProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Users')),
       body: Container(
         decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
         child: Column(
           children: [
+            logsAsync.hasValue
+                ? Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    child: CurrentlyActiveUsersList(logs: logsAsync.value!, isVertical: true),
+                  )
+                : logsAsync.when(
+                    data: (logs) => Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                      child: CurrentlyActiveUsersList(logs: logs, isVertical: true),
+                    ),
+                    loading: () => const SizedBox(
+                      height: 80,
+                      child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                    ),
+                    error: (e, _) => Text('Error loading active users: $e', style: const TextStyle(color: AppColors.error)),
+                  ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               child: TextField(
@@ -602,6 +562,8 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                 ),
               ),
             ),
+            _buildRoleSegmentedControl(),
+            _buildVerificationFilterRow(),
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
