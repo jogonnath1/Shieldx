@@ -1168,7 +1168,6 @@ class _SystemActivitySection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final metricsAsync = ref.watch(activeUsersMetricsProvider);
     final officersStatsAsync = ref.watch(officerActivityStatsProvider);
-    final trendsAsync = ref.watch(dailyActivityTrendsProvider);
     final logsAsync = ref.watch(activityLogsStreamProvider);
 
     final double screenWidth = MediaQuery.of(context).size.width;
@@ -1185,7 +1184,78 @@ class _SystemActivitySection extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                metricsAsync.when(
+                metricsAsync.hasValue
+                    ? Column(
+                        children: [
+                          _ActiveUsersGrid(metrics: metricsAsync.value!),
+                          _SuspiciousLoginsWarning(count: metricsAsync.value!['suspicious_logins'] ?? 0),
+                        ],
+                      )
+                    : metricsAsync.when(
+                        data: (metrics) => Column(
+                          children: [
+                            _ActiveUsersGrid(metrics: metrics),
+                            _SuspiciousLoginsWarning(count: metrics['suspicious_logins'] ?? 0),
+                          ],
+                        ),
+                        loading: () => const SizedBox(
+                          height: 120,
+                          child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                        ),
+                        error: (e, _) => Text('Error loading metrics: $e', style: const TextStyle(color: AppColors.error)),
+                      ),
+                const SizedBox(height: 24),
+                const _ActivityTrendsChart(),
+              ],
+            ),
+          ),
+          const SizedBox(width: 24),
+          // Right Column (40% width)
+          Expanded(
+            flex: 2,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                logsAsync.hasValue
+                    ? _CurrentlyActiveUsersList(logs: logsAsync.value!, isVertical: true)
+                    : logsAsync.when(
+                        data: (logs) => _CurrentlyActiveUsersList(logs: logs, isVertical: true),
+                        loading: () => const SizedBox(
+                          height: 80,
+                          child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                        ),
+                        error: (e, _) => Text('Error loading active users: $e', style: const TextStyle(color: AppColors.error)),
+                      ),
+                const SizedBox(height: 24),
+                officersStatsAsync.hasValue
+                    ? _MostActiveOfficersList(officersStats: officersStatsAsync.value!)
+                    : officersStatsAsync.when(
+                        data: (stats) => _MostActiveOfficersList(officersStats: stats),
+                        loading: () => const SizedBox(
+                          height: 150,
+                          child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                        ),
+                        error: (e, _) => Text('Error loading officers: $e', style: const TextStyle(color: AppColors.error)),
+                      ),
+              ],
+            ),
+          ),
+        ],
+      );
+    } else {
+      // Mobile / Single column layout
+      content = Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Metrics
+          metricsAsync.hasValue
+              ? Column(
+                  children: [
+                    _ActiveUsersGrid(metrics: metricsAsync.value!),
+                    _SuspiciousLoginsWarning(count: metricsAsync.value!['suspicious_logins'] ?? 0),
+                  ],
+                )
+              : metricsAsync.when(
                   data: (metrics) => Column(
                     children: [
                       _ActiveUsersGrid(metrics: metrics),
@@ -1198,35 +1268,26 @@ class _SystemActivitySection extends ConsumerWidget {
                   ),
                   error: (e, _) => Text('Error loading metrics: $e', style: const TextStyle(color: AppColors.error)),
                 ),
-                const SizedBox(height: 24),
-                trendsAsync.when(
-                  data: (trends) => _ActivityTrendsChart(trends: trends),
-                  loading: () => const SizedBox(
-                    height: 150,
-                    child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
-                  ),
-                  error: (e, _) => Text('Error loading charts: $e', style: const TextStyle(color: AppColors.error)),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 24),
-          // Right Column (40% width)
-          Expanded(
-            flex: 2,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                logsAsync.when(
-                  data: (logs) => _CurrentlyActiveUsersList(logs: logs, isVertical: true),
+          const SizedBox(height: 24),
+          // Active users online list
+          logsAsync.hasValue
+              ? _CurrentlyActiveUsersList(logs: logsAsync.value!, isVertical: false)
+              : logsAsync.when(
+                  data: (logs) => _CurrentlyActiveUsersList(logs: logs, isVertical: false),
                   loading: () => const SizedBox(
                     height: 80,
                     child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
                   ),
                   error: (e, _) => Text('Error loading active users: $e', style: const TextStyle(color: AppColors.error)),
                 ),
-                const SizedBox(height: 24),
-                officersStatsAsync.when(
+          const SizedBox(height: 24),
+          // Trends Chart
+          const _ActivityTrendsChart(),
+          const SizedBox(height: 24),
+          // Officers List
+          officersStatsAsync.hasValue
+              ? _MostActiveOfficersList(officersStats: officersStatsAsync.value!)
+              : officersStatsAsync.when(
                   data: (stats) => _MostActiveOfficersList(officersStats: stats),
                   loading: () => const SizedBox(
                     height: 150,
@@ -1234,60 +1295,6 @@ class _SystemActivitySection extends ConsumerWidget {
                   ),
                   error: (e, _) => Text('Error loading officers: $e', style: const TextStyle(color: AppColors.error)),
                 ),
-              ],
-            ),
-          ),
-        ],
-      );
-    } else {
-      // Mobile / Single column layout
-      content = Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Metrics
-          metricsAsync.when(
-            data: (metrics) => Column(
-              children: [
-                _ActiveUsersGrid(metrics: metrics),
-                _SuspiciousLoginsWarning(count: metrics['suspicious_logins'] ?? 0),
-              ],
-            ),
-            loading: () => const SizedBox(
-              height: 120,
-              child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
-            ),
-            error: (e, _) => Text('Error loading metrics: $e', style: const TextStyle(color: AppColors.error)),
-          ),
-          const SizedBox(height: 24),
-          // Active users online list
-          logsAsync.when(
-            data: (logs) => _CurrentlyActiveUsersList(logs: logs, isVertical: false),
-            loading: () => const SizedBox(
-              height: 80,
-              child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
-            ),
-            error: (e, _) => Text('Error loading active users: $e', style: const TextStyle(color: AppColors.error)),
-          ),
-          const SizedBox(height: 24),
-          // Trends Chart
-          trendsAsync.when(
-            data: (trends) => _ActivityTrendsChart(trends: trends),
-            loading: () => const SizedBox(
-              height: 150,
-              child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
-            ),
-            error: (e, _) => Text('Error loading charts: $e', style: const TextStyle(color: AppColors.error)),
-          ),
-          const SizedBox(height: 24),
-          // Officers List
-          officersStatsAsync.when(
-            data: (stats) => _MostActiveOfficersList(officersStats: stats),
-            loading: () => const SizedBox(
-              height: 150,
-              child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
-            ),
-            error: (e, _) => Text('Error loading officers: $e', style: const TextStyle(color: AppColors.error)),
-          ),
         ],
       );
     }
@@ -1298,14 +1305,16 @@ class _SystemActivitySection extends ConsumerWidget {
         content,
         const SizedBox(height: 24),
         // Live Timeline (always full-width at the bottom)
-        logsAsync.when(
-          data: (logs) => _ActivityTimeline(logs: logs),
-          loading: () => const SizedBox(
-            height: 150,
-            child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
-          ),
-          error: (e, _) => Text('Error loading audit log: $e', style: const TextStyle(color: AppColors.error)),
-        ),
+        logsAsync.hasValue
+            ? _ActivityTimeline(logs: logsAsync.value!)
+            : logsAsync.when(
+                data: (logs) => _ActivityTimeline(logs: logs),
+                loading: () => const SizedBox(
+                  height: 150,
+                  child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                ),
+                error: (e, _) => Text('Error loading audit log: $e', style: const TextStyle(color: AppColors.error)),
+              ),
         const SizedBox(height: 100),
       ],
     );
@@ -1875,8 +1884,7 @@ class _SuspiciousLoginsWarning extends StatelessWidget {
 }
 
 class _ActivityTrendsChart extends ConsumerWidget {
-  final List<Map<String, dynamic>> trends;
-  const _ActivityTrendsChart({required this.trends});
+  const _ActivityTrendsChart();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1928,10 +1936,16 @@ class _ActivityTrendsChartBodyState extends ConsumerState<_ActivityTrendsChartBo
     final selected = ref.watch(chartRangeProvider);
     final trendsAsync = ref.watch(activityTrendsProvider(selected));
 
-    // Cache data whenever new data arrives — never clear on loading.
-    trendsAsync.whenData((data) {
-      _cachedTrends = data;
-      _cachedRange = selected;
+    // Safely cache new data between frames — never mutate state inside build.
+    ref.listen(activityTrendsProvider(selected), (prev, next) {
+      next.whenData((data) {
+        if (mounted) {
+          setState(() {
+            _cachedTrends = data;
+            _cachedRange = selected;
+          });
+        }
+      });
     });
 
     return GlassCard(
