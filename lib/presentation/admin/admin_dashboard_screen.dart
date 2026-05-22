@@ -1492,7 +1492,8 @@ class _CurrentlyActiveUsersList extends ConsumerWidget {
     final Map<String, ActivityLogModel> activeUsersMap = {};
     for (final log in logs) {
       if (log.userId == null || log.userId!.isEmpty) continue;
-      final ageMinutes = now.difference(log.createdAt).inMinutes;
+      final diff = now.toUtc().difference(log.createdAt.toUtc()).inMinutes;
+      final ageMinutes = diff < 0 ? 0 : diff;
       if (ageMinutes <= 15) {
         if (!activeUsersMap.containsKey(log.userId)) {
           activeUsersMap[log.userId!] = log;
@@ -1532,8 +1533,11 @@ class _CurrentlyActiveUsersList extends ConsumerWidget {
           
           final name = profile?.name ?? lastLog.userName ?? 'User';
           final isVerified = profile?.isVerified ?? false;
-          final role = profile?.role ?? lastLog.role;
-          final ageMinutes = now.difference(lastLog.createdAt).inMinutes;
+          final role = profile != null
+              ? (profile.isMainAdmin ? 'main_admin' : profile.role)
+              : lastLog.role;
+          final diff = now.toUtc().difference(lastLog.createdAt.toUtc()).inMinutes;
+          final ageMinutes = diff < 0 ? 0 : diff;
           final dotColor = ageMinutes <= 5 ? const Color(0xFF00E676) : const Color(0xFFFFB300);
 
           return Padding(
@@ -1662,8 +1666,11 @@ class _CurrentlyActiveUsersList extends ConsumerWidget {
             
             final name = profile?.name ?? lastLog.userName ?? 'User';
             final isVerified = profile?.isVerified ?? false;
-            final role = profile?.role ?? lastLog.role;
-            final ageMinutes = now.difference(lastLog.createdAt).inMinutes;
+            final role = profile != null
+                ? (profile.isMainAdmin ? 'main_admin' : profile.role)
+                : lastLog.role;
+            final diff = now.toUtc().difference(lastLog.createdAt.toUtc()).inMinutes;
+            final ageMinutes = diff < 0 ? 0 : diff;
             final dotColor = ageMinutes <= 5 ? const Color(0xFF00E676) : const Color(0xFFFFB300);
 
             return Container(
