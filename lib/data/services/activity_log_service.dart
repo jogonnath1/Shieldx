@@ -87,7 +87,7 @@ class ActivityLogService {
     if (ids.isEmpty) return;
     await _client
         .from('activity_logs')
-        .update({'deleted_at': DateTime.now().toUtc().toIso8601String()})
+        .update({'deleted_at': DateTime.now().toIso8601String()})
         .inFilter('id', ids);
   }
 
