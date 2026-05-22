@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/utils/date_time_extensions.dart';
 import '../../data/models/complaint_model.dart';
 import '../../data/services/complaint_service.dart';
 import '../widgets/common/widgets.dart';
@@ -70,7 +71,7 @@ class _EditComplaintScreenState extends ConsumerState<EditComplaintScreen> {
     _presentAddressCtrl.text = c.presentAddress ?? '';
     _permanentAddressCtrl.text = c.permanentAddress ?? '';
     _selectedCategory = c.crimeCategory;
-    _incidentDate = c.incidentDatetime;
+    _incidentDate = c.incidentDatetime?.toBangladeshTime();
     setState(() => _isLoading = false);
   }
 
@@ -89,7 +90,7 @@ class _EditComplaintScreenState extends ConsumerState<EditComplaintScreen> {
         'description': _descriptionCtrl.text.trim(),
         'location_address': _locationCtrl.text.trim(),
         'crime_category': _selectedCategory,
-        'incident_datetime': _incidentDate?.toIso8601String(),
+        'incident_datetime': _incidentDate?.toUtcFromBangladesh().toIso8601String(),
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -118,9 +119,9 @@ class _EditComplaintScreenState extends ConsumerState<EditComplaintScreen> {
   Future<void> _pickDate() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: _incidentDate ?? DateTime.now(),
+      initialDate: _incidentDate ?? DateTime.now().toBangladeshTime(),
       firstDate: DateTime(2000),
-      lastDate: DateTime.now(),
+      lastDate: DateTime.now().toBangladeshTime(),
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
           colorScheme: const ColorScheme.dark(primary: AppColors.primary),
@@ -128,7 +129,30 @@ class _EditComplaintScreenState extends ConsumerState<EditComplaintScreen> {
         child: child!,
       ),
     );
-    if (picked != null) setState(() => _incidentDate = picked);
+    if (picked != null) {
+      if (!mounted) return;
+      final time = await showTimePicker(
+        context: context,
+        initialTime: TimeOfDay.fromDateTime(_incidentDate ?? DateTime.now().toBangladeshTime()),
+        builder: (ctx, child) => Theme(
+          data: Theme.of(ctx).copyWith(
+            colorScheme: const ColorScheme.dark(primary: AppColors.primary),
+          ),
+          child: child!,
+        ),
+      );
+      if (time != null) {
+        setState(() {
+          _incidentDate = DateTime(
+            picked.year,
+            picked.month,
+            picked.day,
+            time.hour,
+            time.minute,
+          );
+        });
+      }
+    }
   }
 
   @override
@@ -244,10 +268,10 @@ class _EditComplaintScreenState extends ConsumerState<EditComplaintScreen> {
                         child: ListTile(
                           contentPadding: EdgeInsets.zero,
                           leading: const Icon(Icons.event_outlined, color: AppColors.textHint),
-                          title: Text('Incident Date', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textHint)),
+                          title: Text('Incident Date & Time', style: GoogleFonts.inter(fontSize: 12, color: AppColors.textHint)),
                           subtitle: Text(
                             _incidentDate != null
-                                ? DateFormat('dd MMMM yyyy').format(_incidentDate!)
+                                ? DateFormat('dd MMMM yyyy, hh:mm a').format(_incidentDate!)
                                 : 'Tap to select',
                             style: GoogleFonts.inter(fontSize: 14, color: AppColors.textPrimary),
                           ),

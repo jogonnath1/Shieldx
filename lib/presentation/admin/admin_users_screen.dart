@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import '../../core/utils/date_time_extensions.dart';
 import '../../core/constants/app_colors.dart';
 import '../../data/services/profile_service.dart';
 import '../../data/models/profile_model.dart';
@@ -433,14 +434,16 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                                       ),
                                     ),
                                   ),
-                                  if (u.isVerified) ...[
-                                    const SizedBox(width: 6),
-                                    const Icon(
-                                      Icons.verified_rounded,
-                                      color: Color(0xFF2196F3),
-                                      size: 20,
-                                    ),
-                                  ],
+                                  const SizedBox(width: 6),
+                                  Icon(
+                                    u.isVerified
+                                        ? Icons.verified_rounded
+                                        : Icons.gpp_maybe_rounded,
+                                    color: u.isVerified
+                                        ? const Color(0xFF2196F3)
+                                        : const Color(0xFFFFB300),
+                                    size: 20,
+                                  ),
                                 ],
                               ),
                               const SizedBox(height: 6),
@@ -490,7 +493,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                           Icons.calendar_today_rounded,
                           'REGISTRATION DATE & TIME',
                           u.createdAt != null
-                              ? DateFormat('dd MMMM yyyy, hh:mm:ss a').format(u.createdAt!)
+                              ? u.createdAt!.formatBDT('dd MMMM yyyy, hh:mm:ss a')
                               : 'Not Available',
                         ),
                         
@@ -673,14 +676,16 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                                                         fontSize: 14,
                                                         color: AppColors.textPrimary)),
                                               ),
-                                              if (u.isVerified) ...[
-                                                const SizedBox(width: 4),
-                                                const Icon(
-                                                  Icons.verified_rounded,
-                                                  color: Color(0xFF2196F3),
-                                                  size: 16,
-                                                ),
-                                              ],
+                                              const SizedBox(width: 4),
+                                              Icon(
+                                                u.isVerified
+                                                    ? Icons.verified_rounded
+                                                    : Icons.gpp_maybe_rounded,
+                                                color: u.isVerified
+                                                    ? const Color(0xFF2196F3)
+                                                    : const Color(0xFFFFB300),
+                                                size: 16,
+                                              ),
                                               const SizedBox(width: 8),
                                               if (u.isAdmin || u.isMainAdmin)
                                                 Container(
@@ -710,7 +715,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                                               style: GoogleFonts.inter(
                                                   fontSize: 12, color: AppColors.textSecondary)),
                                           if (u.createdAt != null)
-                                            Text('Joined ${DateFormat('dd MMM yyyy, hh:mm a').format(u.createdAt!)}',
+                                            Text('Joined ${u.createdAt!.formatBDT('dd MMM yyyy, hh:mm a')}',
                                                 style: GoogleFonts.inter(
                                                     fontSize: 11, color: AppColors.textHint)),
                                         ],

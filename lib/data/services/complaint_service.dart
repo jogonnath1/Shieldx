@@ -2,9 +2,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/complaint_model.dart';
 import '../models/status_history_model.dart';
 import '../../core/constants/app_constants.dart';
+import 'activity_log_service.dart';
 
 class ComplaintService {
   final SupabaseClient _client = Supabase.instance.client;
+  final ActivityLogService _logService = ActivityLogService();
 
   // User: Submit complaint
   Future<ComplaintModel> submitComplaint(Map<String, dynamic> data) async {
@@ -13,7 +15,18 @@ class ComplaintService {
         .insert(data)
         .select()
         .single();
-    return ComplaintModel.fromMap(response);
+    final model = ComplaintModel.fromMap(response);
+
+    await _logService.logEvent(
+      actionType: 'report_submit',
+      details: {
+        'complaint_id': model.id,
+        'category': model.crimeCategory ?? 'Other',
+        'is_anonymous': model.isAnonymous,
+      },
+    );
+
+    return model;
   }
 
   // User: Get own complaints
@@ -73,6 +86,13 @@ class ComplaintService {
         .update({...data, 'updated_at': DateTime.now().toIso8601String()})
         .eq('id', id)
         .eq('status', 'submitted'); // safety: only update if still submitted
+
+    await _logService.logEvent(
+      actionType: 'report_edit',
+      details: {
+        'complaint_id': id,
+      },
+    );
   }
 
   // Admin: Update complaint status
@@ -158,12 +178,19 @@ class ComplaintService {
     return Map.fromEntries(sorted.take(7));
   }
 
-  // Delete complaint (admin/user - soft delete)
   Future<void> deleteComplaint(String id) async {
     await _client
         .from(AppConstants.complaintsTable)
         .update({'deleted_at': DateTime.now().toIso8601String()})
         .eq('id', id);
+
+    await _logService.logEvent(
+      actionType: 'report_delete',
+      details: {
+        'complaint_id': id,
+        'type': 'soft_delete',
+      },
+    );
   }
 
   // Get soft-deleted user complaints

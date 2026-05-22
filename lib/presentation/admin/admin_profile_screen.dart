@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import '../../core/utils/date_time_extensions.dart';
 import '../../core/constants/app_colors.dart';
 import '../../data/services/storage_service.dart';
 import '../../data/services/profile_service.dart';
@@ -377,7 +378,7 @@ class _AdminProfileScreenState extends ConsumerState<AdminProfileScreen> {
                     if (profile.profession != null)
                       InfoTile(icon: Icons.work_outline, label: 'Profession', value: profile.profession!, iconColor: AppColors.warning),
                     if (profile.createdAt != null)
-                      InfoTile(icon: Icons.calendar_today_outlined, label: 'Member Since', value: DateFormat('dd MMM yyyy, hh:mm a').format(profile.createdAt!), iconColor: AppColors.textHint),
+                      InfoTile(icon: Icons.calendar_today_outlined, label: 'Member Since', value: profile.createdAt!.formatBDT('dd MMM yyyy, hh:mm a'), iconColor: AppColors.textHint),
                   ],
                 ),
               ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),

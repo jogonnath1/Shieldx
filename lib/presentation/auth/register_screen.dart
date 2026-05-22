@@ -17,27 +17,151 @@ class RegisterScreen extends ConsumerStatefulWidget {
 
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _nameCtrl = TextEditingController();
+  final _firstNameCtrl = TextEditingController();
+  final _lastNameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _nidCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _otpCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
+  final _professionCtrl = TextEditingController();
+  final _presentAddressCtrl = TextEditingController();
+  final _permanentAddressCtrl = TextEditingController();
+  
+  final _emailFocusNode = FocusNode();
+  final _nidFocusNode = FocusNode();
+  final _phoneFocusNode = FocusNode();
+
+  String? _emailDbError;
+  String? _nidDbError;
+  String? _phoneDbError;
+
   bool _isLoading = false;
   bool _isOtpSent = false;
   bool _isPhoneVerified = false;
   String? _mockOtpCode;
 
   @override
+  void initState() {
+    super.initState();
+
+    // Listen to text controller changes to clear database warning instantly when the user edits
+    _emailCtrl.addListener(() {
+      if (_emailDbError != null) {
+        setState(() => _emailDbError = null);
+        _formKey.currentState?.validate();
+      }
+    });
+
+    _nidCtrl.addListener(() {
+      if (_nidDbError != null) {
+        setState(() => _nidDbError = null);
+        _formKey.currentState?.validate();
+      }
+    });
+
+    _phoneCtrl.addListener(() {
+      if (_phoneDbError != null) {
+        setState(() => _phoneDbError = null);
+        _formKey.currentState?.validate();
+      }
+    });
+
+    // Listen to focus changes for instant database validation on focus loss
+    _emailFocusNode.addListener(() {
+      if (!_emailFocusNode.hasFocus) {
+        _checkEmailUniqueness();
+      }
+    });
+
+    _nidFocusNode.addListener(() {
+      if (!_nidFocusNode.hasFocus) {
+        _checkNidUniqueness();
+      }
+    });
+
+    _phoneFocusNode.addListener(() {
+      if (!_phoneFocusNode.hasFocus) {
+        _checkPhoneUniqueness();
+      }
+    });
+  }
+
+  Future<void> _checkEmailUniqueness() async {
+    final email = _emailCtrl.text.trim();
+    if (email.isEmpty) return;
+
+    final emailRegExp = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!emailRegExp.hasMatch(email)) return;
+
+    try {
+      final notifier = ref.read(authNotifierProvider.notifier);
+      final checks = await notifier.checkContactExists(email: email, phone: '');
+      if (checks['email_exists'] == true) {
+        setState(() {
+          _emailDbError = 'This email address is already in use';
+        });
+        _formKey.currentState?.validate();
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _checkNidUniqueness() async {
+    final nid = _nidCtrl.text.trim();
+    if (nid.isEmpty) return;
+    if (!RegExp(r'^[0-9]+$').hasMatch(nid)) return;
+    if (nid.length < 10) return;
+
+    try {
+      final notifier = ref.read(authNotifierProvider.notifier);
+      final exists = await notifier.checkNidExists(nid);
+      if (exists) {
+        setState(() {
+          _nidDbError = 'This NID/Birth Certificate is already registered';
+        });
+        _formKey.currentState?.validate();
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _checkPhoneUniqueness() async {
+    final phone = _phoneCtrl.text.trim();
+    if (phone.isEmpty) return;
+    if (!phone.startsWith('+')) return;
+    final digits = phone.substring(1);
+    if (digits.isEmpty || !RegExp(r'^[0-9]+$').hasMatch(digits)) return;
+    if (phone.length < 10) return;
+
+    try {
+      final notifier = ref.read(authNotifierProvider.notifier);
+      final checks = await notifier.checkContactExists(email: '', phone: phone);
+      if (checks['phone_exists'] == true) {
+        setState(() {
+          _phoneDbError = 'This phone number is already registered';
+        });
+        _formKey.currentState?.validate();
+      }
+    } catch (_) {}
+  }
+
+  @override
   void dispose() {
-    _nameCtrl.dispose();
+    _firstNameCtrl.dispose();
+    _lastNameCtrl.dispose();
     _emailCtrl.dispose();
     _nidCtrl.dispose();
     _phoneCtrl.dispose();
     _otpCtrl.dispose();
     _passwordCtrl.dispose();
     _confirmCtrl.dispose();
+    _professionCtrl.dispose();
+    _presentAddressCtrl.dispose();
+    _permanentAddressCtrl.dispose();
+    
+    _emailFocusNode.dispose();
+    _nidFocusNode.dispose();
+    _phoneFocusNode.dispose();
     super.dispose();
   }
 
@@ -58,7 +182,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     try {
       final notifier = ref.read(authNotifierProvider.notifier);
 
-      // Prevent registration if email or phone is already registered
+      // Prevent registration if email, phone, or NID is already registered
+      final nidExists = await notifier.checkNidExists(_nidCtrl.text.trim());
+      if (nidExists) {
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+        _showError('This NID/Birth Certificate is already registered.');
+        return;
+      }
+
       final checks = await notifier.checkContactExists(
         email: _emailCtrl.text.trim(),
         phone: _phoneCtrl.text.trim(),
@@ -81,9 +213,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       final ok = await notifier.signUp(
         email: _emailCtrl.text.trim(),
         password: _passwordCtrl.text.trim(),
-        name: _nameCtrl.text.trim(),
+        name: '${_firstNameCtrl.text.trim()} ${_lastNameCtrl.text.trim()}'.trim(),
         phone: _phoneCtrl.text.trim(),
         nid: _nidCtrl.text.trim(),
+        profession: _professionCtrl.text.trim(),
+        presentAddress: _presentAddressCtrl.text.trim(),
+        permanentAddress: _permanentAddressCtrl.text.trim(),
       );
       if (!context.mounted) return;
       if (ok) {
@@ -141,20 +276,49 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   key: _formKey,
                   child: Column(
                     children: [
-                      CustomTextField(
-                        label: 'Full Name',
-                        hint: 'John Doe',
-                        controller: _nameCtrl,
-                        prefixIcon: Icons.person_outline,
-                        textInputAction: TextInputAction.next,
-                        validator: (v) =>
-                            v == null || v.isEmpty ? 'Name is required' : null,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: CustomTextField(
+                              label: 'First Name',
+                              hint: 'Jogonnath',
+                              controller: _firstNameCtrl,
+                              prefixIcon: Icons.person_outline,
+                              textInputAction: TextInputAction.next,
+                              validator: (v) {
+                                if (v == null || v.trim().isEmpty) return 'First name is required';
+                                if (!RegExp(r'^[a-zA-Z\s\-]+$').hasMatch(v.trim())) {
+                                  return 'Only alphabet letters are allowed';
+                                }
+                                return null;
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: CustomTextField(
+                              label: 'Last Name',
+                              hint: 'Das Talukder',
+                              controller: _lastNameCtrl,
+                              prefixIcon: Icons.person_outline,
+                              textInputAction: TextInputAction.next,
+                              validator: (v) {
+                                if (v == null || v.trim().isEmpty) return 'Last name is required';
+                                if (!RegExp(r'^[a-zA-Z\s\-]+$').hasMatch(v.trim())) {
+                                  return 'Only alphabet letters are allowed';
+                                }
+                                return null;
+                              },
+                            ),
+                          ),
+                        ],
                       ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.2),
                       const SizedBox(height: 14),
                       CustomTextField(
                         label: 'Email Address',
                         hint: 'you@example.com',
                         controller: _emailCtrl,
+                        focusNode: _emailFocusNode,
                         keyboardType: TextInputType.emailAddress,
                         prefixIcon: Icons.email_outlined,
                         textInputAction: TextInputAction.next,
@@ -164,6 +328,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           if (!emailRegExp.hasMatch(v.trim())) {
                             return 'Enter a valid email address (e.g., name@domain.com)';
                           }
+                          if (_emailDbError != null) return _emailDbError;
                           return null;
                         },
                       ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.2),
@@ -172,20 +337,58 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         label: 'NID Card or Birth Certificate',
                         hint: 'e.g. 19951234567890123',
                         controller: _nidCtrl,
+                        focusNode: _nidFocusNode,
                         keyboardType: TextInputType.number,
                         prefixIcon: Icons.badge_outlined,
                         textInputAction: TextInputAction.next,
                         validator: (v) {
                           if (v == null || v.trim().isEmpty) return 'NID or Birth Certificate is required';
+                          if (!RegExp(r'^[0-9]+$').hasMatch(v.trim())) {
+                            return 'Only numeric numbers are allowed';
+                          }
                           if (v.trim().length < 10) return 'Must be at least 10 digits';
+                          if (_nidDbError != null) return _nidDbError;
                           return null;
                         },
                       ).animate().fadeIn(delay: 225.ms).slideY(begin: 0.2),
                       const SizedBox(height: 14),
                       CustomTextField(
+                        label: 'Profession',
+                        hint: 'e.g. Engineer, Student, Businessman',
+                        controller: _professionCtrl,
+                        prefixIcon: Icons.work_outline,
+                        textInputAction: TextInputAction.next,
+                        validator: (v) =>
+                            v == null || v.trim().isEmpty ? 'Profession is required' : null,
+                      ).animate().fadeIn(delay: 230.ms).slideY(begin: 0.2),
+                      const SizedBox(height: 14),
+                      CustomTextField(
+                        label: 'Present Address',
+                        hint: 'Your current resident address',
+                        controller: _presentAddressCtrl,
+                        prefixIcon: Icons.location_on_outlined,
+                        maxLines: 2,
+                        textInputAction: TextInputAction.next,
+                        validator: (v) =>
+                            v == null || v.trim().isEmpty ? 'Present Address is required' : null,
+                      ).animate().fadeIn(delay: 235.ms).slideY(begin: 0.2),
+                      const SizedBox(height: 14),
+                      CustomTextField(
+                        label: 'Permanent Address',
+                        hint: 'Your permanent home address',
+                        controller: _permanentAddressCtrl,
+                        prefixIcon: Icons.home_outlined,
+                        maxLines: 2,
+                        textInputAction: TextInputAction.next,
+                        validator: (v) =>
+                            v == null || v.trim().isEmpty ? 'Permanent Address is required' : null,
+                      ).animate().fadeIn(delay: 240.ms).slideY(begin: 0.2),
+                      const SizedBox(height: 14),
+                      CustomTextField(
                         label: 'Phone Number',
                         hint: '+8801XXXXXXXXX',
                         controller: _phoneCtrl,
+                        focusNode: _phoneFocusNode,
                         keyboardType: TextInputType.phone,
                         prefixIcon: Icons.phone_outlined,
                         textInputAction: TextInputAction.next,
@@ -193,7 +396,12 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         validator: (v) {
                           if (v == null || v.isEmpty) return 'Phone number is required';
                           if (!v.startsWith('+')) return 'Must start with country code (e.g., +880)';
+                          final digits = v.substring(1);
+                          if (digits.isEmpty || !RegExp(r'^[0-9]+$').hasMatch(digits)) {
+                            return 'Only numeric numbers are allowed after +';
+                          }
                           if (v.length < 10) return 'Enter a valid phone number';
+                          if (_phoneDbError != null) return _phoneDbError;
                           return null;
                         },
                         suffix: _isPhoneVerified
@@ -205,6 +413,21 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                 padding: const EdgeInsets.only(right: 8.0),
                                 child: TextButton(
                                   onPressed: () async {
+                                    // First validate NID field format and length
+                                    final nidVal = _nidCtrl.text.trim();
+                                    if (nidVal.isEmpty) {
+                                      _showError('Please enter your NID / Birth Certificate number first.');
+                                      return;
+                                    }
+                                    if (!RegExp(r'^[0-9]+$').hasMatch(nidVal)) {
+                                      _showError('Only numeric numbers are allowed in NID Card or Birth Certificate.');
+                                      return;
+                                    }
+                                    if (nidVal.length < 10) {
+                                      _showError('NID Card or Birth Certificate must be at least 10 digits.');
+                                      return;
+                                    }
+
                                     final isOnline = await ref.read(connectivityProvider.notifier).checkConnection();
                                     if (!isOnline) {
                                       _showError('Active internet connection is required for phone verification.');
@@ -215,6 +438,15 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                       setState(() => _isLoading = true);
                                       try {
                                         final notifier = ref.read(authNotifierProvider.notifier);
+
+                                        // Also check if NID is already registered before phone verification
+                                        final nidExists = await notifier.checkNidExists(nidVal);
+                                        if (nidExists) {
+                                          if (!mounted) return;
+                                          setState(() => _isLoading = false);
+                                          _showError('This NID/Birth Certificate is already registered.');
+                                          return;
+                                        }
 
                                         // Prevent phone if already registered
                                         final checks = await notifier.checkContactExists(

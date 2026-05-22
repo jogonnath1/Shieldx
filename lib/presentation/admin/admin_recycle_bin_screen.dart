@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/utils/date_time_extensions.dart';
 import '../../data/models/complaint_model.dart';
 import '../../data/models/notification_model.dart';
 import '../../providers/auth_provider.dart';
@@ -829,7 +830,7 @@ class _AdminRecycleBinScreenState extends ConsumerState<AdminRecycleBinScreen> {
                       Expanded(
                         child: Text(
                           n.deletedAt != null
-                              ? 'Deleted: ${DateFormat('dd MMM, hh:mm a').format(n.deletedAt!)}'
+                              ? 'Deleted: ${n.deletedAt!.formatBDT('dd MMM, hh:mm a')}'
                               : 'Unknown delete date',
                           style: GoogleFonts.inter(
                             fontSize: 11,
@@ -1146,7 +1147,7 @@ class _AdminRecycleBinScreenState extends ConsumerState<AdminRecycleBinScreen> {
                                                       Expanded(
                                                         child: Text(
                                                           c.deletedAt != null
-                                                              ? 'Deleted on: ${DateFormat('dd MMM, hh:mm a').format(c.deletedAt!)}'
+                                                              ? 'Deleted on: ${c.deletedAt!.formatBDT('dd MMM, hh:mm a')}'
                                                               : 'Unknown delete date',
                                                           style: GoogleFonts.inter(
                                                             fontSize: 11,

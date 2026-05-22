@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/utils/date_time_extensions.dart';
 import '../../data/models/complaint_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/complaint_provider.dart';
@@ -274,8 +275,7 @@ class MyComplaintsScreen extends ConsumerWidget {
                           const SizedBox(width: 5),
                           Text(
                             c.createdAt != null
-                                ? DateFormat('dd MMM yyyy, hh:mm a')
-                                    .format(c.createdAt!)
+                                ? DateFormat('dd MMM yyyy, hh:mm a').format(c.createdAt!.toBangladeshTime())
                                 : 'Unknown date',
                             style: GoogleFonts.inter(
                                 fontSize: 12, color: AppColors.textHint),

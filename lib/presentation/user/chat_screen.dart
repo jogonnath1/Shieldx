@@ -9,6 +9,7 @@ import '../../data/services/message_service.dart';
 import '../../data/models/message_model.dart';
 import '../../providers/auth_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/utils/date_time_extensions.dart';
 
 class ChatScreen extends ConsumerStatefulWidget {
   final String complaintId;
@@ -293,7 +294,7 @@ class _ChatBubble extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     message.sentAt != null
-                        ? DateFormat('hh:mm a').format(message.sentAt!.toLocal())
+                        ? DateFormat('hh:mm a').format(message.sentAt!.toBangladeshTime())
                         : '',
                     style: GoogleFonts.inter(
                         fontSize: 10,

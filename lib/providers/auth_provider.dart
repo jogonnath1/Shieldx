@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../data/models/profile_model.dart';
 import '../data/services/auth_service.dart';
 import '../core/services/preferences_service.dart';
+import 'activity_log_provider.dart';
 
 final authServiceProvider = Provider<AuthService>((ref) => AuthService());
 
@@ -75,9 +76,20 @@ class AuthNotifier extends StateNotifier<AsyncValue<ProfileModel?>> {
       await _service.signIn(email: email, password: password);
       final profile = await _service.getCurrentProfile();
       state = AsyncValue.data(profile);
+      if (profile != null) {
+        await _ref.read(activityLogServiceProvider).logEvent(
+          actionType: 'login',
+          profile: profile,
+        );
+      }
       return true;
     } catch (e, st) {
       state = AsyncValue.error(e, st);
+      await _ref.read(activityLogServiceProvider).logEvent(
+        actionType: 'suspicious_login',
+        fallbackEmail: email,
+        details: {'reason': e.toString()},
+      );
       rethrow; // let the UI show the real error
     }
   }
@@ -88,16 +100,34 @@ class AuthNotifier extends StateNotifier<AsyncValue<ProfileModel?>> {
     required String name,
     String? phone,
     String? nid,
+    String? profession,
+    String? presentAddress,
+    String? permanentAddress,
   }) async {
     state = const AsyncValue.loading();
     try {
       await _service.signUp(
-          email: email, password: password, name: name, phone: phone, nid: nid);
+        email: email,
+        password: password,
+        name: name,
+        phone: phone,
+        nid: nid,
+        profession: profession,
+        presentAddress: presentAddress,
+        permanentAddress: permanentAddress,
+      );
       
       // If Supabase auto-logins after signup, fetch the profile
       if (_service.isLoggedIn) {
         final profile = await _service.getCurrentProfile();
         state = AsyncValue.data(profile);
+        if (profile != null) {
+          await _ref.read(activityLogServiceProvider).logEvent(
+            actionType: 'login',
+            profile: profile,
+            details: {'info': 'Signed up and logged in'},
+          );
+        }
       } else {
         state = const AsyncValue.data(null);
       }
@@ -113,6 +143,10 @@ class AuthNotifier extends StateNotifier<AsyncValue<ProfileModel?>> {
     required String phone,
   }) async {
     return await _service.checkContactExists(email: email, phone: phone);
+  }
+
+  Future<bool> checkNidExists(String nid) async {
+    return await _service.checkNidExists(nid);
   }
 
   Future<void> sendPhoneOtp(String phone) async {
@@ -151,6 +185,13 @@ class AuthNotifier extends StateNotifier<AsyncValue<ProfileModel?>> {
 
 
   Future<void> signOut() async {
+    final profile = state.valueOrNull;
+    if (profile != null) {
+      await _ref.read(activityLogServiceProvider).logEvent(
+        actionType: 'logout',
+        profile: profile,
+      );
+    }
     await _service.signOut();
     state = const AsyncValue.data(null);
     final prefs = _ref.read(preferencesServiceProvider);

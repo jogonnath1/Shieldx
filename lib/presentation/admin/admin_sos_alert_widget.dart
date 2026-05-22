@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
 import '../../providers/admin_sos_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../core/utils/date_time_extensions.dart';
 
 class AdminActiveSOSAlertsWidget extends ConsumerWidget {
   const AdminActiveSOSAlertsWidget({super.key});
@@ -50,7 +51,7 @@ class AdminActiveSOSAlertsWidget extends ConsumerWidget {
               final user = emergency.userProfile;
               final lat = emergency.latitude;
               final lng = emergency.longitude;
-              final timeString = DateFormat('hh:mm:ss a').format(emergency.createdAt.toLocal());
+              final timeString = emergency.createdAt.formatBDT('hh:mm:ss a');
 
               return Container(
                 margin: const EdgeInsets.only(bottom: 12),

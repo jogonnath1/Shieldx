@@ -5,10 +5,13 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/utils/date_time_extensions.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/complaint_provider.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/sos_provider.dart';
+import '../../providers/time_provider.dart';
+import '../../providers/navigation_trigger_provider.dart';
 import '../widgets/common/widgets.dart';
 import '../widgets/common/sos_button_widget.dart';
 
@@ -17,6 +20,8 @@ class HomeScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final triggerVal = ref.watch(navigationTriggerProvider.select((state) => state['/home'] ?? 0));
+
     ref.listen<SOSState>(sosNotifierProvider, (previous, next) {
       if (previous?.status == SOSStatus.active && next.status == SOSStatus.idle) {
         if (context.mounted) {
@@ -85,30 +90,158 @@ class HomeScreen extends ConsumerWidget {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
+                                // Modern Sub-tag with Live Pulsing Indicator
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.primary.withOpacity(0.08),
+                                    borderRadius: BorderRadius.circular(30),
+                                    border: Border.all(
+                                      color: AppColors.primary.withOpacity(0.2),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Container(
+                                        width: 5,
+                                        height: 5,
+                                        decoration: const BoxDecoration(
+                                          color: AppColors.success,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ).animate(onPlay: (c) => c.repeat(reverse: true))
+                                       .scale(begin: const Offset(0.8, 0.8), end: const Offset(1.3, 1.3), duration: 800.ms),
+                                      const SizedBox(width: 6),
+                                      Text(
+                                        "SECURE CITIZEN PORTAL",
+                                        style: GoogleFonts.inter(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w800,
+                                          color: AppColors.primaryLight,
+                                          letterSpacing: 1.5,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                // Main Greeting Row with high fidelity entrance animations
                                 Wrap(
+                                  key: ValueKey('user_greeting_$triggerVal'),
                                   crossAxisAlignment: WrapCrossAlignment.center,
                                   spacing: 8,
                                   runSpacing: 6,
                                   children: [
                                     Text(
-                                      'Hello, ${profile?.displayName.split(' ').first ?? 'User'} 👋',
+                                      'Hey',
                                       style: GoogleFonts.inter(
-                                        fontSize: 22,
-                                        fontWeight: FontWeight.w800,
-                                        color: AppColors.textPrimary,
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.w300,
+                                        color: AppColors.textSecondary,
+                                        letterSpacing: -0.5,
                                       ),
-                                    ),
-                                    _buildVerificationBadge(profile?.isVerified ?? false, compact: true),
+                                    ).animate()
+                                     .fadeIn(duration: 600.ms, delay: 100.ms)
+                                     .slideX(begin: -0.2, end: 0.0, duration: 600.ms, curve: Curves.easeOutQuad),
+                                    ShaderMask(
+                                      shaderCallback: (bounds) => const LinearGradient(
+                                        colors: [Color(0xFF3B82F6), Color(0xFF10B981)],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      ).createShader(Rect.fromLTWH(0, 0, bounds.width, bounds.height)),
+                                      child: Text(
+                                        profile?.displayName.split(' ').first ?? 'User',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 26,
+                                          fontWeight: FontWeight.w900,
+                                          color: Colors.white,
+                                          letterSpacing: -0.5,
+                                        ),
+                                      ),
+                                    ).animate()
+                                     .fadeIn(duration: 600.ms, delay: 250.ms)
+                                     .slideX(begin: -0.15, end: 0.0, duration: 600.ms, curve: Curves.easeOutQuad)
+                                     .shimmer(delay: 850.ms, duration: 1500.ms, color: Colors.white24),
+                                    Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFF10B981).withOpacity(0.08),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: const Color(0xFF10B981).withOpacity(0.25),
+                                          width: 1.2,
+                                        ),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: const Color(0xFF10B981).withOpacity(0.12),
+                                            blurRadius: 8,
+                                            spreadRadius: 1,
+                                          )
+                                        ],
+                                      ),
+                                      child: const Text(
+                                        '👋',
+                                        style: TextStyle(fontSize: 16),
+                                      )
+                                          .animate(onPlay: (controller) => controller.repeat(reverse: true))
+                                          .rotate(
+                                            begin: -0.08,
+                                            end: 0.08,
+                                            duration: 750.ms,
+                                            curve: Curves.easeInOut,
+                                          ),
+                                    ).animate()
+                                     .fadeIn(duration: 600.ms, delay: 400.ms)
+                                     .scale(begin: const Offset(0.4, 0.4), end: const Offset(1.0, 1.0), duration: 600.ms, curve: Curves.elasticOut),
+                                    _buildVerificationBadge(profile?.isVerified ?? false, compact: true)
+                                     .animate()
+                                     .fadeIn(duration: 600.ms, delay: 550.ms)
+                                     .scale(begin: const Offset(0.5, 0.5), end: const Offset(1.0, 1.0), duration: 600.ms, curve: Curves.easeOutBack),
                                   ],
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  DateFormat('EEEE, dd MMMM yyyy, hh:mm a')
-                                      .format(DateTime.now()),
-                                  style: GoogleFonts.inter(
-                                    fontSize: 13,
-                                    color: AppColors.textSecondary,
-                                  ),
+                                const SizedBox(height: 6),
+                                // Date & Time with Icons
+                                // Date & Time with Icons (Live Ticking BDT Clock)
+                                Consumer(
+                                  builder: (context, ref, child) {
+                                    final nowBDT = ref.watch(bangladeshTimeProvider).toBangladeshTime();
+                                    return Row(
+                                      children: [
+                                        Icon(Icons.calendar_today_rounded, size: 11, color: AppColors.textHint),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          DateFormat('EEEE, dd MMMM yyyy').format(nowBDT),
+                                          style: GoogleFonts.inter(
+                                            fontSize: 11,
+                                            color: AppColors.textSecondary,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Container(
+                                          width: 3,
+                                          height: 3,
+                                          decoration: const BoxDecoration(
+                                            color: AppColors.textHint,
+                                            shape: BoxShape.circle,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Icon(Icons.access_time_rounded, size: 11, color: AppColors.textHint),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          DateFormat('hh:mm:ss a').format(nowBDT),
+                                          style: GoogleFonts.inter(
+                                            fontSize: 11,
+                                            color: AppColors.textSecondary,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  },
                                 ),
                               ],
                             ),

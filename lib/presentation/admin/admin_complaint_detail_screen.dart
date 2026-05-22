@@ -5,14 +5,17 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/utils/date_time_extensions.dart';
 import '../../core/constants/app_constants.dart';
 import '../../data/services/complaint_service.dart';
 import '../../data/models/complaint_model.dart';
 import '../../data/models/status_history_model.dart';
 import '../../data/models/officer_model.dart';
+import 'package:shieldx/data/models/profile_model.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/chat_provider.dart';
 import '../../providers/officer_provider.dart';
+import '../../providers/complaint_provider.dart';
 import '../widgets/common/widgets.dart';
 
 class AdminComplaintDetailScreen extends ConsumerStatefulWidget {
@@ -191,6 +194,13 @@ class _DetailsTab extends ConsumerWidget {
     final unreadAsync = ref.watch(unreadMessagesCountProvider(complaint.id));
     final unreadCount = unreadAsync.valueOrNull ?? 0;
 
+    final profilesAsync = ref.watch(allProfilesStreamProvider);
+    final profiles = profilesAsync.valueOrNull ?? [];
+    final matchedProfile = complaint.userId != null
+        ? profiles.cast<ProfileModel?>().firstWhere((p) => p?.id == complaint.userId, orElse: () => null)
+        : null;
+    final isVerified = matchedProfile?.isVerified ?? false;
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -261,6 +271,13 @@ class _DetailsTab extends ConsumerWidget {
                   icon: Icons.person_outline,
                   label: 'Name',
                   value: complaint.isAnonymous ? 'Anonymous User' : complaint.fullName,
+                  trailing: (!complaint.isAnonymous && matchedProfile != null)
+                      ? Icon(
+                          isVerified ? Icons.verified_rounded : Icons.gpp_maybe_rounded,
+                          color: isVerified ? const Color(0xFF2196F3) : const Color(0xFFFFB300),
+                          size: 16,
+                        )
+                      : null,
                 ),
                 if (!complaint.isAnonymous) ...[
                   if (complaint.phone != null)
@@ -291,12 +308,12 @@ class _DetailsTab extends ConsumerWidget {
                   InfoTile(
                       icon: Icons.event_outlined,
                       label: 'Incident Date',
-                      value: DateFormat('dd MMM yyyy').format(complaint.incidentDatetime!)),
+                      value: DateFormat('dd MMM yyyy, hh:mm a').format(complaint.incidentDatetime!.toBangladeshTime())),
                 InfoTile(
                     icon: Icons.calendar_today_outlined,
                     label: 'Filed On',
                     value: complaint.createdAt != null
-                        ? DateFormat('dd MMM yyyy, hh:mm a').format(complaint.createdAt!)
+                        ? complaint.createdAt!.formatBDT('dd MMM yyyy, hh:mm a')
                         : 'Unknown'),
               ],
             ),
@@ -455,8 +472,7 @@ class _TimelineTab extends StatelessWidget {
                       const SizedBox(height: 6),
                       Text(
                         h.changedAt != null
-                            ? DateFormat('dd MMM yyyy, hh:mm a')
-                                .format(h.changedAt!)
+                            ? h.changedAt!.formatBDT('dd MMM yyyy, hh:mm a')
                             : '',
                         style: GoogleFonts.inter(
                             fontSize: 11, color: AppColors.textHint),

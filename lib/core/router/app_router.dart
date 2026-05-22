@@ -14,6 +14,7 @@ import '../../presentation/user/complaint_detail_screen.dart';
 import '../../presentation/user/profile_screen.dart';
 import '../../presentation/user/edit_profile_screen.dart';
 import '../../presentation/user/change_password_screen.dart';
+import '../../presentation/user/security_logs_screen.dart';
 import '../../presentation/user/police_stations_screen.dart';
 import '../../presentation/user/chat_screen.dart';
 import '../../presentation/user/edit_complaint_screen.dart';
@@ -29,6 +30,7 @@ import '../../presentation/admin/admin_stations_screen.dart';
 import '../../presentation/admin/admin_recycle_bin_screen.dart';
 import '../../presentation/common/notifications_screen.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../providers/navigation_trigger_provider.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _adminShellKey = GlobalKey<NavigatorState>();
@@ -138,6 +140,10 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const ProfileScreen(),
       ),
       GoRoute(
+        path: '/profile/security-logs',
+        builder: (context, state) => const SecurityLogsScreen(),
+      ),
+      GoRoute(
         path: '/recycle-bin',
         builder: (context, state) => const RecycleBinScreen(),
       ),
@@ -208,6 +214,9 @@ final routerProvider = Provider<GoRouter>((ref) {
     final currentConfig = router.routerDelegate.currentConfiguration;
     final location = currentConfig.last.matchedLocation;
     prefsService.saveLastRoute(location);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(navigationTriggerProvider.notifier).trigger(location);
+    });
   });
 
   return router;

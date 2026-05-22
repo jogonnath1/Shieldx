@@ -108,7 +108,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   label: 'Full Name',
                   controller: _nameCtrl,
                   prefixIcon: Icons.person_outline,
-                  validator: (v) => v == null || v.isEmpty ? 'Required' : null,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Required';
+                    if (!RegExp(r'^[a-zA-Z\s\-]+$').hasMatch(v.trim())) {
+                      return 'Only alphabet letters and spaces are allowed';
+                    }
+                    return null;
+                  },
                 ).animate().fadeIn(delay: 50.ms).slideY(begin: 0.1),
                 const SizedBox(height: 14),
                 CustomTextField(
@@ -116,6 +122,15 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   controller: _phoneCtrl,
                   prefixIcon: Icons.phone_outlined,
                   keyboardType: TextInputType.phone,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Required';
+                    if (!v.startsWith('+')) return 'Must start with country code (e.g., +880)';
+                    final digits = v.substring(1);
+                    if (digits.isEmpty || !RegExp(r'^[0-9]+$').hasMatch(digits)) {
+                      return 'Only numeric numbers are allowed after +';
+                    }
+                    return null;
+                  },
                 ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1),
                 const SizedBox(height: 14),
                 CustomTextField(
@@ -123,6 +138,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   controller: _nidCtrl,
                   prefixIcon: Icons.credit_card_outlined,
                   keyboardType: TextInputType.number,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Required';
+                    if (!RegExp(r'^[0-9]+$').hasMatch(v.trim())) {
+                      return 'Only numeric numbers are allowed';
+                    }
+                    return null;
+                  },
                 ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.1),
                 const SizedBox(height: 14),
                 CustomTextField(

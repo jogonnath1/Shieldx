@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/utils/date_time_extensions.dart';
 import '../../data/services/complaint_service.dart';
 import '../../data/models/complaint_model.dart';
 import '../../data/models/status_history_model.dart';
@@ -127,7 +128,7 @@ class _ComplaintDetailScreenState
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                'Submitted on ${_complaint!.createdAt != null ? DateFormat('dd MMM yyyy').format(_complaint!.createdAt!) : 'Unknown'}',
+                                'Submitted on ${_complaint!.createdAt != null ? DateFormat('dd MMM yyyy, hh:mm a').format(_complaint!.createdAt!.toBangladeshTime()) : 'Unknown'}',
                                 style: GoogleFonts.inter(
                                     color: AppColors.textHint, fontSize: 12),
                               ),
@@ -173,9 +174,9 @@ class _ComplaintDetailScreenState
                               if (_complaint!.incidentDatetime != null)
                                 InfoTile(
                                   icon: Icons.event_outlined,
-                                  label: 'Incident Date',
-                                  value: DateFormat('dd MMM yyyy')
-                                      .format(_complaint!.incidentDatetime!),
+                                  label: 'Incident Date & Time',
+                                  value: DateFormat('dd MMM yyyy, hh:mm a')
+                                      .format(_complaint!.incidentDatetime!.toBangladeshTime()),
                                 ),
                               InfoTile(
                                 icon: Icons.person_outline,
@@ -277,8 +278,7 @@ class _TimelineItem extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   history.changedAt != null
-                      ? DateFormat('dd MMM yyyy, hh:mm a')
-                          .format(history.changedAt!)
+                      ? DateFormat('dd MMM yyyy, hh:mm a').format(history.changedAt!.toBangladeshTime())
                       : '',
                   style: GoogleFonts.inter(
                       fontSize: 11, color: AppColors.textHint),

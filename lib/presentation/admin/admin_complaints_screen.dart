@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/utils/date_time_extensions.dart';
 import '../../core/constants/app_constants.dart';
 import '../../providers/complaint_provider.dart';
 import '../widgets/admin/station_switcher_widget.dart';
@@ -68,12 +69,12 @@ class AdminComplaintsScreen extends ConsumerWidget {
                     child: Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: (filterState.category != 'all' || filterState.dateRange != null)
+                        color: (filterState.category != 'all' || filterState.dateRange != null || filterState.userVerification != 'all')
                             ? AppColors.primary.withOpacity(0.15)
                             : AppColors.surfaceLight.withOpacity(0.4),
                         borderRadius: BorderRadius.circular(14),
                         border: Border.all(
-                          color: (filterState.category != 'all' || filterState.dateRange != null)
+                          color: (filterState.category != 'all' || filterState.dateRange != null || filterState.userVerification != 'all')
                               ? AppColors.primary
                               : AppColors.cardBorder,
                           width: 1,
@@ -81,7 +82,7 @@ class AdminComplaintsScreen extends ConsumerWidget {
                       ),
                       child: Icon(
                         Icons.tune_rounded,
-                        color: (filterState.category != 'all' || filterState.dateRange != null)
+                        color: (filterState.category != 'all' || filterState.dateRange != null || filterState.userVerification != 'all')
                             ? AppColors.primaryLight
                             : AppColors.textSecondary,
                         size: 20,
@@ -93,7 +94,7 @@ class AdminComplaintsScreen extends ConsumerWidget {
             ),
 
             // Active Filters indicator
-            if (filterState.category != 'all' || filterState.dateRange != null)
+            if (filterState.category != 'all' || filterState.dateRange != null || filterState.userVerification != 'all')
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
                 child: Row(
@@ -140,6 +141,40 @@ class AdminComplaintsScreen extends ConsumerWidget {
                                   },
                                 ),
                               ),
+                            if (filterState.userVerification != 'all')
+                              Padding(
+                                padding: const EdgeInsets.only(right: 6),
+                                child: Chip(
+                                  label: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(
+                                        filterState.userVerification == 'verified'
+                                            ? Icons.verified_rounded
+                                            : Icons.gpp_maybe_rounded,
+                                        color: filterState.userVerification == 'verified'
+                                            ? const Color(0xFF2196F3)
+                                            : const Color(0xFFFFB300),
+                                        size: 12,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        filterState.userVerification == 'verified'
+                                            ? 'Verified Users'
+                                            : 'Unverified Users',
+                                      ),
+                                    ],
+                                  ),
+                                  labelStyle: GoogleFonts.inter(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600),
+                                  backgroundColor: AppColors.primary.withOpacity(0.2),
+                                  side: BorderSide(color: AppColors.primary.withOpacity(0.4)),
+                                  padding: EdgeInsets.zero,
+                                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  onDeleted: () {
+                                    filterNotifier.state = filterState.copyWith(userVerification: 'all');
+                                  },
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -149,6 +184,7 @@ class AdminComplaintsScreen extends ConsumerWidget {
                         filterNotifier.state = filterState.copyWith(
                           category: 'all',
                           dateRange: () => null,
+                          userVerification: 'all',
                         );
                       },
                       style: TextButton.styleFrom(
@@ -253,13 +289,25 @@ class AdminComplaintsScreen extends ConsumerWidget {
                                 Text(c.fullName,
                                     style: GoogleFonts.inter(
                                         fontSize: 12, color: AppColors.textHint)),
+                                if (!c.isAnonymous) ...[
+                                  const SizedBox(width: 4),
+                                  Icon(
+                                    c.userIsVerified == true
+                                        ? Icons.verified_rounded
+                                        : Icons.gpp_maybe_rounded,
+                                    color: c.userIsVerified == true
+                                        ? const Color(0xFF2196F3)
+                                        : const Color(0xFFFFB300),
+                                    size: 14,
+                                  ),
+                                ],
                                 const Spacer(),
                                 const Icon(Icons.calendar_today_outlined,
                                     size: 14, color: AppColors.textHint),
                                 const SizedBox(width: 4),
                                 Text(
                                   c.createdAt != null
-                                      ? DateFormat('dd MMM yyyy, hh:mm a').format(c.createdAt!)
+                                      ? c.createdAt!.formatBDT('dd MMM yyyy, hh:mm a')
                                       : '',
                                   style: GoogleFonts.inter(
                                       fontSize: 12, color: AppColors.textHint),
@@ -500,6 +548,7 @@ void _showFilterBottomSheet(BuildContext context, WidgetRef ref, bool isAdmin) {
                             filterNotifier.state = filterState.copyWith(
                               category: 'all',
                               dateRange: () => null,
+                              userVerification: 'all',
                             );
                             Navigator.pop(ctx);
                           },
@@ -618,6 +667,67 @@ void _showFilterBottomSheet(BuildContext context, WidgetRef ref, bool isAdmin) {
                         ),
                       ),
                     ),
+                    if (isAdmin) ...[
+                      const SizedBox(height: 24),
+                      Text(
+                        'Submitter Verification',
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: AppColors.surfaceLight,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppColors.cardBorder),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: _VerificationSegmentButton(
+                                label: 'All',
+                                isSelected: filterState.userVerification == 'all',
+                                onTap: () {
+                                  filterNotifier.state = filterState.copyWith(userVerification: 'all');
+                                },
+                              ),
+                            ),
+                            Expanded(
+                              child: _VerificationSegmentButton(
+                                label: 'Verified',
+                                icon: const Icon(
+                                  Icons.verified_rounded,
+                                  size: 14,
+                                  color: Color(0xFF2196F3),
+                                ),
+                                isSelected: filterState.userVerification == 'verified',
+                                onTap: () {
+                                  filterNotifier.state = filterState.copyWith(userVerification: 'verified');
+                                },
+                              ),
+                            ),
+                            Expanded(
+                              child: _VerificationSegmentButton(
+                                label: 'Unverified',
+                                icon: const Icon(
+                                  Icons.gpp_maybe_rounded,
+                                  size: 14,
+                                  color: Color(0xFFFFB300),
+                                ),
+                                isSelected: filterState.userVerification == 'unverified',
+                                onTap: () {
+                                  filterNotifier.state = filterState.copyWith(userVerification: 'unverified');
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 32),
 
                     // Apply Filters Button
@@ -651,4 +761,56 @@ void _showFilterBottomSheet(BuildContext context, WidgetRef ref, bool isAdmin) {
       );
     },
   );
+}
+
+class _VerificationSegmentButton extends StatelessWidget {
+  final String label;
+  final Widget? icon;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _VerificationSegmentButton({
+    required this.label,
+    this.icon,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppColors.primary.withOpacity(0.15)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : Colors.transparent,
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (icon != null) ...[
+              icon!,
+              const SizedBox(width: 4),
+            ],
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                color: isSelected ? AppColors.primaryLight : AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

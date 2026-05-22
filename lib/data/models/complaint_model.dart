@@ -27,6 +27,7 @@ class ComplaintModel {
   final String? assignedOfficerName;
   final String? userEmail;
   final String? userName;
+  final bool? userIsVerified;
 
   const ComplaintModel({
     required this.id,
@@ -55,7 +56,68 @@ class ComplaintModel {
     this.userName,
     this.isAnonymous = false,
     this.policeStation,
+    this.userIsVerified,
   });
+
+  ComplaintModel copyWith({
+    String? id,
+    String? userId,
+    String? firstName,
+    String? lastName,
+    String? phone,
+    String? nid,
+    String? profession,
+    String? presentAddress,
+    String? permanentAddress,
+    String? crimeCategory,
+    String? description,
+    double? latitude,
+    double? longitude,
+    String? locationAddress,
+    DateTime? incidentDatetime,
+    String? status,
+    String? assignedOfficerId,
+    List<String>? evidenceUrls,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+    DateTime? deletedAt,
+    String? assignedOfficerName,
+    String? userEmail,
+    String? userName,
+    bool? isAnonymous,
+    String? policeStation,
+    bool? userIsVerified,
+  }) {
+    return ComplaintModel(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      firstName: firstName ?? this.firstName,
+      lastName: lastName ?? this.lastName,
+      phone: phone ?? this.phone,
+      nid: nid ?? this.nid,
+      profession: profession ?? this.profession,
+      presentAddress: presentAddress ?? this.presentAddress,
+      permanentAddress: permanentAddress ?? this.permanentAddress,
+      crimeCategory: crimeCategory ?? this.crimeCategory,
+      description: description ?? this.description,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
+      locationAddress: locationAddress ?? this.locationAddress,
+      incidentDatetime: incidentDatetime ?? this.incidentDatetime,
+      status: status ?? this.status,
+      assignedOfficerId: assignedOfficerId ?? this.assignedOfficerId,
+      evidenceUrls: evidenceUrls ?? this.evidenceUrls,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+      deletedAt: deletedAt ?? this.deletedAt,
+      assignedOfficerName: assignedOfficerName ?? this.assignedOfficerName,
+      userEmail: userEmail ?? this.userEmail,
+      userName: userName ?? this.userName,
+      isAnonymous: isAnonymous ?? this.isAnonymous,
+      policeStation: policeStation ?? this.policeStation,
+      userIsVerified: userIsVerified ?? this.userIsVerified,
+    );
+  }
 
   String get fullName {
     if (isAnonymous) return 'Anonymous User';
@@ -109,6 +171,7 @@ class ComplaintModel {
       userName: map['user_name'] as String?,
       isAnonymous: (map['is_anonymous'] as bool?) ?? false,
       policeStation: map['police_station'] as String?,
+      userIsVerified: map['user_is_verified'] as bool?,
     );
   }
 

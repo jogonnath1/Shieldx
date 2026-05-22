@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
+import '../../core/utils/date_time_extensions.dart';
 import '../../core/constants/app_colors.dart';
 import '../../data/services/storage_service.dart';
 import '../../data/services/profile_service.dart';
@@ -433,7 +434,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         InfoTile(
                           icon: Icons.calendar_today_outlined,
                           label: 'Member Since',
-                          value: DateFormat('dd MMM yyyy, hh:mm a').format(profile.createdAt!),
+                          value: profile.createdAt!.formatBDT('dd MMM yyyy, hh:mm a'),
                           iconColor: AppColors.textHint,
                         ),
                     ],
@@ -453,6 +454,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   label: 'Change Password',
                   onTap: () => context.push('/change-password'),
                 ).animate().fadeIn(delay: 300.ms),
+                const SizedBox(height: 10),
+                _ProfileAction(
+                  icon: Icons.security_rounded,
+                  label: 'Login & Security History',
+                  onTap: () => context.push('/profile/security-logs'),
+                ).animate().fadeIn(delay: 330.ms),
                 const SizedBox(height: 10),
                 _ProfileAction(
                   icon: Icons.folder_open_rounded,

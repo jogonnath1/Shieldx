@@ -1,9 +1,11 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/profile_model.dart';
 import '../../core/constants/app_constants.dart';
+import 'activity_log_service.dart';
 
 class AuthService {
   final SupabaseClient _client = Supabase.instance.client;
+  final ActivityLogService _logService = ActivityLogService();
 
   User? get currentUser => _client.auth.currentUser;
   bool get isLoggedIn => currentUser != null;
@@ -41,18 +43,53 @@ class AuthService {
     }
   }
 
+  Future<bool> checkNidExists(String nid) async {
+    if (nid.trim().isEmpty) return false;
+    try {
+      final response = await _client.rpc(
+        'check_nid_exists',
+        params: {'nid_to_check': nid.trim()},
+      );
+      return response as bool? ?? false;
+    } catch (e) {
+      return false;
+    }
+  }
+
   Future<AuthResponse> signUp({
     required String email,
     required String password,
     required String name,
     String? phone,
     String? nid,
+    String? profession,
+    String? presentAddress,
+    String? permanentAddress,
   }) async {
     final response = await _client.auth.signUp(
       email: email,
       password: password,
-      data: {'name': name, 'phone': phone, 'nid': nid},
+      data: {
+        'name': name,
+        'phone': phone,
+        'nid': nid,
+        'profession': profession,
+        'present_address': presentAddress,
+        'permanent_address': permanentAddress,
+      },
     );
+    if (response.user != null) {
+      try {
+        await _client.from(AppConstants.profilesTable).update({
+          'name': name,
+          'phone': phone,
+          'nid': nid,
+          'profession': profession,
+          'present_address': presentAddress,
+          'permanent_address': permanentAddress,
+        }).eq('id', response.user!.id);
+      } catch (_) {}
+    }
     return response;
   }
 
@@ -143,5 +180,13 @@ class AuthService {
         .from(AppConstants.profilesTable)
         .update(data)
         .eq('id', userId);
+
+    final changedFields = data.keys.toList();
+    await _logService.logEvent(
+      actionType: 'profile_update',
+      details: {
+        'changed_fields': changedFields,
+      },
+    );
   }
 }

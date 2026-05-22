@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/utils/date_time_extensions.dart';
 import '../../data/models/notification_model.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/auth_provider.dart';
@@ -565,13 +566,12 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
 
   String _timeAgo(DateTime dt) {
     final now = DateTime.now();
-    final local = dt.toLocal();
-    final diff = now.difference(local);
+    final diff = now.difference(dt);
     if (diff.inMinutes < 1) return 'Just now';
     if (diff.inMinutes < 60) return '${diff.inMinutes}m ago';
     if (diff.inHours < 24) return '${diff.inHours}h ago';
     if (diff.inDays < 7) return '${diff.inDays}d ago';
-    return DateFormat('dd MMM').format(local);
+    return dt.formatBDT('dd MMM');
   }
 
   Future<void> _confirmDeleteAll(BuildContext context) async {

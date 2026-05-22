@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../data/models/complaint_model.dart';
+import '../data/models/profile_model.dart';
 import '../data/services/complaint_service.dart';
 import 'selected_station_provider.dart';
+import '../core/utils/date_time_extensions.dart';
 
 final complaintServiceProvider =
     Provider<ComplaintService>((ref) => ComplaintService());
@@ -36,6 +39,13 @@ final userComplaintsStreamProvider =
   }
 });
 
+final allProfilesStreamProvider = StreamProvider<List<ProfileModel>>((ref) {
+  return Supabase.instance.client
+      .from('profiles')
+      .stream(primaryKey: ['id'])
+      .map((data) => data.map((e) => ProfileModel.fromMap(e)).toList());
+});
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Stats / Analytics — all scoped to selected station
 // ─────────────────────────────────────────────────────────────────────────────
@@ -58,12 +68,15 @@ final crimeHotspotProvider = StreamProvider<List<ComplaintModel>>((ref) {
 final monthlyTrendsProvider = Provider<AsyncValue<List<int>>>((ref) {
   final complaintsAsync = ref.watch(allComplaintsStreamProvider);
   return complaintsAsync.whenData((complaints) {
-    final currentYear = DateTime.now().year;
+    final currentYear = DateTime.now().toBangladeshTime().year;
     final counts = List.filled(12, 0);
     for (var c in complaints) {
       final date = c.incidentDatetime ?? c.createdAt;
-      if (date != null && date.year == currentYear) {
-        counts[date.month - 1]++;
+      if (date != null) {
+        final dateBDT = date.toBangladeshTime();
+        if (dateBDT.year == currentYear) {
+          counts[dateBDT.month - 1]++;
+        }
       }
     }
     return counts;
@@ -100,12 +113,14 @@ class ComplaintFilterState {
   final String category;
   final String status;
   final DateTimeRange? dateRange;
+  final String userVerification; // 'all', 'verified', 'unverified'
 
   const ComplaintFilterState({
     this.searchQuery = '',
     this.category = 'all',
     this.status = 'all',
     this.dateRange,
+    this.userVerification = 'all',
   });
 
   ComplaintFilterState copyWith({
@@ -113,12 +128,14 @@ class ComplaintFilterState {
     String? category,
     String? status,
     DateTimeRange? Function()? dateRange,
+    String? userVerification,
   }) {
     return ComplaintFilterState(
       searchQuery: searchQuery ?? this.searchQuery,
       category: category ?? this.category,
       status: status ?? this.status,
       dateRange: dateRange != null ? dateRange() : this.dateRange,
+      userVerification: userVerification ?? this.userVerification,
     );
   }
 }
@@ -137,62 +154,90 @@ final selectedStatusFilterProvider = StateProvider<String>((ref) {
 
 final filteredComplaintsProvider =
     Provider<AsyncValue<List<ComplaintModel>>>((ref) {
-  final complaints = ref.watch(allComplaintsStreamProvider);
+  final complaintsAsync = ref.watch(allComplaintsStreamProvider);
+  final profilesAsync = ref.watch(allProfilesStreamProvider);
   final filter = ref.watch(adminComplaintFilterProvider);
-  return complaints.when(
-    data: (list) {
-      final filteredList = list.where((c) {
-        // 1. Status Filter
-        if (filter.status != 'all' && c.status != filter.status) {
-          return false;
-        }
 
-        // 2. Category Filter
-        if (filter.category != 'all' && c.crimeCategory != filter.category) {
-          return false;
-        }
+  return complaintsAsync.when(
+    data: (complaints) {
+      return profilesAsync.when(
+        data: (profiles) {
+          // Map profiles to isVerified lookup
+          final verifiedMap = {for (var p in profiles) p.id: p.isVerified};
 
-        // 3. Search Query (FullName, CaseID, Description, Category)
-        if (filter.searchQuery.isNotEmpty) {
-          final query = filter.searchQuery.toLowerCase();
-          final caseIdMatch = c.caseId.toLowerCase().contains(query);
-          final nameMatch = c.fullName.toLowerCase().contains(query);
-          final descMatch = (c.description ?? '').toLowerCase().contains(query);
-          final categoryMatch = (c.crimeCategory ?? '').toLowerCase().contains(query);
-          if (!caseIdMatch && !nameMatch && !descMatch && !categoryMatch) {
-            return false;
-          }
-        }
+          final resolvedList = complaints.map((c) {
+            final isVerified = c.userId != null ? (verifiedMap[c.userId] ?? false) : false;
+            return c.copyWith(userIsVerified: isVerified);
+          }).toList();
 
-        // 4. Date Range Filter
-        if (filter.dateRange != null) {
-          final date = c.createdAt;
-          if (date != null) {
-            final start = DateTime(
-              filter.dateRange!.start.year,
-              filter.dateRange!.start.month,
-              filter.dateRange!.start.day,
-            );
-            final end = DateTime(
-              filter.dateRange!.end.year,
-              filter.dateRange!.end.month,
-              filter.dateRange!.end.day,
-              23,
-              59,
-              59,
-            );
-            if (date.isBefore(start) || date.isAfter(end)) {
+          final filteredList = resolvedList.where((c) {
+            // 1. Status Filter
+            if (filter.status != 'all' && c.status != filter.status) {
               return false;
             }
-          } else {
-            return false;
-          }
-        }
 
-        return true;
-      }).toList();
+            // 2. Category Filter
+            if (filter.category != 'all' && c.crimeCategory != filter.category) {
+              return false;
+            }
 
-      return AsyncValue.data(filteredList);
+            // 3. Search Query (FullName, CaseID, Description, Category)
+            if (filter.searchQuery.isNotEmpty) {
+              final query = filter.searchQuery.toLowerCase();
+              final caseIdMatch = c.caseId.toLowerCase().contains(query);
+              final nameMatch = c.fullName.toLowerCase().contains(query);
+              final descMatch = (c.description ?? '').toLowerCase().contains(query);
+              final categoryMatch = (c.crimeCategory ?? '').toLowerCase().contains(query);
+              if (!caseIdMatch && !nameMatch && !descMatch && !categoryMatch) {
+                return false;
+              }
+            }
+
+            // 4. Date Range Filter (BDT aligned)
+            if (filter.dateRange != null) {
+              final date = c.createdAt;
+              if (date != null) {
+                final dateBDT = date.toBangladeshTime();
+                final start = DateTime(
+                  filter.dateRange!.start.year,
+                  filter.dateRange!.start.month,
+                  filter.dateRange!.start.day,
+                );
+                final end = DateTime(
+                  filter.dateRange!.end.year,
+                  filter.dateRange!.end.month,
+                  filter.dateRange!.end.day,
+                  23,
+                  59,
+                  59,
+                );
+                if (dateBDT.isBefore(start) || dateBDT.isAfter(end)) {
+                  return false;
+                }
+              } else {
+                return false;
+              }
+            }
+
+            // 5. Submitter Verification Filter
+            if (filter.userVerification != 'all') {
+              final isVerified = c.userIsVerified ?? false;
+              if (filter.userVerification == 'verified' && !isVerified) {
+                return false;
+              }
+              if (filter.userVerification == 'unverified' && isVerified) {
+                return false;
+              }
+            }
+
+            return true;
+          }).toList();
+
+          return AsyncValue.data(filteredList);
+        },
+        loading: () => const AsyncValue.loading(),
+        error: (e, st) => AsyncValue.error(e, st),
+      );
     },
     loading: () => const AsyncValue.loading(),
     error: (e, st) => AsyncValue.error(e, st),
@@ -227,10 +272,11 @@ final userFilteredComplaintsProvider =
           }
         }
 
-        // 4. Date Range Filter
+        // 4. Date Range Filter (BDT aligned)
         if (filter.dateRange != null) {
           final date = c.createdAt;
           if (date != null) {
+            final dateBDT = date.toBangladeshTime();
             final start = DateTime(
               filter.dateRange!.start.year,
               filter.dateRange!.start.month,
@@ -244,7 +290,7 @@ final userFilteredComplaintsProvider =
               59,
               59,
             );
-            if (date.isBefore(start) || date.isAfter(end)) {
+            if (dateBDT.isBefore(start) || dateBDT.isAfter(end)) {
               return false;
             }
           } else {

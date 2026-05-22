@@ -139,6 +139,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
       obscureText: widget.obscureText && _obscure,
       keyboardType: widget.keyboardType,
       validator: widget.validator,
+      autovalidateMode: AutovalidateMode.onUserInteraction,
       maxLines: widget.obscureText ? 1 : widget.maxLines,
       readOnly: widget.readOnly,
       onTap: widget.onTap,
@@ -276,6 +277,7 @@ class InfoTile extends StatelessWidget {
   final String label;
   final String value;
   final Color? iconColor;
+  final Widget? trailing;
 
   const InfoTile({
     super.key,
@@ -283,6 +285,7 @@ class InfoTile extends StatelessWidget {
     required this.label,
     required this.value,
     this.iconColor,
+    this.trailing,
   });
 
   @override
@@ -313,11 +316,21 @@ class InfoTile extends StatelessWidget {
                         color: AppColors.textHint,
                         fontWeight: FontWeight.w500)),
                 const SizedBox(height: 2),
-                Text(value,
-                    style: GoogleFonts.inter(
-                        fontSize: 14,
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w500)),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(value,
+                          style: GoogleFonts.inter(
+                              fontSize: 14,
+                              color: AppColors.textPrimary,
+                              fontWeight: FontWeight.w500)),
+                    ),
+                    if (trailing != null) ...[
+                      const SizedBox(width: 6),
+                      trailing!,
+                    ],
+                  ],
+                ),
               ],
             ),
           ),

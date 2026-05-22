@@ -11,11 +11,13 @@ import 'package:uuid/uuid.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/utils/complaint_classifier.dart';
+import '../../core/utils/date_time_extensions.dart';
 import '../../data/services/complaint_service.dart';
 import '../../data/services/storage_service.dart';
 import '../../providers/connectivity_provider.dart';
 import '../../providers/complaint_provider.dart';
 import '../../providers/location_cache_provider.dart';
+import '../../providers/auth_provider.dart';
 import '../widgets/common/widgets.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -91,26 +93,22 @@ class _SubmitComplaintScreenState
     final draft = prefs.getComplaintDraft();
     if (draft != null) {
       setState(() {
-        _firstNameCtrl.text = draft['first_name'] as String? ?? '';
-        _lastNameCtrl.text = draft['last_name'] as String? ?? '';
-        _phoneCtrl.text = draft['phone'] as String? ?? '';
-        _nidCtrl.text = draft['nid'] as String? ?? '';
-        _professionCtrl.text = draft['profession'] as String? ?? '';
-        _presentAddressCtrl.text = draft['present_address'] as String? ?? '';
-        _permanentAddressCtrl.text = draft['permanent_address'] as String? ?? '';
         _descriptionCtrl.text = draft['description'] as String? ?? '';
         _locationCtrl.text = draft['location_address'] as String? ?? '';
         
         _selectedCategory = draft['crime_category'] as String?;
         _selectedPoliceStation = draft['police_station'] as String?;
-        _isAnonymous = draft['is_anonymous'] as bool? ?? widget.initialAnonymous;
+        _isAnonymous = widget.initialAnonymous;
         _currentStep = draft['current_step'] as int? ?? 0;
         _latitude = (draft['latitude'] as num?)?.toDouble();
         _longitude = (draft['longitude'] as num?)?.toDouble();
         
         final dateStr = draft['incident_datetime'] as String?;
         if (dateStr != null) {
-          _incidentDate = DateTime.tryParse(dateStr);
+          final utcTime = DateTime.tryParse(dateStr);
+          if (utcTime != null) {
+            _incidentDate = utcTime.toBangladeshTime();
+          }
         }
       });
       
@@ -127,6 +125,9 @@ class _SubmitComplaintScreenState
         });
       }
     }
+    
+    // ALWAYS auto-fill personal details from the latest database profile to sync recent profile edits
+    _autoFillFromProfile();
 
     // ALWAYS perform live high-accuracy GPS auto-detection on entry to select
     // the correct thana based on the user's current live location.
@@ -136,6 +137,40 @@ class _SubmitComplaintScreenState
     
     // Attach listeners to all controllers to auto-save draft
     _attachControllerListeners();
+  }
+
+  Future<void> _autoFillFromProfile() async {
+    try {
+      // Force refresh the authNotifierProvider to get the latest database state
+      await ref.read(authNotifierProvider.notifier).refresh();
+      final profile = ref.read(authNotifierProvider).valueOrNull;
+      
+      if (profile != null && mounted) {
+        setState(() {
+          if (profile.name != null && profile.name!.isNotEmpty) {
+            final parts = profile.name!.trim().split(' ');
+            if (parts.length > 1) {
+              _firstNameCtrl.text = parts.first;
+              _lastNameCtrl.text = parts.sublist(1).join(' ');
+            } else {
+              _firstNameCtrl.text = profile.name!;
+              _lastNameCtrl.text = '';
+            }
+          } else {
+            _firstNameCtrl.text = '';
+            _lastNameCtrl.text = '';
+          }
+          _phoneCtrl.text = profile.phone ?? '';
+          _nidCtrl.text = profile.nid ?? '';
+          _professionCtrl.text = profile.profession ?? '';
+          _presentAddressCtrl.text = profile.presentAddress ?? '';
+          _permanentAddressCtrl.text = profile.permanentAddress ?? '';
+        });
+        _saveDraft();
+      }
+    } catch (e) {
+      debugPrint('Error auto-filling from profile: $e');
+    }
   }
 
   void _attachControllerListeners() {
@@ -171,7 +206,7 @@ class _SubmitComplaintScreenState
       'police_station': _selectedPoliceStation,
       'is_anonymous': _isAnonymous,
       'current_step': _currentStep,
-      'incident_datetime': _incidentDate?.toIso8601String(),
+      'incident_datetime': _incidentDate?.toUtcFromBangladesh().toIso8601String(),
       'latitude': _latitude,
       'longitude': _longitude,
     };
@@ -284,11 +319,12 @@ class _SubmitComplaintScreenState
   }
 
   Future<void> _pickDate() async {
+    final nowBDT = DateTime.now().toBangladeshTime();
     final date = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate: _incidentDate ?? nowBDT,
       firstDate: DateTime(2000),
-      lastDate: DateTime.now(),
+      lastDate: nowBDT,
       builder: (ctx, child) => Theme(
         data: Theme.of(ctx).copyWith(
           colorScheme: const ColorScheme.dark(
@@ -303,7 +339,7 @@ class _SubmitComplaintScreenState
       if (!mounted) return;
       final time = await showTimePicker(
         context: context,
-        initialTime: TimeOfDay.now(),
+        initialTime: _incidentDate != null ? TimeOfDay.fromDateTime(_incidentDate!) : TimeOfDay.now(),
         builder: (ctx, child) => Theme(
           data: Theme.of(ctx).copyWith(
             colorScheme: const ColorScheme.dark(
@@ -333,6 +369,18 @@ class _SubmitComplaintScreenState
     if (!_formKey.currentState!.validate()) return;
     if (_selectedCategory == null) {
       _showError('Please select a crime category');
+      return;
+    }
+    if (_selectedPoliceStation == null || _selectedPoliceStation!.trim().isEmpty) {
+      _showError('Please select a police station');
+      return;
+    }
+    if (_incidentDate == null) {
+      _showError('Please select incident date & time');
+      return;
+    }
+    if (_isAnonymous && _evidenceFiles.isEmpty) {
+      _showError('Evidence files are required for anonymous reports. Please upload at least one evidence file.');
       return;
     }
     setState(() => _isLoading = true);
@@ -389,7 +437,7 @@ class _SubmitComplaintScreenState
       'crime_category': _selectedCategory,
       'description': _descriptionCtrl.text.trim(),
       'location_address': _locationCtrl.text.trim(),
-      'incident_datetime': _incidentDate?.toIso8601String(),
+      'incident_datetime': _incidentDate?.toUtcFromBangladesh().toIso8601String(),
       'police_station': _selectedPoliceStation,
       'evidence_urls': uploadedUrls,
       'is_anonymous': _isAnonymous,
@@ -482,6 +530,21 @@ class _SubmitComplaintScreenState
         behavior: HitTestBehavior.opaque,
         onTap: () {
           FocusScope.of(context).unfocus();
+          if (index > _currentStep) {
+            if (!_formKey.currentState!.validate()) {
+              return;
+            }
+            if (_currentStep == 1) {
+              if (_selectedPoliceStation == null || _selectedPoliceStation!.trim().isEmpty) {
+                _showError('Please select a police station');
+                return;
+              }
+              if (_incidentDate == null) {
+                _showError('Please select incident date & time');
+                return;
+              }
+            }
+          }
           setState(() {
             _currentStep = index;
           });
@@ -606,6 +669,7 @@ class _SubmitComplaintScreenState
           key: const ValueKey('evidence'),
           files: _evidenceFiles,
           webBytes: _webEvidenceBytes,
+          isAnonymous: _isAnonymous,
           onPickImage: _pickEvidenceFiles,
           onRemove: (i) {
             final removed = _evidenceFiles.removeAt(i);
@@ -629,6 +693,19 @@ class _SubmitComplaintScreenState
               onTap: () {
                 if (_currentStep < 2) {
                   FocusScope.of(context).unfocus();
+                  if (!_formKey.currentState!.validate()) {
+                    return;
+                  }
+                  if (_currentStep == 1) {
+                    if (_selectedPoliceStation == null || _selectedPoliceStation!.trim().isEmpty) {
+                      _showError('Please select a police station');
+                      return;
+                    }
+                    if (_incidentDate == null) {
+                      _showError('Please select incident date & time');
+                      return;
+                    }
+                  }
                   setState(() => _currentStep++);
                   _saveDraft();
                 } else {
@@ -808,8 +885,13 @@ class _PersonalInfoStep extends StatelessWidget {
                   label: 'First Name',
                   controller: firstNameCtrl,
                   prefixIcon: Icons.person_outline,
-                  validator: (v) =>
-                      v == null || v.isEmpty ? 'Required' : null,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Required';
+                    if (!RegExp(r'^[a-zA-Z\s\-]+$').hasMatch(v.trim())) {
+                      return 'Only alphabet letters are allowed';
+                    }
+                    return null;
+                  },
                 ),
               ),
               const SizedBox(width: 12),
@@ -818,8 +900,13 @@ class _PersonalInfoStep extends StatelessWidget {
                   label: 'Last Name',
                   controller: lastNameCtrl,
                   prefixIcon: Icons.person_outline,
-                  validator: (v) =>
-                      v == null || v.isEmpty ? 'Required' : null,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Required';
+                    if (!RegExp(r'^[a-zA-Z\s\-]+$').hasMatch(v.trim())) {
+                      return 'Only alphabet letters are allowed';
+                    }
+                    return null;
+                  },
                 ),
               ),
             ],
@@ -830,6 +917,15 @@ class _PersonalInfoStep extends StatelessWidget {
             controller: phoneCtrl,
             prefixIcon: Icons.phone_outlined,
             keyboardType: TextInputType.phone,
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'Phone number is required';
+              if (!v.startsWith('+')) return 'Must start with country code (e.g., +880)';
+              final digits = v.substring(1);
+              if (digits.isEmpty || !RegExp(r'^[0-9]+$').hasMatch(digits)) {
+                return 'Only numeric numbers are allowed after +';
+              }
+              return null;
+            },
           ),
           const SizedBox(height: 12),
           CustomTextField(
@@ -837,12 +933,21 @@ class _PersonalInfoStep extends StatelessWidget {
             controller: nidCtrl,
             prefixIcon: Icons.credit_card_outlined,
             keyboardType: TextInputType.number,
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'NID number is required';
+              if (!RegExp(r'^[0-9]+$').hasMatch(v.trim())) {
+                return 'Only numeric numbers are allowed';
+              }
+              return null;
+            },
           ),
           const SizedBox(height: 12),
           CustomTextField(
             label: 'Profession',
             controller: professionCtrl,
             prefixIcon: Icons.work_outline,
+            validator: (v) =>
+                v == null || v.trim().isEmpty ? 'Profession is required' : null,
           ),
           const SizedBox(height: 12),
           CustomTextField(
@@ -850,6 +955,8 @@ class _PersonalInfoStep extends StatelessWidget {
             controller: presentAddressCtrl,
             prefixIcon: Icons.location_on_outlined,
             maxLines: 2,
+            validator: (v) =>
+                v == null || v.trim().isEmpty ? 'Present Address is required' : null,
           ),
           const SizedBox(height: 12),
           CustomTextField(
@@ -857,6 +964,8 @@ class _PersonalInfoStep extends StatelessWidget {
             controller: permanentAddressCtrl,
             prefixIcon: Icons.home_outlined,
             maxLines: 2,
+            validator: (v) =>
+                v == null || v.trim().isEmpty ? 'Permanent Address is required' : null,
           ),
         ] else
           Container(
@@ -1104,6 +1213,7 @@ class _IncidentStep extends StatelessWidget {
                         )),
                   ],
                   onChanged: isDetectingLocation ? null : onPoliceStationChanged,
+                  validator: (v) => v == null || v.isEmpty ? 'Police station is required' : null,
                 ),
                 if (selectedPoliceStation != null)
                   Positioned(
@@ -1195,6 +1305,7 @@ class _IncidentStep extends StatelessWidget {
 class _EvidenceStep extends StatelessWidget {
   final List<XFile> files;
   final Map<String, Uint8List> webBytes;
+  final bool isAnonymous;
   final VoidCallback onPickImage;
   final void Function(int) onRemove;
 
@@ -1202,6 +1313,7 @@ class _EvidenceStep extends StatelessWidget {
     super.key,
     required this.files,
     required this.webBytes,
+    required this.isAnonymous,
     required this.onPickImage,
     required this.onRemove,
   });
@@ -1211,9 +1323,16 @@ class _EvidenceStep extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Upload Evidence Files (Optional)',
-            style: GoogleFonts.inter(
-                color: AppColors.textSecondary, fontSize: 13)),
+        Text(
+          isAnonymous
+              ? 'Upload Evidence Files (Required for Anonymous Reports)'
+              : 'Upload Evidence Files (Optional)',
+          style: GoogleFonts.inter(
+            color: isAnonymous ? AppColors.error : AppColors.textSecondary,
+            fontSize: 13,
+            fontWeight: isAnonymous ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
         const SizedBox(height: 12),
         if (files.isNotEmpty)
           GridView.builder(
