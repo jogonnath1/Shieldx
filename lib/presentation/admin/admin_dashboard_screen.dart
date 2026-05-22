@@ -1896,14 +1896,18 @@ class _ActivityTrendsChartBodyState extends ConsumerState<_ActivityTrendsChartBo
   late AnimationController _animCtrl;
   late Animation<double> _fadeAnim;
 
+  // Cache last successful data — never show a spinner on range switch.
+  List<Map<String, dynamic>>? _cachedTrends;
+  ChartRange? _cachedRange;
+
   @override
   void initState() {
     super.initState();
     _animCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 350),
     );
-    _fadeAnim = CurvedAnimation(parent: _animCtrl, curve: Curves.easeInOut);
+    _fadeAnim = CurvedAnimation(parent: _animCtrl, curve: Curves.easeOut);
     _animCtrl.forward();
   }
 
@@ -1923,6 +1927,12 @@ class _ActivityTrendsChartBodyState extends ConsumerState<_ActivityTrendsChartBo
   Widget build(BuildContext context) {
     final selected = ref.watch(chartRangeProvider);
     final trendsAsync = ref.watch(activityTrendsProvider(selected));
+
+    // Cache data whenever new data arrives — never clear on loading.
+    trendsAsync.whenData((data) {
+      _cachedTrends = data;
+      _cachedRange = selected;
+    });
 
     return GlassCard(
       child: Column(
@@ -2002,80 +2012,74 @@ class _ActivityTrendsChartBodyState extends ConsumerState<_ActivityTrendsChartBo
           const SizedBox(height: 20),
 
           // ── Chart ─────────────────────────────────────────────────
-          trendsAsync.when(
-            loading: () => SizedBox(
-              height: 180,
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const CircularProgressIndicator(
-                      color: AppColors.primary,
-                      strokeWidth: 2,
-                    ),
-                    const SizedBox(height: 10),
-                    Text(
-                      'Loading ${selected.fullLabel} data...',
-                      style: GoogleFonts.inter(color: AppColors.textHint, fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            error: (e, _) => SizedBox(
-              height: 180,
-              child: Center(
-                child: Text(
-                  'Failed to load chart data',
-                  style: GoogleFonts.inter(color: AppColors.error),
-                ),
-              ),
-            ),
-            data: (trends) {
-              if (trends.isEmpty) {
-                return SizedBox(
-                  height: 180,
-                  child: Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.bar_chart_rounded,
-                            color: AppColors.textHint.withOpacity(0.3), size: 40),
-                        const SizedBox(height: 8),
-                        Text(
-                          'No data for this period',
-                          style: GoogleFonts.inter(
-                              color: AppColors.textHint, fontSize: 13),
-                        ),
-                      ],
-                    ),
+          Builder(builder: (context) {
+            final isLoading = trendsAsync.isLoading;
+            // Use fresh data if available, else keep cached data visible
+            final displayTrends = trendsAsync.valueOrNull ?? _cachedTrends;
+
+            // Very first load — no cache yet
+            if (displayTrends == null) {
+              return const SizedBox(
+                height: 180,
+                child: Center(
+                  child: CircularProgressIndicator(
+                    color: AppColors.primary,
+                    strokeWidth: 2,
                   ),
-                );
-              }
+                ),
+              );
+            }
 
-              final maxVal = trends
-                  .map((e) => e['count'] as int)
-                  .reduce((a, b) => a > b ? a : b)
-                  .toDouble();
-              final maxY = maxVal > 0 ? maxVal + (maxVal * 0.25).ceilToDouble() : 5;
+            // No data for this range
+            if (displayTrends.isEmpty) {
+              return SizedBox(
+                height: 180,
+                child: Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.bar_chart_rounded,
+                          color: AppColors.textHint.withOpacity(0.3), size: 40),
+                      const SizedBox(height: 8),
+                      Text(
+                        'No data for this period',
+                        style: GoogleFonts.inter(
+                            color: AppColors.textHint, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }
 
-              // How many x-axis labels to show based on range
-              final int labelStep = selected == ChartRange.day
-                  ? 4
-                  : selected == ChartRange.month
-                      ? 5
-                      : selected == ChartRange.threeMonths
-                          ? 2
-                          : selected == ChartRange.sixMonths
-                              ? 4
-                              : 1;
+            final maxVal = displayTrends
+                .map((e) => e['count'] as int)
+                .reduce((a, b) => a > b ? a : b)
+                .toDouble();
+            final maxY =
+                maxVal > 0 ? maxVal + (maxVal * 0.25).ceilToDouble() : 5.0;
 
-              final spots = <FlSpot>[
-                for (int i = 0; i < trends.length; i++)
-                  FlSpot(i.toDouble(), (trends[i]['count'] as int).toDouble()),
-              ];
+            final int labelStep = selected == ChartRange.day
+                ? 4
+                : selected == ChartRange.month
+                    ? 5
+                    : selected == ChartRange.threeMonths
+                        ? 2
+                        : selected == ChartRange.sixMonths
+                            ? 4
+                            : 1;
 
-              return FadeTransition(
+            final spots = <FlSpot>[
+              for (int i = 0; i < displayTrends.length; i++)
+                FlSpot(i.toDouble(),
+                    (displayTrends[i]['count'] as int).toDouble()),
+            ];
+
+            // While fetching new range: keep chart visible with subtle dim — no spinner
+            return AnimatedOpacity(
+              opacity: isLoading ? 0.55 : 1.0,
+              duration: const Duration(milliseconds: 250),
+              child: FadeTransition(
                 opacity: _fadeAnim,
                 child: SizedBox(
                   height: 180,
@@ -2105,14 +2109,14 @@ class _ActivityTrendsChartBodyState extends ConsumerState<_ActivityTrendsChartBo
                             getTitlesWidget: (value, meta) {
                               final idx = value.toInt();
                               if (idx < 0 ||
-                                  idx >= trends.length ||
+                                  idx >= displayTrends.length ||
                                   idx % labelStep != 0) {
                                 return const SizedBox.shrink();
                               }
                               return Padding(
                                 padding: const EdgeInsets.only(top: 6.0),
                                 child: Text(
-                                  trends[idx]['day'] as String,
+                                  displayTrends[idx]['day'] as String,
                                   style: GoogleFonts.inter(
                                     color: AppColors.textHint,
                                     fontSize: 9,
@@ -2140,7 +2144,7 @@ class _ActivityTrendsChartBodyState extends ConsumerState<_ActivityTrendsChartBo
                       ),
                       borderData: FlBorderData(show: false),
                       minX: 0,
-                      maxX: (trends.length - 1).toDouble(),
+                      maxX: (displayTrends.length - 1).toDouble(),
                       minY: 0,
                       maxY: maxY.toDouble(),
                       lineTouchData: LineTouchData(
@@ -2150,8 +2154,8 @@ class _ActivityTrendsChartBodyState extends ConsumerState<_ActivityTrendsChartBo
                           tooltipRoundedRadius: 10,
                           getTooltipItems: (spots) => spots.map((s) {
                             final idx = s.x.toInt();
-                            final label = idx < trends.length
-                                ? trends[idx]['day'] as String
+                            final label = idx < displayTrends.length
+                                ? displayTrends[idx]['day'] as String
                                 : '';
                             return LineTooltipItem(
                               '$label\n${s.y.toInt()} events',
@@ -2175,7 +2179,7 @@ class _ActivityTrendsChartBodyState extends ConsumerState<_ActivityTrendsChartBo
                           barWidth: 2.5,
                           isStrokeCapRound: true,
                           dotData: FlDotData(
-                            show: trends.length <= 14,
+                            show: displayTrends.length <= 14,
                             getDotPainter: (spot, pct, bar, index) =>
                                 FlDotCirclePainter(
                               radius: 3,
@@ -2201,9 +2205,9 @@ class _ActivityTrendsChartBodyState extends ConsumerState<_ActivityTrendsChartBo
                     duration: const Duration(milliseconds: 300),
                   ),
                 ),
-              );
-            },
-          ),
+              ),
+            );
+          }),
         ],
       ),
     );
@@ -2462,8 +2466,6 @@ class _ActivityTimelineState extends ConsumerState<_ActivityTimeline> {
     try {
       await ref.read(activityLogServiceProvider).softDeleteLogs(_selectedLogIds.toList());
       if (mounted) {
-        // Invalidate the stream so it re-fetches and excludes the soft-deleted rows
-        ref.invalidate(activityLogsStreamProvider);
         setState(() {
           _isSelectionMode = false;
           _selectedLogIds.clear();
