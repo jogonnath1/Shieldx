@@ -9,6 +9,7 @@ class ActivityLogModel {
   final int durationSeconds;
   final String? sessionId;
   final DateTime createdAt;
+  final DateTime? deletedAt;
 
   const ActivityLogModel({
     required this.id,
@@ -21,7 +22,10 @@ class ActivityLogModel {
     this.durationSeconds = 0,
     this.sessionId,
     required this.createdAt,
+    this.deletedAt,
   });
+
+  bool get isDeleted => deletedAt != null;
 
   factory ActivityLogModel.fromMap(Map<String, dynamic> map) {
     return ActivityLogModel(
@@ -37,6 +41,9 @@ class ActivityLogModel {
       durationSeconds: map['duration_seconds'] as int? ?? 0,
       sessionId: map['session_id'] as String?,
       createdAt: DateTime.parse(map['created_at'] as String),
+      deletedAt: map['deleted_at'] != null
+          ? DateTime.parse(map['deleted_at'] as String)
+          : null,
     );
   }
 

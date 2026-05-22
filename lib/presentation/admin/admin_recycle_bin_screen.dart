@@ -6,8 +6,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/date_time_extensions.dart';
+import '../../data/models/activity_log_model.dart';
 import '../../data/models/complaint_model.dart';
 import '../../data/models/notification_model.dart';
+import '../../providers/activity_log_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/complaint_provider.dart';
 import '../../providers/notification_provider.dart';
@@ -22,7 +24,7 @@ class AdminRecycleBinScreen extends ConsumerStatefulWidget {
 
 class _AdminRecycleBinScreenState extends ConsumerState<AdminRecycleBinScreen> {
   bool _isLoading = false;
-  int _selectedTab = 0; // 0 = Cases, 1 = Notifications
+  int _selectedTab = 0; // 0 = Cases, 1 = Notifications, 2 = Audit Logs
 
   List<ComplaintModel> _deletedComplaints = [];
   final Set<String> _selectedIds = {};
@@ -30,12 +32,16 @@ class _AdminRecycleBinScreenState extends ConsumerState<AdminRecycleBinScreen> {
   List<NotificationModel> _deletedNotifications = [];
   final Set<String> _selectedNotificationIds = {};
 
+  List<ActivityLogModel> _deletedAuditLogs = [];
+  final Set<String> _selectedAuditLogIds = {};
+
   @override
   void initState() {
     super.initState();
     Future.microtask(() {
       _fetchDeletedComplaints();
       _fetchDeletedNotifications();
+      _fetchDeletedAuditLogs();
     });
   }
 
@@ -102,11 +108,17 @@ class _AdminRecycleBinScreenState extends ConsumerState<AdminRecycleBinScreen> {
         } else {
           _selectedIds.addAll(_deletedComplaints.map((c) => c.id));
         }
-      } else {
+      } else if (_selectedTab == 1) {
         if (_selectedNotificationIds.length == _deletedNotifications.length) {
           _selectedNotificationIds.clear();
         } else {
           _selectedNotificationIds.addAll(_deletedNotifications.map((n) => n.id));
+        }
+      } else {
+        if (_selectedAuditLogIds.length == _deletedAuditLogs.length) {
+          _selectedAuditLogIds.clear();
+        } else {
+          _selectedAuditLogIds.addAll(_deletedAuditLogs.map((l) => l.id));
         }
       }
     });
@@ -120,11 +132,17 @@ class _AdminRecycleBinScreenState extends ConsumerState<AdminRecycleBinScreen> {
         } else {
           _selectedIds.add(id);
         }
-      } else {
+      } else if (_selectedTab == 1) {
         if (_selectedNotificationIds.contains(id)) {
           _selectedNotificationIds.remove(id);
         } else {
           _selectedNotificationIds.add(id);
+        }
+      } else {
+        if (_selectedAuditLogIds.contains(id)) {
+          _selectedAuditLogIds.remove(id);
+        } else {
+          _selectedAuditLogIds.add(id);
         }
       }
     });
@@ -516,6 +534,101 @@ class _AdminRecycleBinScreenState extends ConsumerState<AdminRecycleBinScreen> {
     }
   }
 
+  // ── Audit Log Actions ──────────────────────────────────────────────────────
+  Future<void> _fetchDeletedAuditLogs() async {
+    setState(() => _isLoading = true);
+    try {
+      final logs = await ref.read(activityLogServiceProvider).getDeletedAuditLogs();
+      setState(() {
+        _deletedAuditLogs = logs;
+        _selectedAuditLogIds.clear();
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to load deleted audit logs: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _hardDeleteSelectedAuditLogs() async {
+    if (_selectedAuditLogIds.isEmpty) return;
+    final confirmed = await _showConfirmDialog(
+      title: 'Permanently Delete Audit Logs',
+      content: 'Are you sure you want to permanently delete the ${_selectedAuditLogIds.length} selected audit log(s)? This action cannot be undone.',
+      confirmLabel: 'Delete Permanently',
+      confirmColor: AppColors.error,
+    );
+    if (confirmed != true) return;
+
+    setState(() => _isLoading = true);
+    try {
+      await ref.read(activityLogServiceProvider).permanentlyDeleteLogs(_selectedAuditLogIds.toList());
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${_selectedAuditLogIds.length} audit log(s) permanently deleted.'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      await _fetchDeletedAuditLogs();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to delete audit logs: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+      setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _emptyAuditLogsBin() async {
+    if (_deletedAuditLogs.isEmpty) return;
+    final confirmed = await _showConfirmDialog(
+      title: 'Empty Audit Logs Bin',
+      content: 'Are you sure you want to permanently delete ALL ${_deletedAuditLogs.length} audit logs in the bin? This action is absolutely irreversible.',
+      confirmLabel: 'Empty Bin',
+      confirmColor: AppColors.error,
+    );
+    if (confirmed != true) return;
+
+    setState(() => _isLoading = true);
+    try {
+      await ref.read(activityLogServiceProvider).permanentlyDeleteAllDeletedLogs();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Audit logs bin emptied successfully.'),
+            backgroundColor: AppColors.error,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      await _fetchDeletedAuditLogs();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to empty audit logs bin: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+      setState(() => _isLoading = false);
+    }
+  }
+
   // ── General Dialog Helper ──────────────────────────────────────────────────
   Future<bool?> _showConfirmDialog({
     required String title,
@@ -704,11 +817,49 @@ class _AdminRecycleBinScreenState extends ConsumerState<AdminRecycleBinScreen> {
                       ),
                       const SizedBox(width: 8),
                       Text(
-                        'Notifications (${_deletedNotifications.length})',
+                        'Alerts (${_deletedNotifications.length})',
                         style: GoogleFonts.inter(
-                          fontSize: 13,
+                          fontSize: 12,
                           fontWeight: _selectedTab == 1 ? FontWeight.w700 : FontWeight.w500,
                           color: _selectedTab == 1 ? Colors.white : AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _selectedTab = 2),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  gradient: _selectedTab == 2 ? AppColors.cardGradient : null,
+                  color: _selectedTab == 2 ? AppColors.surfaceLight.withOpacity(0.3) : Colors.transparent,
+                  borderRadius: BorderRadius.circular(8),
+                  border: _selectedTab == 2
+                      ? Border.all(color: const Color(0xFFFF1744).withOpacity(0.4), width: 1)
+                      : null,
+                ),
+                child: Center(
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.history_rounded,
+                        size: 16,
+                        color: _selectedTab == 2 ? const Color(0xFFFF1744) : AppColors.textSecondary,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        'Audit (${_deletedAuditLogs.length})',
+                        style: GoogleFonts.inter(
+                          fontSize: 12,
+                          fontWeight: _selectedTab == 2 ? FontWeight.w700 : FontWeight.w500,
+                          color: _selectedTab == 2 ? const Color(0xFFFF1744) : AppColors.textSecondary,
                         ),
                       ),
                     ],
@@ -877,11 +1028,21 @@ class _AdminRecycleBinScreenState extends ConsumerState<AdminRecycleBinScreen> {
   // ── Build Method ───────────────────────────────────────────────────────────
   @override
   Widget build(BuildContext context) {
-    final hasSelection = _selectedTab == 0 ? _selectedIds.isNotEmpty : _selectedNotificationIds.isNotEmpty;
+    final hasSelection = _selectedTab == 0
+        ? _selectedIds.isNotEmpty
+        : _selectedTab == 1
+            ? _selectedNotificationIds.isNotEmpty
+            : _selectedAuditLogIds.isNotEmpty;
     final allSelected = _selectedTab == 0
         ? (_deletedComplaints.isNotEmpty && _selectedIds.length == _deletedComplaints.length)
-        : (_deletedNotifications.isNotEmpty && _selectedNotificationIds.length == _deletedNotifications.length);
-    final currentItemCount = _selectedTab == 0 ? _deletedComplaints.length : _deletedNotifications.length;
+        : _selectedTab == 1
+            ? (_deletedNotifications.isNotEmpty && _selectedNotificationIds.length == _deletedNotifications.length)
+            : (_deletedAuditLogs.isNotEmpty && _selectedAuditLogIds.length == _deletedAuditLogs.length);
+    final currentItemCount = _selectedTab == 0
+        ? _deletedComplaints.length
+        : _selectedTab == 1
+            ? _deletedNotifications.length
+            : _deletedAuditLogs.length;
 
     return Scaffold(
       appBar: AppBar(
@@ -902,6 +1063,12 @@ class _AdminRecycleBinScreenState extends ConsumerState<AdminRecycleBinScreen> {
               icon: const Icon(Icons.delete_sweep_outlined, color: AppColors.error),
               tooltip: 'Empty Notifications Bin',
               onPressed: _emptyNotificationsBin,
+            ),
+          if (_selectedTab == 2 && _deletedAuditLogs.isNotEmpty && !_isLoading)
+            IconButton(
+              icon: const Icon(Icons.delete_sweep_outlined, color: AppColors.error),
+              tooltip: 'Empty Audit Logs Bin',
+              onPressed: _emptyAuditLogsBin,
             ),
         ],
       ),
@@ -945,21 +1112,26 @@ class _AdminRecycleBinScreenState extends ConsumerState<AdminRecycleBinScreen> {
                         ),
                         const Spacer(),
                         if (hasSelection) ...[
-                          TextButton.icon(
-                            onPressed: _selectedTab == 0 ? _restoreSelected : _restoreSelectedNotifications,
-                            icon: const Icon(Icons.settings_backup_restore_rounded,
-                                size: 16, color: AppColors.success),
-                            label: Text(
-                              'Restore',
-                              style: GoogleFonts.inter(
-                                  color: AppColors.success,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 13),
+                          if (_selectedTab != 2)
+                            TextButton.icon(
+                              onPressed: _selectedTab == 0 ? _restoreSelected : _restoreSelectedNotifications,
+                              icon: const Icon(Icons.settings_backup_restore_rounded,
+                                  size: 16, color: AppColors.success),
+                              label: Text(
+                                'Restore',
+                                style: GoogleFonts.inter(
+                                    color: AppColors.success,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 13),
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
+                          if (_selectedTab != 2) const SizedBox(width: 8),
                           TextButton.icon(
-                            onPressed: _selectedTab == 0 ? _hardDeleteSelected : _hardDeleteSelectedNotifications,
+                            onPressed: _selectedTab == 0
+                                ? _hardDeleteSelected
+                                : _selectedTab == 1
+                                    ? _hardDeleteSelectedNotifications
+                                    : _hardDeleteSelectedAuditLogs,
                             icon: const Icon(Icons.delete_forever_rounded,
                                 size: 16, color: AppColors.error),
                             label: Text(
@@ -995,13 +1167,19 @@ class _AdminRecycleBinScreenState extends ConsumerState<AdminRecycleBinScreen> {
                               child: EmptyState(
                                 icon: _selectedTab == 0
                                     ? Icons.delete_outline_rounded
-                                    : Icons.notifications_off_outlined,
+                                    : _selectedTab == 1
+                                        ? Icons.notifications_off_outlined
+                                        : Icons.history_rounded,
                                 title: _selectedTab == 0
                                     ? 'No Soft-deleted Cases'
-                                    : 'No Deleted Notifications',
+                                    : _selectedTab == 1
+                                        ? 'No Deleted Notifications'
+                                        : 'No Deleted Audit Logs',
                                 subtitle: _selectedTab == 0
                                     ? 'When reports are deleted, they will be archived here for administrative recovery.'
-                                    : 'When admin notifications are deleted, they will be archived here for recovery.',
+                                    : _selectedTab == 1
+                                        ? 'When admin notifications are deleted, they will be archived here for recovery.'
+                                        : 'Audit logs moved to bin from the Live Audit timeline will appear here.',
                               ),
                             )
                           : _selectedTab == 0
@@ -1159,32 +1337,25 @@ class _AdminRecycleBinScreenState extends ConsumerState<AdminRecycleBinScreen> {
                                                       
                                                       IconButton(
                                                         icon: const Icon(
-                                                            Icons
-                                                                .settings_backup_restore_rounded,
+                                                            Icons.settings_backup_restore_rounded,
                                                             color: AppColors.success,
                                                             size: 18),
                                                         tooltip: 'Restore',
                                                         padding: EdgeInsets.zero,
-                                                        constraints:
-                                                            const BoxConstraints(),
-                                                        onPressed: () =>
-                                                            _singleRestore(
-                                                                c.id, c.caseId),
+                                                        constraints: const BoxConstraints(),
+                                                        onPressed: () => _singleRestore(c.id, c.caseId),
                                                       ),
                                                       const SizedBox(width: 14),
                                                       IconButton(
                                                         icon: const Icon(
-                                                            Icons
-                                                                .delete_forever_rounded,
+                                                            Icons.delete_forever_rounded,
                                                             color: AppColors.error,
                                                             size: 18),
                                                         tooltip: 'Delete Permanently',
                                                         padding: EdgeInsets.zero,
-                                                        constraints:
-                                                            const BoxConstraints(),
+                                                        constraints: const BoxConstraints(),
                                                         onPressed: () =>
-                                                            _singleHardDelete(
-                                                                c.id, c.caseId),
+                                                            _singleHardDelete(c.id, c.caseId),
                                                       ),
                                                     ],
                                                   ),
@@ -1197,20 +1368,31 @@ class _AdminRecycleBinScreenState extends ConsumerState<AdminRecycleBinScreen> {
                                     ).animate().fadeIn(delay: (i * 50).ms).slideY(begin: 0.1);
                                   },
                                 )
-                              : ListView.separated(
-                                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
-                                  itemCount: _deletedNotifications.length,
-                                  separatorBuilder: (_, __) =>
-                                      const SizedBox(height: 12),
-                                  itemBuilder: (ctx, i) {
-                                    final n = _deletedNotifications[i];
-                                    return _buildNotificationCard(n, i);
-                                  },
-                                ),
+                              : _selectedTab == 1
+                                  ? ListView.separated(
+                                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+                                      itemCount: _deletedNotifications.length,
+                                      separatorBuilder: (_, __) =>
+                                          const SizedBox(height: 12),
+                                      itemBuilder: (ctx, i) {
+                                        final n = _deletedNotifications[i];
+                                        return _buildNotificationCard(n, i);
+                                      },
+                                    )
+                                  : ListView.separated(
+                                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 80),
+                                      itemCount: _deletedAuditLogs.length,
+                                      separatorBuilder: (_, __) =>
+                                          const SizedBox(height: 12),
+                                      itemBuilder: (ctx, i) {
+                                        final log = _deletedAuditLogs[i];
+                                        return _buildAuditLogBinCard(log, i);
+                                      },
+                                    ),
                 ),
               ],
             ),
-            
+
             // Full screen transparent loader blocker
             if (_isLoading && currentItemCount > 0)
               Container(
@@ -1224,4 +1406,175 @@ class _AdminRecycleBinScreenState extends ConsumerState<AdminRecycleBinScreen> {
       ),
     );
   }
+
+  // ── Audit Log Bin Card ───────────────────────────────────────────────────────
+  Widget _buildAuditLogBinCard(ActivityLogModel log, int i) {
+    final isSelected = _selectedAuditLogIds.contains(log.id);
+    final bdtDeletedAt = log.deletedAt?.toBangladeshTime();
+    final bdtCreatedAt = log.createdAt.toBangladeshTime();
+
+    IconData icon;
+    Color color;
+    switch (log.actionType) {
+      case 'app_open': icon = Icons.phonelink_ring_rounded; color = const Color(0xFF00E676); break;
+      case 'app_close': icon = Icons.power_settings_new_rounded; color = const Color(0xFF90A4AE); break;
+      case 'login': icon = Icons.vpn_key_rounded; color = const Color(0xFFC084FC); break;
+      case 'logout': icon = Icons.logout_rounded; color = const Color(0xFFFFB300); break;
+      case 'report_submit': icon = Icons.add_task_rounded; color = const Color(0xFF2979FF); break;
+      case 'report_edit': icon = Icons.edit_note_rounded; color = const Color(0xFFFF9100); break;
+      case 'report_delete': icon = Icons.delete_sweep_rounded; color = const Color(0xFFFF1744); break;
+      case 'profile_update': icon = Icons.manage_accounts_rounded; color = const Color(0xFF00E5FF); break;
+      case 'suspicious_login': icon = Icons.shield_rounded; color = const Color(0xFFFF1744); break;
+      default: icon = Icons.radio_button_checked_rounded; color = AppColors.primary;
+    }
+
+    String roleLabel;
+    Color roleColor;
+    if (log.role == 'main_admin') {
+      roleLabel = 'MAIN ADMIN';
+      roleColor = const Color(0xFFFFB300);
+    } else if (log.role == 'admin') {
+      roleLabel = 'ADMIN';
+      roleColor = const Color(0xFFC084FC);
+    } else {
+      roleLabel = 'CITIZEN';
+      roleColor = const Color(0xFF00E676);
+    }
+
+    return GestureDetector(
+      onTap: () => _toggleSelect(log.id),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          gradient: AppColors.cardGradient,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected
+                ? const Color(0xFFFF1744).withOpacity(0.6)
+                : AppColors.cardBorder,
+            width: isSelected ? 1.5 : 1.0,
+          ),
+          color: isSelected ? const Color(0xFFFF1744).withOpacity(0.04) : null,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Checkbox
+            Padding(
+              padding: const EdgeInsets.only(right: 8, top: 2),
+              child: Checkbox(
+                value: isSelected,
+                activeColor: const Color(0xFFFF1744),
+                onChanged: (_) => _toggleSelect(log.id),
+              ),
+            ),
+            // Action icon
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: color.withOpacity(0.1),
+                shape: BoxShape.circle,
+                border: Border.all(color: color.withOpacity(0.3)),
+              ),
+              child: Icon(icon, color: color, size: 17),
+            ),
+            const SizedBox(width: 12),
+            // Details
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          log.userName ?? log.userEmail ?? 'Anonymous',
+                          style: GoogleFonts.inter(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                            color: AppColors.textPrimary,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: roleColor.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          roleLabel,
+                          style: GoogleFonts.inter(
+                            fontSize: 8,
+                            fontWeight: FontWeight.w800,
+                            color: roleColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    log.actionDescription,
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Divider(color: AppColors.cardBorder, height: 1),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(Icons.access_time_rounded, size: 11, color: AppColors.textHint),
+                      const SizedBox(width: 4),
+                      Text(
+                        'Logged: ${DateFormat('dd MMM, hh:mm a').format(bdtCreatedAt)}',
+                        style: GoogleFonts.inter(fontSize: 10, color: AppColors.textHint),
+                      ),
+                      const Spacer(),
+                      const Icon(Icons.delete_outline_rounded, size: 11, color: AppColors.error),
+                      const SizedBox(width: 4),
+                      Text(
+                        bdtDeletedAt != null
+                            ? 'Binned: ${DateFormat('dd MMM, hh:mm a').format(bdtDeletedAt)}'
+                            : 'Deleted',
+                        style: GoogleFonts.inter(
+                          fontSize: 10,
+                          color: AppColors.error,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      // Permanent delete
+                      GestureDetector(
+                        onTap: () async {
+                          final ok = await _showConfirmDialog(
+                            title: 'Delete Audit Log',
+                            content: 'Permanently delete this audit log entry? This cannot be undone.',
+                            confirmLabel: 'Delete Permanently',
+                            confirmColor: AppColors.error,
+                          );
+                          if (ok == true) {
+                            await ref.read(activityLogServiceProvider).permanentlyDeleteLogs([log.id]);
+                            await _fetchDeletedAuditLogs();
+                          }
+                        },
+                        child: const Icon(Icons.delete_forever_rounded, color: AppColors.error, size: 18),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ).animate().fadeIn(delay: (i * 50).ms).slideY(begin: 0.1);
+  }
 }
+

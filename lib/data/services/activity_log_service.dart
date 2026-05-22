@@ -58,24 +58,69 @@ class ActivityLogService {
     }
   }
 
-  /// Streams recent activity logs in real-time for the admin dashboard.
+  /// Streams recent activity logs in real-time for the admin dashboard (excludes soft-deleted).
   Stream<List<ActivityLogModel>> watchRecentLogs({int limit = 100}) {
     return _client
         .from('activity_logs')
         .stream(primaryKey: ['id'])
         .order('created_at', ascending: false)
         .limit(limit)
-        .map((data) => data.map((e) => ActivityLogModel.fromMap(e)).toList());
+        .map((data) => data
+            .where((e) => e['deleted_at'] == null)
+            .map((e) => ActivityLogModel.fromMap(e))
+            .toList());
   }
 
-  /// Fetches recent activity logs as a one-shot query.
+  /// Fetches recent activity logs as a one-shot query (excludes soft-deleted).
   Future<List<ActivityLogModel>> getRecentLogs({int limit = 100}) async {
     final response = await _client
         .from('activity_logs')
         .select()
+        .isFilter('deleted_at', null)
         .order('created_at', ascending: false)
         .limit(limit);
     return (response as List).map((e) => ActivityLogModel.fromMap(e)).toList();
+  }
+
+  /// Soft-deletes the given log IDs by setting deleted_at = now().
+  Future<void> softDeleteLogs(List<String> ids) async {
+    if (ids.isEmpty) return;
+    await _client
+        .from('activity_logs')
+        .update({'deleted_at': DateTime.now().toUtc().toIso8601String()})
+        .inFilter('id', ids);
+  }
+
+  /// Permanently deletes specific activity logs by ID.
+  Future<void> permanentlyDeleteLogs(List<String> ids) async {
+    if (ids.isEmpty) return;
+    await _client
+        .from('activity_logs')
+        .delete()
+        .inFilter('id', ids);
+  }
+
+  /// Permanently deletes ALL soft-deleted activity logs (empties the audit log bin).
+  Future<void> permanentlyDeleteAllDeletedLogs() async {
+    await _client
+        .from('activity_logs')
+        .delete()
+        .not('deleted_at', 'is', null);
+  }
+
+  /// Fetches all soft-deleted audit logs for the recycle bin tab.
+  Future<List<ActivityLogModel>> getDeletedAuditLogs() async {
+    try {
+      final response = await _client
+          .from('activity_logs')
+          .select()
+          .not('deleted_at', 'is', null)
+          .order('deleted_at', ascending: false);
+      return (response as List).map((e) => ActivityLogModel.fromMap(e)).toList();
+    } catch (e) {
+      debugPrint('ERROR FETCHING DELETED AUDIT LOGS: $e');
+      return [];
+    }
   }
 
   /// Calculates statistics for active users and suspicious logins in the database.
@@ -86,11 +131,12 @@ class ActivityLogService {
     final thirtyDaysAgo = now.subtract(const Duration(days: 30)).toIso8601String();
 
     try {
-      // Fetch user activities in the last 30 days
+      // Fetch user activities in the last 30 days (exclude soft-deleted)
       final response = await _client
           .from('activity_logs')
           .select('user_id, created_at, action_type')
-          .gte('created_at', thirtyDaysAgo);
+          .gte('created_at', thirtyDaysAgo)
+          .isFilter('deleted_at', null);
 
       final list = response as List;
 
@@ -148,6 +194,7 @@ class ActivityLogService {
           .select()
           .eq('user_id', currentUser.id)
           .inFilter('action_type', ['login', 'suspicious_login', 'logout'])
+          .isFilter('deleted_at', null)
           .order('created_at', ascending: false)
           .limit(30);
 
@@ -159,4 +206,3 @@ class ActivityLogService {
     }
   }
 }
-

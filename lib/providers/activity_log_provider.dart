@@ -6,7 +6,7 @@ import 'officer_provider.dart';
 
 final activityLogServiceProvider = Provider<ActivityLogService>((ref) => ActivityLogService());
 
-/// Real-time stream of the recent 100 activity logs.
+/// Real-time stream of the recent 100 activity logs (excludes soft-deleted).
 final activityLogsStreamProvider = StreamProvider<List<ActivityLogModel>>((ref) {
   return ref.watch(activityLogServiceProvider).watchRecentLogs(limit: 100);
 });
@@ -94,3 +94,7 @@ final userSecurityLogsProvider = FutureProvider.autoDispose<List<ActivityLogMode
   return ref.watch(activityLogServiceProvider).getUserSecurityLogs();
 });
 
+/// Fetches all soft-deleted audit logs for the admin recycle bin (Audit Logs tab).
+final deletedAuditLogsProvider = FutureProvider.autoDispose<List<ActivityLogModel>>((ref) async {
+  return ref.watch(activityLogServiceProvider).getDeletedAuditLogs();
+});

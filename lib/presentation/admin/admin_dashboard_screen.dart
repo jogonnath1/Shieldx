@@ -2201,6 +2201,91 @@ class _ActivityTimelineState extends ConsumerState<_ActivityTimeline> {
   int _displayLimit = 10;
   final TextEditingController _searchController = TextEditingController();
 
+  // ── Selection Mode State ──────────────────────────────────────────────────
+  bool _isSelectionMode = false;
+  final Set<String> _selectedLogIds = {};
+  bool _isBinning = false;
+
+  void _enterSelectionMode(String id) {
+    setState(() {
+      _isSelectionMode = true;
+      _selectedLogIds.add(id);
+    });
+  }
+
+  void _toggleSelection(String id) {
+    setState(() {
+      if (_selectedLogIds.contains(id)) {
+        _selectedLogIds.remove(id);
+        if (_selectedLogIds.isEmpty) _isSelectionMode = false;
+      } else {
+        _selectedLogIds.add(id);
+      }
+    });
+  }
+
+  void _cancelSelection() {
+    setState(() {
+      _isSelectionMode = false;
+      _selectedLogIds.clear();
+    });
+  }
+
+  void _toggleSelectAll(List<ActivityLogModel> visibleLogs) {
+    setState(() {
+      final allIds = visibleLogs.map((l) => l.id).toSet();
+      if (_selectedLogIds.containsAll(allIds)) {
+        _selectedLogIds.removeAll(allIds);
+        if (_selectedLogIds.isEmpty) _isSelectionMode = false;
+      } else {
+        _selectedLogIds.addAll(allIds);
+      }
+    });
+  }
+
+  Future<void> _moveSelectedToBin() async {
+    if (_selectedLogIds.isEmpty) return;
+    final count = _selectedLogIds.length;
+
+    setState(() => _isBinning = true);
+    try {
+      await ref.read(activityLogServiceProvider).softDeleteLogs(_selectedLogIds.toList());
+      if (mounted) {
+        setState(() {
+          _isSelectionMode = false;
+          _selectedLogIds.clear();
+          _isBinning = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.delete_rounded, color: Colors.white, size: 18),
+                const SizedBox(width: 10),
+                Text('$count audit log${count > 1 ? 's' : ''} moved to recycle bin.',
+                    style: const TextStyle(fontWeight: FontWeight.w600)),
+              ],
+            ),
+            backgroundColor: const Color(0xFFFF1744),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isBinning = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to move logs to bin: $e'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -2257,42 +2342,33 @@ class _ActivityTimelineState extends ConsumerState<_ActivityTimeline> {
       return true;
     }).toList();
 
+    // Visible logs list (up to display limit)
+    final visibleLogs = filteredLogs.take(_displayLimit).toList();
+    final allVisibleSelected = visibleLogs.isNotEmpty &&
+        _selectedLogIds.containsAll(visibleLogs.map((l) => l.id));
+
     return GlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Row
-          Row(
-            children: [
-              const Icon(Icons.history_rounded, color: AppColors.primary, size: 22),
-              const SizedBox(width: 8),
-              Text(
-                'Live System Audit Log',
-                style: GoogleFonts.inter(
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16,
-                  color: AppColors.textPrimary,
-                ),
+          // ── Header Row (animates between normal and selection mode) ───────
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 280),
+            switchInCurve: Curves.easeOutBack,
+            switchOutCurve: Curves.easeIn,
+            transitionBuilder: (child, anim) => FadeTransition(
+              opacity: anim,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, -0.15),
+                  end: Offset.zero,
+                ).animate(anim),
+                child: child,
               ),
-              const Spacer(),
-              // Badge showing number of filtered results
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: AppColors.primary.withOpacity(0.2), width: 1),
-                ),
-                child: Text(
-                  '${filteredLogs.length} events',
-                  style: GoogleFonts.inter(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primary,
-                  ),
-                ),
-              ),
-            ],
+            ),
+            child: _isSelectionMode
+                ? _buildSelectionHeader(visibleLogs, allVisibleSelected)
+                : _buildNormalHeader(filteredLogs.length),
           ),
           const SizedBox(height: 16),
 
@@ -2460,11 +2536,12 @@ class _ActivityTimelineState extends ConsumerState<_ActivityTimeline> {
             ListView.builder(
               shrinkWrap: true,
               physics: const NeverScrollableScrollPhysics(),
-              itemCount: filteredLogs.length < _displayLimit ? filteredLogs.length : _displayLimit,
+              itemCount: visibleLogs.length,
               itemBuilder: (context, index) {
-                final log = filteredLogs[index];
-                final isLast = index == (filteredLogs.length < _displayLimit ? filteredLogs.length - 1 : _displayLimit - 1);
+                final log = visibleLogs[index];
+                final isLast = index == visibleLogs.length - 1;
                 final bdtTime = log.createdAt.toBangladeshTime();
+                final isSelected = _selectedLogIds.contains(log.id);
 
                 IconData icon;
                 Color color;
@@ -2538,32 +2615,61 @@ class _ActivityTimelineState extends ConsumerState<_ActivityTimeline> {
                   }
                 }
 
-                return IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                return GestureDetector(
+                  onLongPress: () => _enterSelectionMode(log.id),
+                  onTap: _isSelectionMode ? () => _toggleSelection(log.id) : null,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOut,
+                    decoration: BoxDecoration(
+                      color: isSelected
+                          ? const Color(0xFFFF1744).withOpacity(0.06)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(10),
+                      border: isSelected
+                          ? Border.all(color: const Color(0xFFFF1744).withOpacity(0.3), width: 1)
+                          : Border.all(color: Colors.transparent),
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.all(isSelected ? 6 : 0),
+                      child: IntrinsicHeight(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Column(
-                        children: [
-                          Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: color.withOpacity(0.08),
-                              shape: BoxShape.circle,
-                              border: Border.all(color: color.withOpacity(0.35), width: 1.2),
-                            ),
-                            child: Icon(icon, color: color, size: 16),
-                          ),
-                          if (!isLast)
-                            Expanded(
-                              child: Container(
-                                width: 1.5,
-                                color: AppColors.cardBorder.withOpacity(0.3),
+                          Column(
+                            children: [
+                              AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  color: isSelected
+                                      ? const Color(0xFFFF1744).withOpacity(0.15)
+                                      : color.withOpacity(0.08),
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: isSelected
+                                        ? const Color(0xFFFF1744)
+                                        : color.withOpacity(0.35),
+                                    width: isSelected ? 2.0 : 1.2,
+                                  ),
+                                ),
+                                child: Icon(
+                                  isSelected ? Icons.check_rounded : icon,
+                                  color: isSelected ? const Color(0xFFFF1744) : color,
+                                  size: 16,
+                                ),
                               ),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(width: 14),
+                              if (!isLast)
+                                Expanded(
+                                  child: Container(
+                                    width: 1.5,
+                                    color: AppColors.cardBorder.withOpacity(0.3),
+                                  ),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(width: 14),
                       Expanded(
                         child: Padding(
                           padding: const EdgeInsets.only(bottom: 18.0),
@@ -2656,7 +2762,10 @@ class _ActivityTimelineState extends ConsumerState<_ActivityTimeline> {
                           ),
                         ),
                       ),
-                    ],
+                        ],
+                      ),
+                    ),
+                  ),
                   ),
                 );
               },
@@ -2692,6 +2801,200 @@ class _ActivityTimelineState extends ConsumerState<_ActivityTimeline> {
           ],
         ],
       ),
+    );
+  }
+
+  // ── Normal Header ──────────────────────────────────────────────────────────
+  Widget _buildNormalHeader(int count) {
+    return Row(
+      key: const ValueKey('normal_header'),
+      children: [
+        const Icon(Icons.history_rounded, color: AppColors.primary, size: 22),
+        const SizedBox(width: 8),
+        Text(
+          'Live System Audit Log',
+          style: GoogleFonts.inter(
+            fontWeight: FontWeight.w800,
+            fontSize: 16,
+            color: AppColors.textPrimary,
+          ),
+        ),
+        const Spacer(),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: AppColors.primary.withOpacity(0.08),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.primary.withOpacity(0.2), width: 1),
+          ),
+          child: Text(
+            '$count events',
+            style: GoogleFonts.inter(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AppColors.primary,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Tooltip(
+          message: 'Long-press any log entry to start selecting',
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: AppColors.textHint.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.touch_app_rounded, size: 13, color: AppColors.textHint.withOpacity(0.5)),
+                const SizedBox(width: 4),
+                Text(
+                  'Long press to select',
+                  style: GoogleFonts.inter(
+                    fontSize: 9,
+                    color: AppColors.textHint.withOpacity(0.5),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ── Selection Mode Header ──────────────────────────────────────────────────
+  Widget _buildSelectionHeader(List<ActivityLogModel> visibleLogs, bool allSelected) {
+    return Row(
+      key: const ValueKey('selection_header'),
+      children: [
+        // Cancel button
+        GestureDetector(
+          onTap: _cancelSelection,
+          child: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: AppColors.textHint.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(Icons.close_rounded, size: 18, color: AppColors.textHint),
+          ),
+        ),
+        const SizedBox(width: 10),
+        // Selected count badge
+        Expanded(
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFF1744).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFFFF1744).withOpacity(0.3)),
+                ),
+                child: Text(
+                  '${_selectedLogIds.length} selected',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFFFF1744),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Select All toggle
+        GestureDetector(
+          onTap: () => _toggleSelectAll(visibleLogs),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: allSelected
+                  ? AppColors.primary.withOpacity(0.1)
+                  : AppColors.textHint.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: allSelected
+                    ? AppColors.primary.withOpacity(0.4)
+                    : AppColors.cardBorder.withOpacity(0.4),
+              ),
+            ),
+            child: Text(
+              allSelected ? 'Deselect All' : 'Select All',
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: allSelected ? AppColors.primary : AppColors.textSecondary,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Move to Bin button
+        GestureDetector(
+          onTap: _selectedLogIds.isEmpty ? null : _moveSelectedToBin,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              gradient: _selectedLogIds.isEmpty
+                  ? null
+                  : const LinearGradient(
+                      colors: [Color(0xFFFF1744), Color(0xFFD50000)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+              color: _selectedLogIds.isEmpty ? AppColors.textHint.withOpacity(0.1) : null,
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: _selectedLogIds.isEmpty
+                  ? null
+                  : [
+                      BoxShadow(
+                        color: const Color(0xFFFF1744).withOpacity(0.35),
+                        blurRadius: 8,
+                        offset: const Offset(0, 3),
+                      )
+                    ],
+            ),
+            child: _isBinning
+                ? const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
+                : Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.delete_rounded,
+                        size: 14,
+                        color: _selectedLogIds.isEmpty
+                            ? AppColors.textHint
+                            : Colors.white,
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        'Move to Bin',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: _selectedLogIds.isEmpty
+                              ? AppColors.textHint
+                              : Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+        ),
+      ],
     );
   }
 
