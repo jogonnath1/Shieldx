@@ -59,16 +59,23 @@ class ActivityLogService {
   }
 
   /// Streams recent activity logs in real-time for the admin dashboard (excludes soft-deleted).
-  Stream<List<ActivityLogModel>> watchRecentLogs({int limit = 100}) {
-    return _client
-        .from('activity_logs')
-        .stream(primaryKey: ['id'])
-        .order('created_at', ascending: false)
-        .limit(limit)
-        .map((data) => data
-            .where((e) => e['deleted_at'] == null)
-            .map((e) => ActivityLogModel.fromMap(e))
-            .toList());
+  /// Uses periodic polling so soft-deleted rows are excluded immediately after invalidation.
+  Stream<List<ActivityLogModel>> watchRecentLogs({int limit = 100}) async* {
+    while (true) {
+      try {
+        final response = await _client
+            .from('activity_logs')
+            .select()
+            .isFilter('deleted_at', null)
+            .order('created_at', ascending: false)
+            .limit(limit);
+        yield (response as List).map((e) => ActivityLogModel.fromMap(e)).toList();
+      } catch (e) {
+        debugPrint('ERROR in watchRecentLogs: $e');
+        yield [];
+      }
+      await Future.delayed(const Duration(seconds: 5));
+    }
   }
 
   /// Fetches recent activity logs as a one-shot query (excludes soft-deleted).

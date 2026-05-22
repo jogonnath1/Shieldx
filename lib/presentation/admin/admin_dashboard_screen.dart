@@ -2251,6 +2251,8 @@ class _ActivityTimelineState extends ConsumerState<_ActivityTimeline> {
     try {
       await ref.read(activityLogServiceProvider).softDeleteLogs(_selectedLogIds.toList());
       if (mounted) {
+        // Invalidate the stream so it re-fetches and excludes the soft-deleted rows
+        ref.invalidate(activityLogsStreamProvider);
         setState(() {
           _isSelectionMode = false;
           _selectedLogIds.clear();
