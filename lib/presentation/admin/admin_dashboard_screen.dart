@@ -1874,131 +1874,342 @@ class _SuspiciousLoginsWarning extends StatelessWidget {
   }
 }
 
-class _ActivityTrendsChart extends StatelessWidget {
+class _ActivityTrendsChart extends ConsumerWidget {
   final List<Map<String, dynamic>> trends;
-
   const _ActivityTrendsChart({required this.trends});
 
   @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return const _ActivityTrendsChartBody();
+  }
+}
+
+class _ActivityTrendsChartBody extends ConsumerStatefulWidget {
+  const _ActivityTrendsChartBody();
+
+  @override
+  ConsumerState<_ActivityTrendsChartBody> createState() => _ActivityTrendsChartBodyState();
+}
+
+class _ActivityTrendsChartBodyState extends ConsumerState<_ActivityTrendsChartBody>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _animCtrl;
+  late Animation<double> _fadeAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _animCtrl = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 400),
+    );
+    _fadeAnim = CurvedAnimation(parent: _animCtrl, curve: Curves.easeInOut);
+    _animCtrl.forward();
+  }
+
+  @override
+  void dispose() {
+    _animCtrl.dispose();
+    super.dispose();
+  }
+
+  void _onRangeChange(ChartRange r) {
+    ref.read(chartRangeProvider.notifier).state = r;
+    _animCtrl.reset();
+    _animCtrl.forward();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (trends.isEmpty) return const SizedBox.shrink();
-
-    final maxVal = trends.map((e) => e['count'] as int).reduce((a, b) => a > b ? a : b).toDouble();
-    final spots = <FlSpot>[];
-    for (int i = 0; i < trends.length; i++) {
-      spots.add(FlSpot(i.toDouble(), (trends[i]['count'] as int).toDouble()));
-    }
-
-    final double maxY = maxVal > 0 ? maxVal + (maxVal * 0.25).ceilToDouble() : 5;
+    final selected = ref.watch(chartRangeProvider);
+    final trendsAsync = ref.watch(activityTrendsProvider(selected));
 
     return GlassCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // ── Header Row ────────────────────────────────────────────
           Row(
             children: [
               const Icon(Icons.insights_rounded, color: AppColors.primary, size: 20),
               const SizedBox(width: 8),
-              Text(
-                'System Activity Volume (7 Days)',
-                style: GoogleFonts.inter(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 15,
-                  color: AppColors.textPrimary,
+              Expanded(
+                child: Text(
+                  'System Activity Volume (${selected.fullLabel})',
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          SizedBox(
-            height: 180,
-            child: LineChart(
-              LineChartData(
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: false,
-                  horizontalInterval: maxY > 0 ? (maxY / 4).ceilToDouble() : 1,
-                  getDrawingHorizontalLine: (value) => FlLine(
-                    color: AppColors.cardBorder.withOpacity(0.5),
-                    strokeWidth: 1,
-                  ),
-                ),
-                titlesData: FlTitlesData(
-                  show: true,
-                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 22,
-                      interval: 1,
-                      getTitlesWidget: (value, meta) {
-                        final idx = value.toInt();
-                        if (idx < 0 || idx >= trends.length) return const SizedBox.shrink();
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 8.0),
-                          child: Text(
-                            trends[idx]['day'] as String,
-                            style: GoogleFonts.inter(
-                              color: AppColors.textHint,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        );
-                      },
+          const SizedBox(height: 14),
+
+          // ── Range Switcher ────────────────────────────────────────
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: ChartRange.values.map((r) {
+                final isActive = r == selected;
+                return GestureDetector(
+                  onTap: () => _onRangeChange(r),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeInOut,
+                    margin: const EdgeInsets.only(right: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    decoration: BoxDecoration(
+                      gradient: isActive
+                          ? const LinearGradient(
+                              colors: [Color(0xFF7C3AED), Color(0xFF2979FF)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            )
+                          : null,
+                      color: isActive ? null : AppColors.surfaceLight.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isActive
+                            ? const Color(0xFF7C3AED).withOpacity(0.6)
+                            : AppColors.cardBorder,
+                        width: 1,
+                      ),
+                      boxShadow: isActive
+                          ? [
+                              BoxShadow(
+                                color: const Color(0xFF7C3AED).withOpacity(0.3),
+                                blurRadius: 8,
+                                offset: const Offset(0, 3),
+                              )
+                            ]
+                          : null,
                     ),
-                  ),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      interval: maxY > 4 ? (maxY / 4).ceilToDouble() : 1,
-                      reservedSize: 28,
-                      getTitlesWidget: (value, meta) {
-                        return Text(
-                          value.toInt().toString(),
-                          style: GoogleFonts.inter(color: AppColors.textHint, fontSize: 10),
-                        );
-                      },
-                    ),
-                  ),
-                ),
-                borderData: FlBorderData(show: false),
-                minX: 0,
-                maxX: (trends.length - 1).toDouble(),
-                minY: 0,
-                maxY: maxY,
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: spots,
-                    isCurved: true,
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF00E676), Color(0xFF00B0FF)],
-                    ),
-                    barWidth: 3,
-                    isStrokeCapRound: true,
-                    dotData: const FlDotData(show: false),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      gradient: LinearGradient(
-                        colors: [
-                          const Color(0xFF00E676).withOpacity(0.2),
-                          const Color(0xFF00B0FF).withOpacity(0.0),
-                        ],
-                        begin: Alignment.topCenter,
-                        end: Alignment.bottomCenter,
+                    child: Text(
+                      r.label,
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: isActive ? FontWeight.w800 : FontWeight.w500,
+                        color: isActive ? Colors.white : AppColors.textSecondary,
                       ),
                     ),
                   ),
-                ],
+                );
+              }).toList(),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // ── Chart ─────────────────────────────────────────────────
+          trendsAsync.when(
+            loading: () => SizedBox(
+              height: 180,
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircularProgressIndicator(
+                      color: AppColors.primary,
+                      strokeWidth: 2,
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Loading ${selected.fullLabel} data...',
+                      style: GoogleFonts.inter(color: AppColors.textHint, fontSize: 12),
+                    ),
+                  ],
+                ),
               ),
             ),
+            error: (e, _) => SizedBox(
+              height: 180,
+              child: Center(
+                child: Text(
+                  'Failed to load chart data',
+                  style: GoogleFonts.inter(color: AppColors.error),
+                ),
+              ),
+            ),
+            data: (trends) {
+              if (trends.isEmpty) {
+                return SizedBox(
+                  height: 180,
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.bar_chart_rounded,
+                            color: AppColors.textHint.withOpacity(0.3), size: 40),
+                        const SizedBox(height: 8),
+                        Text(
+                          'No data for this period',
+                          style: GoogleFonts.inter(
+                              color: AppColors.textHint, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }
+
+              final maxVal = trends
+                  .map((e) => e['count'] as int)
+                  .reduce((a, b) => a > b ? a : b)
+                  .toDouble();
+              final maxY = maxVal > 0 ? maxVal + (maxVal * 0.25).ceilToDouble() : 5;
+
+              // How many x-axis labels to show based on range
+              final int labelStep = selected == ChartRange.day
+                  ? 4
+                  : selected == ChartRange.month
+                      ? 5
+                      : selected == ChartRange.threeMonths
+                          ? 2
+                          : selected == ChartRange.sixMonths
+                              ? 4
+                              : 1;
+
+              final spots = <FlSpot>[
+                for (int i = 0; i < trends.length; i++)
+                  FlSpot(i.toDouble(), (trends[i]['count'] as int).toDouble()),
+              ];
+
+              return FadeTransition(
+                opacity: _fadeAnim,
+                child: SizedBox(
+                  height: 180,
+                  child: LineChart(
+                    LineChartData(
+                      gridData: FlGridData(
+                        show: true,
+                        drawVerticalLine: false,
+                        horizontalInterval:
+                            maxY > 0 ? (maxY / 4).ceilToDouble() : 1.0,
+                        getDrawingHorizontalLine: (value) => FlLine(
+                          color: AppColors.cardBorder.withOpacity(0.4),
+                          strokeWidth: 1,
+                        ),
+                      ),
+                      titlesData: FlTitlesData(
+                        show: true,
+                        rightTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false)),
+                        topTitles: const AxisTitles(
+                            sideTitles: SideTitles(showTitles: false)),
+                        bottomTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            reservedSize: 22,
+                            interval: labelStep.toDouble(),
+                            getTitlesWidget: (value, meta) {
+                              final idx = value.toInt();
+                              if (idx < 0 ||
+                                  idx >= trends.length ||
+                                  idx % labelStep != 0) {
+                                return const SizedBox.shrink();
+                              }
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 6.0),
+                                child: Text(
+                                  trends[idx]['day'] as String,
+                                  style: GoogleFonts.inter(
+                                    color: AppColors.textHint,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                        leftTitles: AxisTitles(
+                          sideTitles: SideTitles(
+                            showTitles: true,
+                            interval: maxY > 4
+                                ? (maxY / 4).ceilToDouble()
+                                : 1.0,
+                            reservedSize: 28,
+                            getTitlesWidget: (value, meta) => Text(
+                              value.toInt().toString(),
+                              style: GoogleFonts.inter(
+                                  color: AppColors.textHint, fontSize: 10),
+                            ),
+                          ),
+                        ),
+                      ),
+                      borderData: FlBorderData(show: false),
+                      minX: 0,
+                      maxX: (trends.length - 1).toDouble(),
+                      minY: 0,
+                      maxY: maxY.toDouble(),
+                      lineTouchData: LineTouchData(
+                        touchTooltipData: LineTouchTooltipData(
+                          getTooltipColor: (_) =>
+                              const Color(0xFF1E1E2E).withOpacity(0.95),
+                          tooltipRoundedRadius: 10,
+                          getTooltipItems: (spots) => spots.map((s) {
+                            final idx = s.x.toInt();
+                            final label = idx < trends.length
+                                ? trends[idx]['day'] as String
+                                : '';
+                            return LineTooltipItem(
+                              '$label\n${s.y.toInt()} events',
+                              GoogleFonts.inter(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ),
+                      lineBarsData: [
+                        LineChartBarData(
+                          spots: spots,
+                          isCurved: true,
+                          curveSmoothness: 0.35,
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF7C3AED), Color(0xFF2979FF)],
+                          ),
+                          barWidth: 2.5,
+                          isStrokeCapRound: true,
+                          dotData: FlDotData(
+                            show: trends.length <= 14,
+                            getDotPainter: (spot, pct, bar, index) =>
+                                FlDotCirclePainter(
+                              radius: 3,
+                              color: Colors.white,
+                              strokeColor: const Color(0xFF7C3AED),
+                              strokeWidth: 1.5,
+                            ),
+                          ),
+                          belowBarData: BarAreaData(
+                            show: true,
+                            gradient: LinearGradient(
+                              colors: [
+                                const Color(0xFF7C3AED).withOpacity(0.25),
+                                const Color(0xFF2979FF).withOpacity(0.0),
+                              ],
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    duration: const Duration(milliseconds: 300),
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),
     );
   }
 }
+
 
 class _MostActiveOfficersList extends StatelessWidget {
   final List<Map<String, dynamic>> officersStats;

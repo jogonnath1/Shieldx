@@ -56,38 +56,68 @@ final officerActivityStatsProvider = Provider<AsyncValue<List<Map<String, dynami
   return AsyncValue.data(stats);
 });
 
-/// Aggregates activity logs from the last 7 days dynamically for charting daily activity volumes.
-final dailyActivityTrendsProvider = Provider<AsyncValue<List<Map<String, dynamic>>>>((ref) {
-  final logsAsync = ref.watch(activityLogsStreamProvider);
+/// Supported time ranges for the activity chart.
+enum ChartRange {
+  day,      // Last 24 hours (hourly)
+  week,     // Last 7 days (daily)
+  month,    // Last 30 days (daily)
+  threeMonths, // Last 3 months (weekly)
+  sixMonths,   // Last 6 months (weekly)
+  year,     // Last 12 months (monthly)
+}
 
-  return logsAsync.whenData((logs) {
-    final now = DateTime.now();
-    final Map<String, int> counts = {};
-
-    // Initialize the last 7 days with 0 to ensure all days are plotted
-    for (int i = 6; i >= 0; i--) {
-      final day = now.subtract(Duration(days: i));
-      final key = '${day.day}/${day.month}';
-      counts[key] = 0;
+extension ChartRangeX on ChartRange {
+  String get label {
+    switch (this) {
+      case ChartRange.day: return '1D';
+      case ChartRange.week: return '1W';
+      case ChartRange.month: return '1M';
+      case ChartRange.threeMonths: return '3M';
+      case ChartRange.sixMonths: return '6M';
+      case ChartRange.year: return '1Y';
     }
+  }
 
-    // Populate log counts per day
-    for (var log in logs) {
-      final difference = now.difference(log.createdAt).inDays;
-      if (difference < 7) {
-        final key = '${log.createdAt.day}/${log.createdAt.month}';
-        if (counts.containsKey(key)) {
-          counts[key] = counts[key]! + 1;
-        }
-      }
+  String get fullLabel {
+    switch (this) {
+      case ChartRange.day: return 'Today';
+      case ChartRange.week: return '7 Days';
+      case ChartRange.month: return '1 Month';
+      case ChartRange.threeMonths: return '3 Months';
+      case ChartRange.sixMonths: return '6 Months';
+      case ChartRange.year: return '1 Year';
     }
+  }
 
-    return counts.entries.map((e) => {
-      'day': e.key,
-      'count': e.value,
-    }).toList();
-  });
+  Duration get duration {
+    switch (this) {
+      case ChartRange.day: return const Duration(hours: 24);
+      case ChartRange.week: return const Duration(days: 7);
+      case ChartRange.month: return const Duration(days: 30);
+      case ChartRange.threeMonths: return const Duration(days: 91);
+      case ChartRange.sixMonths: return const Duration(days: 182);
+      case ChartRange.year: return const Duration(days: 365);
+    }
+  }
+}
+
+/// Selected chart range state.
+final chartRangeProvider = StateProvider<ChartRange>((ref) => ChartRange.week);
+
+/// Fetches activity log counts from the DB grouped by the appropriate interval for a given ChartRange.
+final activityTrendsProvider = FutureProvider.family<List<Map<String, dynamic>>, ChartRange>((ref, range) async {
+  final service = ref.watch(activityLogServiceProvider);
+  return service.getActivityTrends(range);
 });
+
+/// Aggregates activity logs from the last 7 days dynamically for charting daily activity volumes.
+/// Kept for backwards compatibility — used internally.
+final dailyActivityTrendsProvider = Provider<AsyncValue<List<Map<String, dynamic>>>>((ref) {
+  final range = ref.watch(chartRangeProvider);
+  final trendsAsync = ref.watch(activityTrendsProvider(range));
+  return trendsAsync;
+});
+
 
 /// Fetches security audit logs for the currently logged-in user.
 final userSecurityLogsProvider = FutureProvider.autoDispose<List<ActivityLogModel>>((ref) async {

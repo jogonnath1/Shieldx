@@ -1,7 +1,9 @@
 import 'package:flutter/foundation.dart';
+import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/activity_log_model.dart';
 import '../models/profile_model.dart';
+import '../../providers/activity_log_provider.dart' show ChartRange, ChartRangeX;
 
 class ActivityLogService {
   final SupabaseClient _client = Supabase.instance.client;
@@ -209,6 +211,106 @@ class ActivityLogService {
       return list.map((e) => ActivityLogModel.fromMap(e)).toList();
     } catch (e) {
       debugPrint('ERROR FETCHING USER SECURITY LOGS: $e');
+      return [];
+    }
+  }
+  /// Fetches activity trend data grouped by the correct interval for a given [ChartRange].
+  /// - 1D  → last 24h, grouped hourly
+  /// - 1W  → last 7 days, grouped daily (dd/MM)
+  /// - 1M  → last 30 days, grouped daily
+  /// - 3M  → last 91 days, grouped weekly (week label)
+  /// - 6M  → last 182 days, grouped weekly
+  /// - 1Y  → last 365 days, grouped monthly (MMM yy)
+  Future<List<Map<String, dynamic>>> getActivityTrends(ChartRange range) async {
+    try {
+      final now = DateTime.now();
+      final from = now.subtract(range.duration);
+      final fromStr = from.toIso8601String();
+
+      final response = await _client
+          .from('activity_logs')
+          .select('created_at')
+          .gte('created_at', fromStr)
+          .isFilter('deleted_at', null)
+          .order('created_at', ascending: true);
+
+      final rows = response as List;
+
+      if (range == ChartRange.day) {
+        // Hourly buckets for last 24h
+        final Map<int, int> hourly = {};
+        for (int h = 0; h < 24; h++) hourly[h] = 0;
+        for (final row in rows) {
+          final dt = DateTime.parse(row['created_at'] as String).toLocal();
+          hourly[dt.hour] = (hourly[dt.hour] ?? 0) + 1;
+        }
+        return hourly.entries.map((e) {
+          final h = e.key;
+          final label = h == 0
+              ? '12am'
+              : h < 12
+                  ? '${h}am'
+                  : h == 12
+                      ? '12pm'
+                      : '${h - 12}pm';
+          return {'day': label, 'count': e.value};
+        }).toList();
+      } else if (range == ChartRange.week || range == ChartRange.month) {
+        // Daily buckets
+        final int days = range == ChartRange.week ? 7 : 30;
+        final Map<String, int> daily = {};
+        for (int i = days - 1; i >= 0; i--) {
+          final d = now.subtract(Duration(days: i));
+          daily[DateFormat('d/M').format(d)] = 0;
+        }
+        for (final row in rows) {
+          final dt = DateTime.parse(row['created_at'] as String).toLocal();
+          final key = DateFormat('d/M').format(dt);
+          if (daily.containsKey(key)) daily[key] = daily[key]! + 1;
+        }
+        return daily.entries.map((e) => {'day': e.key, 'count': e.value}).toList();
+      } else {
+        // Weekly buckets for 3M / 6M, Monthly for 1Y
+        if (range == ChartRange.year) {
+          // Monthly buckets
+          final Map<String, int> monthly = {};
+          for (int i = 11; i >= 0; i--) {
+            final d = DateTime(now.year, now.month - i, 1);
+            monthly[DateFormat('MMM yy').format(d)] = 0;
+          }
+          for (final row in rows) {
+            final dt = DateTime.parse(row['created_at'] as String).toLocal();
+            final key = DateFormat('MMM yy').format(dt);
+            if (monthly.containsKey(key)) monthly[key] = monthly[key]! + 1;
+          }
+          return monthly.entries.map((e) => {'day': e.key, 'count': e.value}).toList();
+        } else {
+          // Weekly buckets (3M or 6M)
+          final int totalWeeks = range == ChartRange.threeMonths ? 13 : 26;
+          final Map<String, int> weekly = {};
+          for (int i = totalWeeks - 1; i >= 0; i--) {
+            final weekStart = now.subtract(Duration(days: i * 7));
+            weekly[DateFormat('d/M').format(weekStart)] = 0;
+          }
+          for (final row in rows) {
+            final dt = DateTime.parse(row['created_at'] as String).toLocal();
+            // Find which week bucket this belongs to
+            for (int i = totalWeeks - 1; i >= 0; i--) {
+              final weekStart = now.subtract(Duration(days: i * 7));
+              final weekEnd = weekStart.add(const Duration(days: 7));
+              if (dt.isAfter(weekStart.subtract(const Duration(days: 1))) &&
+                  dt.isBefore(weekEnd)) {
+                final key = DateFormat('d/M').format(weekStart);
+                if (weekly.containsKey(key)) weekly[key] = weekly[key]! + 1;
+                break;
+              }
+            }
+          }
+          return weekly.entries.map((e) => {'day': e.key, 'count': e.value}).toList();
+        }
+      }
+    } catch (e) {
+      debugPrint('ERROR in getActivityTrends: $e');
       return [];
     }
   }
