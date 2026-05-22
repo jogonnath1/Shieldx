@@ -204,7 +204,7 @@ class ActivityLogService {
           .from('activity_logs')
           .select()
           .eq('user_id', currentUser.id)
-          .inFilter('action_type', ['login', 'suspicious_login', 'logout'])
+          .inFilter('action_type', ['login', 'suspicious_login', 'logout', 'password_change', 'email_change_attempt'])
           .isFilter('deleted_at', null)
           .order('created_at', ascending: false)
           .limit(30);
@@ -241,7 +241,9 @@ class ActivityLogService {
       if (range == ChartRange.day) {
         // Hourly buckets for last 24h
         final Map<int, int> hourly = {};
-        for (int h = 0; h < 24; h++) hourly[h] = 0;
+        for (int h = 0; h < 24; h++) {
+          hourly[h] = 0;
+        }
         for (final row in rows) {
           final dt = DateTime.parse(row['created_at'] as String).toLocal();
           hourly[dt.hour] = (hourly[dt.hour] ?? 0) + 1;

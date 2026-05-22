@@ -317,6 +317,14 @@ class SecurityLogsScreen extends ConsumerWidget {
                   icon = Icons.shield_rounded;
                   color = const Color(0xFFFF1744);
                   break;
+                case 'password_change':
+                  icon = Icons.lock_outline;
+                  color = AppColors.primaryLight;
+                  break;
+                case 'email_change_attempt':
+                  icon = Icons.alternate_email_rounded;
+                  color = AppColors.accent;
+                  break;
                 default:
                   icon = Icons.info_outline_rounded;
                   color = AppColors.primary;
@@ -467,7 +475,11 @@ class SecurityLogsScreen extends ConsumerWidget {
                               ? AppColors.error
                               : log.actionType == 'login'
                                   ? const Color(0xFF00E676)
-                                  : AppColors.textHint)
+                                  : log.actionType == 'password_change'
+                                      ? AppColors.primaryLight
+                                      : log.actionType == 'email_change_attempt'
+                                          ? AppColors.accent
+                                          : AppColors.textHint)
                           .withOpacity(0.1),
                       shape: BoxShape.circle,
                     ),
@@ -476,12 +488,20 @@ class SecurityLogsScreen extends ConsumerWidget {
                           ? Icons.shield_outlined
                           : log.actionType == 'login'
                               ? Icons.vpn_key_rounded
-                              : Icons.logout_rounded,
+                              : log.actionType == 'password_change'
+                                  ? Icons.lock_outline
+                                  : log.actionType == 'email_change_attempt'
+                                      ? Icons.alternate_email_rounded
+                                      : Icons.logout_rounded,
                       color: log.actionType == 'suspicious_login'
                           ? AppColors.error
                           : log.actionType == 'login'
                               ? const Color(0xFF00E676)
-                              : AppColors.textSecondary,
+                              : log.actionType == 'password_change'
+                                  ? AppColors.primaryLight
+                                  : log.actionType == 'email_change_attempt'
+                                      ? AppColors.accent
+                                      : AppColors.textSecondary,
                       size: 22,
                     ),
                   ),
@@ -495,7 +515,11 @@ class SecurityLogsScreen extends ConsumerWidget {
                               ? 'Security Warning'
                               : log.actionType == 'login'
                                   ? 'Successful Sign In'
-                                  : 'Account Sign Out',
+                                  : log.actionType == 'password_change'
+                                      ? 'Password Modified'
+                                      : log.actionType == 'email_change_attempt'
+                                          ? 'Email Modification Request'
+                                          : 'Account Sign Out',
                           style: GoogleFonts.inter(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,

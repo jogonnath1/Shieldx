@@ -14,6 +14,7 @@ import '../../presentation/user/complaint_detail_screen.dart';
 import '../../presentation/user/profile_screen.dart';
 import '../../presentation/user/edit_profile_screen.dart';
 import '../../presentation/user/change_password_screen.dart';
+import '../../presentation/user/change_email_screen.dart';
 import '../../presentation/user/security_logs_screen.dart';
 import '../../presentation/user/police_stations_screen.dart';
 import '../../presentation/user/chat_screen.dart';
@@ -154,6 +155,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/change-password',
         builder: (context, state) => const ChangePasswordScreen(),
+      ),
+      GoRoute(
+        path: '/change-email',
+        builder: (context, state) => const ChangeEmailScreen(),
       ),
       GoRoute(
         path: '/notifications',

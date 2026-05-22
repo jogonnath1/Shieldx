@@ -156,6 +156,12 @@ class AuthService {
     );
   }
 
+  Future<UserResponse> updateEmail(String newEmail) async {
+    return await _client.auth.updateUser(
+      UserAttributes(email: newEmail),
+    );
+  }
+
   Future<ProfileModel?> getCurrentProfile() async {
     final user = currentUser;
     if (user == null) return null;

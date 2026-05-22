@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../core/constants/app_colors.dart';
 import '../../data/services/auth_service.dart';
+import '../../data/services/activity_log_service.dart';
 import '../../providers/auth_provider.dart';
 import '../widgets/common/widgets.dart';
 
@@ -32,7 +33,21 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
     try {
-      await AuthService().updatePassword(_newCtrl.text.trim());
+      final newPassword = _newCtrl.text.trim();
+      final profile = ref.read(authNotifierProvider).valueOrNull;
+      
+      // Update in Supabase Auth
+      await AuthService().updatePassword(newPassword);
+      
+      // Log password change event
+      if (profile != null) {
+        await ActivityLogService().logEvent(
+          actionType: 'password_change',
+          profile: profile,
+          details: {'info': 'Password updated successfully'},
+        );
+      }
+
       await ref.read(authNotifierProvider.notifier).signOut();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -42,6 +57,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
       );
       context.go('/login');
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
       );
@@ -93,8 +109,8 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                   obscureText: true,
                   prefixIcon: Icons.lock_outline,
                   validator: (v) {
-                    if (v == null || v.isEmpty) return 'Required';
-                    if (v.length < 6) return 'Min 6 characters';
+                    if (v == null || v.trim().isEmpty) return 'Required';
+                    if (v.trim().length < 6) return 'Min 6 characters';
                     return null;
                   },
                 ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.1),
@@ -105,7 +121,8 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                   obscureText: true,
                   prefixIcon: Icons.lock_outline,
                   validator: (v) {
-                    if (v != _newCtrl.text) return 'Passwords do not match';
+                    if (v == null || v.trim().isEmpty) return 'Required';
+                    if (v.trim() != _newCtrl.text.trim()) return 'Passwords do not match';
                     return null;
                   },
                 ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),

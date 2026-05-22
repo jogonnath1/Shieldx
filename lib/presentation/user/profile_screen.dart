@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:intl/intl.dart';
 import '../../core/utils/date_time_extensions.dart';
 import '../../core/constants/app_colors.dart';
 import '../../data/services/storage_service.dart';
@@ -454,6 +453,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   label: 'Change Password',
                   onTap: () => context.push('/change-password'),
                 ).animate().fadeIn(delay: 300.ms),
+                const SizedBox(height: 10),
+                _ProfileAction(
+                  icon: Icons.alternate_email_rounded,
+                  label: 'Change Email',
+                  onTap: () => context.push('/change-email'),
+                ).animate().fadeIn(delay: 315.ms),
                 const SizedBox(height: 10),
                 _ProfileAction(
                   icon: Icons.security_rounded,

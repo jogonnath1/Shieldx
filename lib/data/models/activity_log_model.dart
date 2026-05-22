@@ -88,6 +88,11 @@ class ActivityLogModel {
           return 'Updated profile (${fields.join(', ')})';
         }
         return 'Updated profile';
+      case 'password_change':
+        return 'Changed account password successfully';
+      case 'email_change_attempt':
+        final toEmail = details['new_email'] ?? 'new address';
+        return 'Requested email change to $toEmail';
       case 'suspicious_login':
         return 'Suspicious login: ${details['reason'] ?? 'Failed credentials'}';
       case 'app_heartbeat':
