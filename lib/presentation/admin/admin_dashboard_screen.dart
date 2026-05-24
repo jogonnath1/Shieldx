@@ -1600,8 +1600,8 @@ class _SuspiciousLoginsWarning extends ConsumerWidget {
             ),
           ],
         ),
-      ),
-    ).animate().slideX(begin: -0.1, end: 0.0, duration: 500.ms, curve: Curves.easeOutQuad).fadeIn();
+      ).animate().slideX(begin: -0.1, end: 0.0, duration: 500.ms, curve: Curves.easeOutQuad).fadeIn(),
+    );
   }
 }
 
@@ -2631,7 +2631,7 @@ class _ActivityTimeline extends ConsumerStatefulWidget {
 class _ActivityTimelineState extends ConsumerState<_ActivityTimeline> {
   String _searchQuery = '';
   String _roleFilter = 'all'; // 'all', 'admin', 'verified', 'unverified'
-  String _actionFilter = 'all'; // 'all', 'auth', 'usage', 'reports', 'profile'
+  String _actionFilter = 'all'; // 'all', 'auth', 'suspicious', 'usage', 'reports', 'profile'
   int _displayLimit = 10;
   final TextEditingController _searchController = TextEditingController();
 
@@ -2737,17 +2737,17 @@ class _ActivityTimelineState extends ConsumerState<_ActivityTimeline> {
           _searchQuery = '';
           _searchController.clear();
           _roleFilter = 'all';
-          _actionFilter = 'all';
-          _displayLimit = 20;
+          _actionFilter = 'suspicious';
+          _displayLimit = 100;
           _highlightSuspicious = true;
         });
 
         ref.read(suspiciousLoginTriggerProvider.notifier).state = false;
 
         WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (_suspiciousLoginKey.currentContext != null) {
+          if (mounted) {
             Scrollable.ensureVisible(
-              _suspiciousLoginKey.currentContext!,
+              context,
               duration: const Duration(milliseconds: 1000),
               curve: Curves.easeInOutCubic,
             );
@@ -2799,6 +2799,8 @@ class _ActivityTimelineState extends ConsumerState<_ActivityTimeline> {
         if (log.actionType != 'login' && log.actionType != 'logout' && log.actionType != 'suspicious_login') {
           return false;
         }
+      } else if (_actionFilter == 'suspicious') {
+        if (log.actionType != 'suspicious_login') return false;
       } else if (_actionFilter == 'usage') {
         if (log.actionType != 'app_open' && log.actionType != 'app_close') return false;
       } else if (_actionFilter == 'reports') {
@@ -2939,6 +2941,13 @@ class _ActivityTimelineState extends ConsumerState<_ActivityTimeline> {
                   isSelected: _actionFilter == 'all',
                   onTap: () => setState(() => _actionFilter = 'all'),
                   activeColor: AppColors.primary,
+                ),
+                const SizedBox(width: 8),
+                _buildFilterChip(
+                  label: 'Suspicious Logins',
+                  isSelected: _actionFilter == 'suspicious',
+                  onTap: () => setState(() => _actionFilter = 'suspicious'),
+                  activeColor: const Color(0xFFFF1744),
                 ),
                 const SizedBox(width: 8),
                 _buildFilterChip(

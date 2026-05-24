@@ -351,14 +351,24 @@ class _SubmitComplaintScreenState
         ),
       );
       if (time != null) {
+        final selectedDateTime = DateTime(
+          date.year,
+          date.month,
+          date.day,
+          time.hour,
+          time.minute,
+        );
+        final now = DateTime.now().toBangladeshTime();
+        if (selectedDateTime.isAfter(now)) {
+          setState(() {
+            _incidentDate = now;
+          });
+          _saveDraft();
+          _showError('Future time is not allowed. Reverted to current time.');
+          return;
+        }
         setState(() {
-          _incidentDate = DateTime(
-            date.year,
-            date.month,
-            date.day,
-            time.hour,
-            time.minute,
-          );
+          _incidentDate = selectedDateTime;
         });
         _saveDraft();
       }
@@ -377,6 +387,10 @@ class _SubmitComplaintScreenState
     }
     if (_incidentDate == null) {
       _showError('Please select incident date & time');
+      return;
+    }
+    if (_incidentDate!.isAfter(DateTime.now().toBangladeshTime())) {
+      _showError('Incident date & time cannot be in the future.');
       return;
     }
     if (_isAnonymous && _evidenceFiles.isEmpty) {
@@ -1035,7 +1049,7 @@ class _IncidentStep extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         DropdownButtonFormField<String>(
-          initialValue: selectedCategory,
+          value: selectedCategory,
           dropdownColor: AppColors.card,
           decoration: const InputDecoration(
             labelText: 'Crime Category',
@@ -1161,7 +1175,7 @@ class _IncidentStep extends StatelessWidget {
             Stack(
               children: [
                 DropdownButtonFormField<String?>(
-                  initialValue: selectedPoliceStation,
+                  value: selectedPoliceStation,
                   dropdownColor: AppColors.card,
                   decoration: InputDecoration(
                     prefixIcon: isDetectingLocation

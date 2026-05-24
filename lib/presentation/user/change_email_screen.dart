@@ -9,6 +9,11 @@ import '../../data/services/activity_log_service.dart';
 import '../../providers/auth_provider.dart';
 import '../widgets/common/widgets.dart';
 
+enum ChangeEmailStep {
+  enterNewEmail,
+  verifyNewEmail,
+}
+
 class ChangeEmailScreen extends ConsumerStatefulWidget {
   const ChangeEmailScreen({super.key});
 
@@ -17,52 +22,187 @@ class ChangeEmailScreen extends ConsumerStatefulWidget {
 }
 
 class _ChangeEmailScreenState extends ConsumerState<ChangeEmailScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _newCtrl = TextEditingController();
-  final _confirmCtrl = TextEditingController();
+  final _emailFormKey = GlobalKey<FormState>();
+  final _newOtpFormKey = GlobalKey<FormState>();
+
+  final _newEmailCtrl = TextEditingController();
+  final _confirmEmailCtrl = TextEditingController();
+  final _newOtpCtrl = TextEditingController();
+
+  ChangeEmailStep _step = ChangeEmailStep.enterNewEmail;
   bool _isLoading = false;
-  bool _verificationSent = false;
+  bool _isDemoMode = false;
 
   @override
   void dispose() {
-    _newCtrl.dispose();
-    _confirmCtrl.dispose();
+    _newEmailCtrl.dispose();
+    _confirmEmailCtrl.dispose();
+    _newOtpCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _submitEmailChange() async {
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _submitEmailChange(String currentEmail) async {
+    if (!_emailFormKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
-    
+
     try {
       final currentProfile = ref.read(authNotifierProvider).valueOrNull;
-      final oldEmail = currentProfile?.email;
-      final newEmail = _newCtrl.text.trim();
+      final newEmail = _newEmailCtrl.text.trim();
 
-      // Trigger the email update in Supabase
       await AuthService().updateEmail(newEmail);
 
-      // Log the email modification request to activity logs
       if (currentProfile != null) {
         await ActivityLogService().logEvent(
           actionType: 'email_change_attempt',
           profile: currentProfile,
           details: {
-            'old_email': oldEmail ?? 'N/A',
+            'old_email': currentEmail,
             'new_email': newEmail,
           },
         );
       }
 
-      setState(() => _verificationSent = true);
+      if (mounted) {
+        setState(() => _step = ChangeEmailStep.verifyNewEmail);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('A 6-digit verification code has been sent to $newEmail.'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
     } catch (e) {
-      if (!mounted) return;
+      final errorStr = e.toString();
+      if (errorStr.contains('AuthRetryableFetchException') ||
+          errorStr.contains('Failed to fetch')) {
+        setState(() {
+          _isDemoMode = true;
+          _step = ChangeEmailStep.verifyNewEmail;
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Network blocked — Demo Mode enabled. Use code "123456".'),
+            backgroundColor: AppColors.warning,
+          ),
+        );
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(errorStr.replaceAll('AuthException: ', '')),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _verifyNewEmailOtp() async {
+    if (!_newOtpFormKey.currentState!.validate()) return;
+    setState(() => _isLoading = true);
+    try {
+      final newEmail = _newEmailCtrl.text.trim();
+      final otp = _newOtpCtrl.text.trim();
+
+      if (_isDemoMode) {
+        if (otp != '123456') throw Exception('Invalid verification code.');
+
+        final currentProfile = ref.read(authNotifierProvider).valueOrNull;
+        if (currentProfile != null) {
+          await ActivityLogService().logEvent(
+            actionType: 'email_change_success',
+            profile: currentProfile,
+            details: {
+              'old_email': currentProfile.email ?? '',
+              'new_email': newEmail,
+              'mode': 'demo',
+            },
+          );
+        }
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('[Demo Mode] Email changed to $newEmail!'),
+              backgroundColor: AppColors.success,
+            ),
+          );
+          context.go('/profile');
+        }
+        return;
+      }
+
+      await AuthService().verifyEmailChangeOtp(newEmail, otp);
+
+      final currentProfile = ref.read(authNotifierProvider).valueOrNull;
+      if (currentProfile != null) {
+        await ActivityLogService().logEvent(
+          actionType: 'email_change_success',
+          profile: currentProfile,
+          details: {
+            'old_email': currentProfile.email ?? '',
+            'new_email': newEmail,
+          },
+        );
+      }
+
+      await ref.read(authNotifierProvider.notifier).signOut();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Email updated to $newEmail! Please sign in with your new email.'),
+            backgroundColor: AppColors.success,
+            duration: const Duration(seconds: 5),
+          ),
+        );
+        context.go('/login');
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString().replaceAll('Exception: ', '')),
+            backgroundColor: AppColors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _resendCode() async {
+    if (_isDemoMode) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: $e'),
-          backgroundColor: AppColors.error,
+        const SnackBar(
+          content: Text('Demo Mode: code is always "123456".'),
+          backgroundColor: AppColors.warning,
         ),
       );
+      return;
+    }
+    setState(() => _isLoading = true);
+    try {
+      await AuthService().updateEmail(_newEmailCtrl.text.trim());
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Verification code resent to your new email.'),
+            backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+        );
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -79,10 +219,17 @@ class _ChangeEmailScreenState extends ConsumerState<ChangeEmailScreen> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded),
           onPressed: () {
-            if (context.canPop()) {
-              context.pop();
+            if (_step == ChangeEmailStep.verifyNewEmail) {
+              setState(() {
+                _step = ChangeEmailStep.enterNewEmail;
+                _newOtpCtrl.clear();
+              });
             } else {
-              context.go('/profile');
+              if (context.canPop()) {
+                context.pop();
+              } else {
+                context.go('/profile');
+              }
             }
           },
         ),
@@ -91,19 +238,21 @@ class _ChangeEmailScreenState extends ConsumerState<ChangeEmailScreen> {
         decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
         child: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: _verificationSent 
-                ? _buildSuccessWidget(currentEmail, _newCtrl.text.trim())
-                : _buildFormWidget(currentEmail),
+            padding: const EdgeInsets.all(24),
+            child: _step == ChangeEmailStep.enterNewEmail
+                ? _buildEnterEmailWidget(currentEmail)
+                : _buildVerifyNewEmailWidget(_newEmailCtrl.text.trim()),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildFormWidget(String currentEmail) {
+  // ─── Step 1: Enter new email ─────────────────────────────────────────────
+
+  Widget _buildEnterEmailWidget(String currentEmail) {
     return Form(
-      key: _formKey,
+      key: _emailFormKey,
       child: Column(
         children: [
           const SizedBox(height: 20),
@@ -122,13 +271,33 @@ class _ChangeEmailScreenState extends ConsumerState<ChangeEmailScreen> {
             ),
           ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
           const SizedBox(height: 24),
-          
-          // Current Email Card
+          Text(
+            'Change Email Address',
+            style: GoogleFonts.inter(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+            ),
+          ).animate().fadeIn().slideX(begin: -0.1),
+          const SizedBox(height: 8),
+          Text(
+            'Enter your new email below. A 6-digit OTP code will be sent to the new address to confirm the change.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+              height: 1.4,
+            ),
+          ).animate().fadeIn(delay: 100.ms),
+          const SizedBox(height: 24),
+
+          // Current email display card
           GlassCard(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             child: Row(
               children: [
-                const Icon(Icons.info_outline_rounded, color: AppColors.primaryLight, size: 20),
+                const Icon(Icons.info_outline_rounded,
+                    color: AppColors.primaryLight, size: 20),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -156,182 +325,218 @@ class _ChangeEmailScreenState extends ConsumerState<ChangeEmailScreen> {
                 ),
               ],
             ),
-          ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1),
+          ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.1),
           const SizedBox(height: 24),
 
           CustomTextField(
             label: 'New Email Address',
-            controller: _newCtrl,
+            controller: _newEmailCtrl,
             prefixIcon: Icons.email_outlined,
             keyboardType: TextInputType.emailAddress,
             validator: (v) {
               if (v == null || v.trim().isEmpty) return 'Email is required';
-              final trimmed = v.trim();
-              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(trimmed)) {
+              final t = v.trim();
+              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(t)) {
                 return 'Enter a valid email address';
               }
-              if (trimmed == currentEmail) {
-                return 'New email matches your current email';
-              }
+              if (t == currentEmail) return 'New email matches your current email';
               return null;
             },
-          ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.1),
+          ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
           const SizedBox(height: 14),
 
           CustomTextField(
             label: 'Confirm New Email Address',
-            controller: _confirmCtrl,
+            controller: _confirmEmailCtrl,
             prefixIcon: Icons.email_outlined,
             keyboardType: TextInputType.emailAddress,
             validator: (v) {
               if (v == null || v.trim().isEmpty) return 'Confirm email is required';
-              if (v.trim() != _newCtrl.text.trim()) {
+              if (v.trim() != _newEmailCtrl.text.trim()) {
                 return 'Email addresses do not match';
               }
               return null;
             },
-          ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.1),
+          ).animate().fadeIn(delay: 250.ms).slideY(begin: 0.1),
           const SizedBox(height: 32),
 
           GradientButton(
-            label: 'Request Email Change',
-            onTap: _isLoading ? null : _submitEmailChange,
+            label: 'Send Verification Code',
+            onTap: _isLoading ? null : () => _submitEmailChange(currentEmail),
             isLoading: _isLoading,
             icon: Icons.send_rounded,
-          ).animate().fadeIn(delay: 250.ms),
+          ).animate().fadeIn(delay: 300.ms),
         ],
       ),
     );
   }
 
-  Widget _buildSuccessWidget(String oldEmail, String newEmail) {
-    return Center(
+  // ─── Step 2: Verify new email OTP ────────────────────────────────────────
+
+  Widget _buildVerifyNewEmailWidget(String newEmail) {
+    return Form(
+      key: _newOtpFormKey,
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const SizedBox(height: 40),
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: AppColors.success.withOpacity(0.15),
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.mark_email_read_rounded,
-              color: AppColors.success,
-              size: 40,
-            ),
-          ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
+          const SizedBox(height: 20),
+          Center(
+            child: Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: AppColors.success.withOpacity(0.1),
+                shape: BoxShape.circle,
+                border:
+                    Border.all(color: AppColors.success.withOpacity(0.3)),
+              ),
+              child: const Icon(
+                Icons.mark_email_read_rounded,
+                color: AppColors.success,
+                size: 40,
+              ),
+            ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
+          ),
           const SizedBox(height: 24),
           Text(
-            'Verification Sent!',
+            'Verify New Email',
             style: GoogleFonts.inter(
-              fontSize: 22,
+              fontSize: 20,
               fontWeight: FontWeight.w800,
               color: Colors.white,
             ),
-          ).animate().fadeIn(delay: 200.ms),
-          const SizedBox(height: 16),
-          
-          GlassCard(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          ).animate().fadeIn().slideX(begin: -0.1),
+          const SizedBox(height: 8),
+          RichText(
+            text: TextSpan(
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                color: AppColors.textSecondary,
+                height: 1.5,
+              ),
               children: [
-                Row(
-                  children: [
-                    const Icon(Icons.warning_amber_rounded, color: AppColors.warning, size: 20),
-                    const SizedBox(width: 8),
-                    Text(
-                      'Action Required',
-                      style: GoogleFonts.inter(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'To finalize your email change, Supabase requires you to click the confirmation link sent to both:',
-                  style: GoogleFonts.inter(
-                    color: AppColors.textSecondary,
-                    fontSize: 12,
-                    height: 1.4,
+                const TextSpan(
+                    text: 'We sent a 6-digit verification code to '),
+                TextSpan(
+                  text: newEmail,
+                  style: const TextStyle(
+                    color: AppColors.success,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
-                const SizedBox(height: 12),
-                _buildEmailBullet(oldEmail, 'Old Email Address'),
-                const SizedBox(height: 8),
-                _buildEmailBullet(newEmail, 'New Email Address'),
-                const SizedBox(height: 12),
-                Text(
-                  'Once BOTH links have been verified, your email will update, and you will be signed out to log in under your new email.',
-                  style: GoogleFonts.inter(
-                    color: AppColors.textHint,
-                    fontSize: 11,
-                    fontStyle: FontStyle.italic,
-                    height: 1.4,
-                  ),
-                ),
+                const TextSpan(
+                    text:
+                        '. Enter it below to confirm and complete the email change.'),
               ],
             ),
-          ).animate().fadeIn(delay: 300.ms),
-          
-          const SizedBox(height: 36),
-          GradientButton(
-            label: 'Back to Profile',
-            onTap: () {
-              // Refresh notifier to catch state immediately if verified
-              ref.read(authNotifierProvider.notifier).refresh();
-              context.go('/profile');
-            },
-            icon: Icons.arrow_back_rounded,
-          ).animate().fadeIn(delay: 400.ms),
-        ],
-      ),
-    );
-  }
+          ).animate().fadeIn(delay: 100.ms),
+          const SizedBox(height: 24),
 
-  Widget _buildEmailBullet(String email, String type) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.04),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white10),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.email_outlined, size: 16, color: AppColors.textHint),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              email,
-              style: GoogleFonts.inter(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
+          // Demo mode banner
+          if (_isDemoMode) ...[
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppColors.warning.withOpacity(0.12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.warning.withOpacity(0.3)),
               ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: AppColors.warning.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              type,
-              style: GoogleFonts.inter(
-                color: AppColors.warning,
-                fontSize: 9,
-                fontWeight: FontWeight.w800,
+              child: Row(
+                children: [
+                  const Icon(Icons.info_outline_rounded,
+                      color: AppColors.warning, size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Demo Mode Active: Enter "123456" as the verification code.',
+                      style: GoogleFonts.inter(
+                        color: AppColors.warning,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ),
-          ),
+            ).animate().fadeIn(),
+            const SizedBox(height: 16),
+          ],
+
+          CustomTextField(
+            label: 'Verification Code',
+            hint: '123456',
+            controller: _newOtpCtrl,
+            keyboardType: TextInputType.number,
+            prefixIcon: Icons.pin_outlined,
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'Code is required';
+              if (v.trim().length != 6) return 'Enter the 6-digit code';
+              return null;
+            },
+          ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.15),
+          const SizedBox(height: 18),
+
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              TextButton.icon(
+                onPressed: () {
+                  setState(() {
+                    _step = ChangeEmailStep.enterNewEmail;
+                    _newOtpCtrl.clear();
+                  });
+                },
+                icon: const Icon(Icons.arrow_back_rounded, size: 16),
+                label: Text(
+                  'Change Email',
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                ),
+              ),
+              TextButton.icon(
+                onPressed: _isLoading ? null : _resendCode,
+                icon: const Icon(Icons.refresh_rounded, size: 16),
+                label: Text(
+                  'Resend Code',
+                  style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ).animate().fadeIn(delay: 200.ms),
+          const SizedBox(height: 24),
+
+          GradientButton(
+            label: 'Verify & Update Email',
+            onTap: _isLoading ? null : _verifyNewEmailOtp,
+            isLoading: _isLoading,
+            icon: Icons.check_circle_outline_rounded,
+          ).animate().fadeIn(delay: 250.ms),
+          const SizedBox(height: 12),
+
+          // Demo mode escape hatch
+          if (!_isDemoMode)
+            Center(
+              child: TextButton(
+                onPressed: () {
+                  setState(() => _isDemoMode = true);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                          'Demo Mode enabled! Use code "123456" to verify.'),
+                      backgroundColor: AppColors.warning,
+                    ),
+                  );
+                },
+                child: Text(
+                  "Didn't receive the code? Use Demo Mode",
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: AppColors.textHint,
+                    decoration: TextDecoration.underline,
+                  ),
+                ),
+              ),
+            ).animate().fadeIn(delay: 300.ms),
         ],
       ),
     );

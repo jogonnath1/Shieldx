@@ -61,7 +61,7 @@ class ActivityLogService {
   }
 
   /// Streams recent activity logs in real-time for the admin dashboard (excludes soft-deleted).
-  /// Uses periodic polling so soft-deleted rows are excluded immediately after invalidation.
+  /// Dynamically merges any suspicious login attempts from the last 30 days to guarantee they are visible.
   Stream<List<ActivityLogModel>> watchRecentLogs({int limit = 100}) async* {
     while (true) {
       try {
@@ -72,7 +72,27 @@ class ActivityLogService {
             .neq('action_type', 'app_heartbeat')
             .order('created_at', ascending: false)
             .limit(limit);
-        yield (response as List).map((e) => ActivityLogModel.fromMap(e)).toList();
+
+        final thirtyDaysAgo = DateTime.now().toUtc().subtract(const Duration(days: 30)).toIso8601String();
+        final suspiciousResponse = await _client
+            .from('activity_logs')
+            .select()
+            .eq('action_type', 'suspicious_login')
+            .gte('created_at', thirtyDaysAgo)
+            .isFilter('deleted_at', null);
+
+        final List<Map<String, dynamic>> responseList = List<Map<String, dynamic>>.from(response as List);
+        final Set<String> loadedIds = responseList.map((e) => e['id'] as String).toSet();
+
+        for (final row in suspiciousResponse as List) {
+          if (!loadedIds.contains(row['id'])) {
+            responseList.add(Map<String, dynamic>.from(row));
+          }
+        }
+
+        responseList.sort((a, b) => (b['created_at'] as String).compareTo(a['created_at'] as String));
+
+        yield responseList.map((e) => ActivityLogModel.fromMap(e)).toList();
       } catch (e) {
         debugPrint('ERROR in watchRecentLogs: $e');
         yield [];
@@ -82,15 +102,41 @@ class ActivityLogService {
   }
 
   /// Fetches recent activity logs as a one-shot query (excludes soft-deleted).
+  /// Dynamically merges any suspicious login attempts from the last 30 days.
   Future<List<ActivityLogModel>> getRecentLogs({int limit = 100}) async {
-    final response = await _client
-        .from('activity_logs')
-        .select()
-        .isFilter('deleted_at', null)
-        .neq('action_type', 'app_heartbeat')
-        .order('created_at', ascending: false)
-        .limit(limit);
-    return (response as List).map((e) => ActivityLogModel.fromMap(e)).toList();
+    try {
+      final response = await _client
+          .from('activity_logs')
+          .select()
+          .isFilter('deleted_at', null)
+          .neq('action_type', 'app_heartbeat')
+          .order('created_at', ascending: false)
+          .limit(limit);
+
+      final thirtyDaysAgo = DateTime.now().toUtc().subtract(const Duration(days: 30)).toIso8601String();
+      final suspiciousResponse = await _client
+          .from('activity_logs')
+          .select()
+          .eq('action_type', 'suspicious_login')
+          .gte('created_at', thirtyDaysAgo)
+          .isFilter('deleted_at', null);
+
+      final List<Map<String, dynamic>> responseList = List<Map<String, dynamic>>.from(response as List);
+      final Set<String> loadedIds = responseList.map((e) => e['id'] as String).toSet();
+
+      for (final row in suspiciousResponse as List) {
+        if (!loadedIds.contains(row['id'])) {
+          responseList.add(Map<String, dynamic>.from(row));
+        }
+      }
+
+      responseList.sort((a, b) => (b['created_at'] as String).compareTo(a['created_at'] as String));
+
+      return responseList.map((e) => ActivityLogModel.fromMap(e)).toList();
+    } catch (e) {
+      debugPrint('ERROR in getRecentLogs: $e');
+      return [];
+    }
   }
 
   /// Soft-deletes the given log IDs by setting deleted_at = now().

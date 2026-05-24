@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -21,6 +22,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _isLoading = false;
+  String? _blockedError;
 
   @override
   void dispose() {
@@ -39,7 +41,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       return;
     }
 
-    setState(() => _isLoading = true);
+    setState(() {
+      _isLoading = true;
+      _blockedError = null;
+    });
     try {
       final notifier = ref.read(authNotifierProvider.notifier);
       await notifier.signIn(
@@ -73,7 +78,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     } catch (e) {
       if (!mounted) return;
       final msg = e.toString().toLowerCase();
-      if (msg.contains('email not confirmed') || msg.contains('not confirmed')) {
+      if (msg.contains('blocked_by_admin') || msg.contains('blocked') || msg.contains('suspended')) {
+        setState(() {
+          _blockedError = 'Your account has been suspended by the ShieldX Security Administrator due to violations of platform guidelines or security anomalies.';
+        });
+      } else if (msg.contains('email not confirmed') || msg.contains('not confirmed')) {
         _showError('Email not verified. Please check your inbox or contact support.');
       } else if (msg.contains('invalid login') || msg.contains('invalid credentials')) {
         _showError('Wrong email or password. Please try again.');
@@ -89,6 +98,131 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(msg), backgroundColor: AppColors.error),
     );
+  }
+
+  Widget _buildBlockedWarning() {
+    if (_blockedError == null) return const SizedBox.shrink();
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFEF4444).withOpacity(0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: const Color(0xFFEF4444).withOpacity(0.35),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFEF4444).withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
+        ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEF4444).withOpacity(0.12),
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.gpp_bad_rounded,
+              color: Color(0xFFEF4444),
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'ACCOUNT RESTRICTED',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                    color: const Color(0xFFEF4444),
+                    letterSpacing: 1,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _blockedError!,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    TextButton.icon(
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        backgroundColor: Colors.white.withOpacity(0.06),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                      ),
+                      onPressed: () {
+                        Clipboard.setData(const ClipboardData(text: 'support@shieldx.gov'));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: [
+                                const Icon(Icons.copy_rounded, color: Colors.white, size: 16),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Support email copied to clipboard!',
+                                  style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                                ),
+                              ],
+                            ),
+                            backgroundColor: AppColors.success,
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.mail_outline_rounded, size: 14, color: AppColors.primaryLight),
+                      label: Text(
+                        'Contact Support',
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primaryLight,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            constraints: const BoxConstraints(),
+            padding: EdgeInsets.zero,
+            icon: const Icon(
+              Icons.close_rounded,
+              color: AppColors.textHint,
+              size: 18,
+            ),
+            onPressed: () {
+              setState(() {
+                _blockedError = null;
+              });
+            },
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1, end: 0, curve: Curves.easeOutCubic);
   }
 
   @override
@@ -142,7 +276,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 32),
+                _buildBlockedWarning(),
                 Text('Welcome Back',
                     style: Theme.of(context)
                         .textTheme

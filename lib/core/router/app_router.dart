@@ -7,6 +7,7 @@ import '../../presentation/auth/splash_screen.dart';
 import '../../presentation/auth/login_screen.dart';
 import '../../presentation/auth/register_screen.dart';
 import '../../presentation/auth/forgot_password_screen.dart';
+import '../../presentation/auth/blocked_screen.dart';
 import '../../presentation/user/home_screen.dart';
 import '../../presentation/user/submit_complaint_screen.dart';
 import '../../presentation/user/my_complaints_screen.dart';
@@ -76,9 +77,28 @@ final routerProvider = Provider<GoRouter>((ref) {
         return isOnAuthRoute ? null : '/splash';
       }
 
+      // Blocked account guard - locks them to /blocked
+      if (isLoggedIn && profile != null && profile.isBlocked) {
+        return location == '/blocked' ? null : '/blocked';
+      }
+
+      // Non-blocked account trying to access /blocked route - escape to home
+      if (location == '/blocked') {
+        if (isLoggedIn && profile != null) {
+          return profile.role == 'admin' ? '/admin/dashboard' : '/home';
+        }
+        return '/login';
+      }
+
       // Not logged in — redirect to login if not already on an auth route
       if (!isLoggedIn) {
         return isOnAuthRoute ? null : '/login';
+      }
+
+      // Allow forgot-password route to bypass any automatic logged-in redirects
+      // so the user can complete the 3-step inline password reset flow (Step 3).
+      if (location == '/forgot-password') {
+        return null;
       }
 
       // Logged in but profile is incomplete — lock to /register
@@ -113,6 +133,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/blocked',
+        builder: (context, state) => const BlockedScreen(),
+      ),
       GoRoute(
         path: '/splash',
         builder: (context, state) => const SplashScreen(),

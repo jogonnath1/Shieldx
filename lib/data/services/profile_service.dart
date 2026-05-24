@@ -2,6 +2,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import '../models/profile_model.dart';
 import '../../core/constants/app_constants.dart';
+import 'activity_log_service.dart';
 
 class ProfileService {
   final SupabaseClient _client = Supabase.instance.client;
@@ -99,5 +100,33 @@ class ProfileService {
       throw Exception('The Main Administrator cannot be deleted.');
     }
     await _client.rpc('delete_user_by_admin', params: {'user_id': userId});
+  }
+
+  Future<void> setBlocked(String userId, bool blocked) async {
+    final profile = await getProfile(userId);
+    if (profile?.isMainAdmin == true) {
+      throw Exception('The Main Administrator cannot be blocked.');
+    }
+
+    await _client
+        .from(AppConstants.profilesTable)
+        .update({'is_blocked': blocked})
+        .eq('id', userId);
+
+    try {
+      final currentAdmin = Supabase.instance.client.auth.currentUser;
+      await ActivityLogService().logEvent(
+        actionType: blocked ? 'block_user' : 'unblock_user',
+        details: {
+          'target_user_id': userId,
+          'target_user_name': profile?.displayName,
+          'target_user_email': profile?.email,
+          'action_by': currentAdmin?.id,
+          'action_by_email': currentAdmin?.email,
+        },
+      );
+    } catch (e) {
+      print('Failed to write block/unblock activity log: $e');
+    }
   }
 }

@@ -369,7 +369,7 @@ class _ManageTab extends StatelessWidget {
                         ?.copyWith(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 14),
                 DropdownButtonFormField<String>(
-                  initialValue: selectedStatus,
+                  value: selectedStatus,
                   dropdownColor: AppColors.card,
                   decoration: const InputDecoration(labelText: 'Status'),
                   items: AppConstants.complaintStatuses
@@ -381,7 +381,7 @@ class _ManageTab extends StatelessWidget {
                 const SizedBox(height: 12),
                 if (officers.isNotEmpty)
                   DropdownButtonFormField<String>(
-                    initialValue: selectedOfficerId,
+                    value: selectedOfficerId,
                     dropdownColor: AppColors.card,
                     decoration: const InputDecoration(labelText: 'Assign Officer'),
                     items: [

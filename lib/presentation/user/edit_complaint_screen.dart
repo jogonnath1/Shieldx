@@ -77,6 +77,18 @@ class _EditComplaintScreenState extends ConsumerState<EditComplaintScreen> {
 
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_incidentDate == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Please select incident date & time'), backgroundColor: AppColors.error),
+      );
+      return;
+    }
+    if (_incidentDate!.isAfter(DateTime.now().toBangladeshTime())) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Incident date & time cannot be in the future.'), backgroundColor: AppColors.error),
+      );
+      return;
+    }
     setState(() => _isSaving = true);
     try {
       await ComplaintService().updateComplaint(widget.complaintId, {
@@ -142,14 +154,30 @@ class _EditComplaintScreenState extends ConsumerState<EditComplaintScreen> {
         ),
       );
       if (time != null) {
+        final selectedDateTime = DateTime(
+          picked.year,
+          picked.month,
+          picked.day,
+          time.hour,
+          time.minute,
+        );
+        final now = DateTime.now().toBangladeshTime();
+        if (selectedDateTime.isAfter(now)) {
+          setState(() {
+            _incidentDate = now;
+          });
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Future time is not allowed. Reverted to current time.', style: GoogleFonts.inter()),
+                backgroundColor: AppColors.error,
+              ),
+            );
+          }
+          return;
+        }
         setState(() {
-          _incidentDate = DateTime(
-            picked.year,
-            picked.month,
-            picked.day,
-            time.hour,
-            time.minute,
-          );
+          _incidentDate = selectedDateTime;
         });
       }
     }
@@ -235,7 +263,7 @@ class _EditComplaintScreenState extends ConsumerState<EditComplaintScreen> {
                       // Category dropdown
                       GlassCard(
                         child: DropdownButtonFormField<String>(
-                          initialValue: _selectedCategory,
+                          value: _selectedCategory,
                           decoration: const InputDecoration(
                             labelText: 'Crime Category',
                             prefixIcon: Icon(Icons.category_outlined),

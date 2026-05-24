@@ -78,7 +78,12 @@ class _ComplaintDetailScreenState
             IconButton(
               icon: const Icon(Icons.edit_rounded, color: AppColors.primary),
               tooltip: 'Edit Report',
-              onPressed: () => context.push('/complaint/${_complaint!.id}/edit'),
+              onPressed: () async {
+                await context.push('/complaint/${_complaint!.id}/edit');
+                if (mounted) {
+                  _load();
+                }
+              },
             ),
           if (_complaint != null)
             IconButton(

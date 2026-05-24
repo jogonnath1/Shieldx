@@ -18,12 +18,14 @@ class ChangePasswordScreen extends ConsumerStatefulWidget {
 
 class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _currentCtrl = TextEditingController();
   final _newCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
   bool _isLoading = false;
 
   @override
   void dispose() {
+    _currentCtrl.dispose();
     _newCtrl.dispose();
     _confirmCtrl.dispose();
     super.dispose();
@@ -33,9 +35,25 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
     try {
+      final currentPassword = _currentCtrl.text.trim();
       final newPassword = _newCtrl.text.trim();
       final profile = ref.read(authNotifierProvider).valueOrNull;
       
+      final currentEmail = profile?.email ?? AuthService().currentUser?.email;
+      if (currentEmail == null) {
+        throw Exception('User session or email not found');
+      }
+
+      // Re-authenticate to verify the current password
+      try {
+        await AuthService().signIn(
+          email: currentEmail,
+          password: currentPassword,
+        );
+      } catch (e) {
+        throw Exception('Current password is incorrect');
+      }
+
       // Update in Supabase Auth
       await AuthService().updatePassword(newPassword);
       
@@ -58,8 +76,12 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
       context.go('/login');
     } catch (e) {
       if (!mounted) return;
+      String message = e.toString();
+      if (message.startsWith('Exception: ')) {
+        message = message.substring('Exception: '.length);
+      }
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+        SnackBar(content: Text(message), backgroundColor: AppColors.error),
       );
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -84,7 +106,7 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
       ),
       body: Container(
         decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Form(
             key: _formKey,
@@ -104,6 +126,17 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                 ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
                 const SizedBox(height: 32),
                 CustomTextField(
+                  label: 'Current Password',
+                  controller: _currentCtrl,
+                  obscureText: true,
+                  prefixIcon: Icons.lock_open_rounded,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Required';
+                    return null;
+                  },
+                ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1),
+                const SizedBox(height: 14),
+                CustomTextField(
                   label: 'New Password',
                   controller: _newCtrl,
                   obscureText: true,
@@ -111,6 +144,9 @@ class _ChangePasswordScreenState extends ConsumerState<ChangePasswordScreen> {
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) return 'Required';
                     if (v.trim().length < 6) return 'Min 6 characters';
+                    if (v.trim() == _currentCtrl.text.trim()) {
+                      return 'New password cannot be the same as current';
+                    }
                     return null;
                   },
                 ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.1),

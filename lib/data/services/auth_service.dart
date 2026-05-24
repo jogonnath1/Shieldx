@@ -117,6 +117,18 @@ class AuthService {
     );
   }
 
+  Future<void> sendPasswordResetOtp(String email) async {
+    await _client.auth.resetPasswordForEmail(email);
+  }
+
+  Future<AuthResponse> verifyPasswordResetOtp(String email, String token) async {
+    return await _client.auth.verifyOTP(
+      type: OtpType.recovery,
+      token: token,
+      email: email,
+    );
+  }
+
   Future<void> saveMockOtp(String phone, String otp) async {
     await _client.from('phone_verifications').upsert({
       'phone': phone,
@@ -173,6 +185,18 @@ class AuthService {
 
 
 
+  Future<bool> isEmailBlocked(String email) async {
+    try {
+      final response = await _client.rpc(
+        'is_user_blocked',
+        params: {'email_to_check': email.trim()},
+      );
+      return response as bool? ?? false;
+    } catch (e) {
+      return false;
+    }
+  }
+
   Future<AuthResponse> signIn({
     required String email,
     required String password,
@@ -203,6 +227,14 @@ class AuthService {
   Future<UserResponse> updateEmail(String newEmail) async {
     return await _client.auth.updateUser(
       UserAttributes(email: newEmail),
+    );
+  }
+
+  Future<AuthResponse> verifyEmailChangeOtp(String email, String token) async {
+    return await _client.auth.verifyOTP(
+      type: OtpType.emailChange,
+      email: email,
+      token: token,
     );
   }
 
@@ -238,5 +270,33 @@ class AuthService {
         'changed_fields': changedFields,
       },
     );
+  }
+
+  RealtimeChannel subscribeToProfile(String userId, void Function(ProfileModel) onUpdate) {
+    return _client
+        .channel('public:profiles:id=eq.$userId')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: AppConstants.profilesTable,
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'id',
+            value: userId,
+          ),
+          callback: (payload) {
+            final newRecord = payload.newRecord;
+            if (newRecord != null) {
+              final modifiableData = Map<String, dynamic>.from(newRecord);
+              modifiableData['email'] = currentUser?.email;
+              onUpdate(ProfileModel.fromMap(modifiableData));
+            }
+          },
+        )
+        .subscribe();
+  }
+
+  Future<void> removeChannel(RealtimeChannel channel) async {
+    await _client.removeChannel(channel);
   }
 }

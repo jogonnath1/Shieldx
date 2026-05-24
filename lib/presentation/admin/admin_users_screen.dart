@@ -46,9 +46,11 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
     }).toList();
 
     if (_verificationFilter == 'verified') {
-      list = list.where((u) => u.isVerified).toList();
+      list = list.where((u) => u.isVerified && !u.isBlocked).toList();
     } else if (_verificationFilter == 'unverified') {
-      list = list.where((u) => !u.isVerified).toList();
+      list = list.where((u) => !u.isVerified && !u.isBlocked).toList();
+    } else if (_verificationFilter == 'blocked') {
+      list = list.where((u) => u.isBlocked).toList();
     }
 
     if (_search.isEmpty) return list;
@@ -266,6 +268,94 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
     }
   }
 
+  Future<void> _toggleBlock(ProfileModel user) async {
+    final block = !user.isBlocked;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A2540),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: (block ? AppColors.error : AppColors.success).withOpacity(0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                block ? Icons.block_flipped : Icons.check_circle_outline_rounded,
+                color: block ? AppColors.error : AppColors.success,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(block ? 'Block User' : 'Unblock User',
+                style: GoogleFonts.inter(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 17)),
+          ],
+        ),
+        content: Text(
+          block
+              ? 'Are you sure you want to block ${user.displayName}? They will be immediately locked out of their account and will not be able to log in or use the application.'
+              : 'Are you sure you want to unblock ${user.displayName}? They will be able to log in and access the application again.',
+          style: GoogleFonts.inter(
+              color: AppColors.textSecondary, fontSize: 14, height: 1.5),
+        ),
+        actions: [
+          OutlinedButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.textSecondary,
+              side: const BorderSide(color: AppColors.cardBorder),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: block ? AppColors.error : AppColors.success,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            child: Text(block ? 'Block' : 'Unblock', style: GoogleFonts.inter(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        setState(() => _isLoading = true);
+        await ProfileService().setBlocked(user.id, block);
+        await _load();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('${user.displayName} has been successfully ${block ? 'blocked' : 'unblocked'}.'),
+              backgroundColor: block ? AppColors.error : AppColors.success,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() => _isLoading = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Failed to ${block ? 'block' : 'unblock'} user: $e'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   Widget _buildSectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.only(top: 16.0, bottom: 8.0),
@@ -449,8 +539,9 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
     }).toList();
 
     final allCount = currentRoleUsers.length;
-    final verifiedCount = currentRoleUsers.where((u) => u.isVerified).length;
-    final unverifiedCount = currentRoleUsers.where((u) => !u.isVerified).length;
+    final verifiedCount = currentRoleUsers.where((u) => u.isVerified && !u.isBlocked).length;
+    final unverifiedCount = currentRoleUsers.where((u) => !u.isVerified && !u.isBlocked).length;
+    final blockedCount = currentRoleUsers.where((u) => u.isBlocked).length;
 
     Widget buildFilterChip(String filterType, String label, IconData icon, Color iconColor) {
       final isSelected = _verificationFilter == filterType;
@@ -499,14 +590,20 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: Row(
-        children: [
-          buildFilterChip('all', 'All ($allCount)', Icons.layers_rounded, Colors.white),
-          const SizedBox(width: 8),
-          buildFilterChip('verified', 'Verified ($verifiedCount)', Icons.verified_rounded, const Color(0xFF2196F3)),
-          const SizedBox(width: 8),
-          buildFilterChip('unverified', 'Unverified ($unverifiedCount)', Icons.gpp_maybe_rounded, const Color(0xFFFFB300)),
-        ],
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Row(
+          children: [
+            buildFilterChip('all', 'All ($allCount)', Icons.layers_rounded, Colors.white),
+            const SizedBox(width: 8),
+            buildFilterChip('verified', 'Verified ($verifiedCount)', Icons.verified_rounded, const Color(0xFF2196F3)),
+            const SizedBox(width: 8),
+            buildFilterChip('unverified', 'Unverified ($unverifiedCount)', Icons.gpp_maybe_rounded, const Color(0xFFFFB300)),
+            const SizedBox(width: 8),
+            buildFilterChip('blocked', 'Blocked ($blockedCount)', Icons.block_flipped, const Color(0xFFEF4444)),
+          ],
+        ),
       ),
     );
   }
@@ -707,6 +804,25 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                                                               ? const Color(0xFFE53935)
                                                               : AppColors.warning)),
                                                 ),
+                                              if (u.isBlocked) ...[
+                                                const SizedBox(width: 8),
+                                                Container(
+                                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                                  decoration: BoxDecoration(
+                                                    color: AppColors.error.withOpacity(0.15),
+                                                    borderRadius: BorderRadius.circular(10),
+                                                    border: Border.all(color: AppColors.error.withOpacity(0.3), width: 1),
+                                                  ),
+                                                  child: Text(
+                                                    '🚫 Blocked',
+                                                    style: GoogleFonts.inter(
+                                                      fontSize: 10,
+                                                      fontWeight: FontWeight.w700,
+                                                      color: AppColors.error,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
                                             ],
                                           ),
                                           const SizedBox(height: 2),
@@ -727,6 +843,7 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                                         if (v == 'role') _toggleRole(u);
                                         if (v == 'verify') _toggleVerified(u);
                                         if (v == 'main_admin') _toggleMainAdmin(u);
+                                        if (v == 'block') _toggleBlock(u);
                                         if (v == 'delete') _deleteUser(u);
                                       },
                                       itemBuilder: (_) {
@@ -756,6 +873,25 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                                             ),
                                           ],
                                           if (!isSelf && !isMainAdmin) ...[
+                                            PopupMenuItem(
+                                              value: 'block',
+                                              child: Row(
+                                                children: [
+                                                  Icon(
+                                                    u.isBlocked ? Icons.check_circle_outline_rounded : Icons.block_flipped,
+                                                    color: u.isBlocked ? AppColors.success : AppColors.error,
+                                                    size: 18,
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  Text(
+                                                    u.isBlocked ? 'Unblock User' : 'Block User',
+                                                    style: GoogleFonts.inter(
+                                                      color: u.isBlocked ? AppColors.success : AppColors.error,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
                                             const PopupMenuDivider(),
                                             PopupMenuItem(
                                               value: 'delete',

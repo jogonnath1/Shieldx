@@ -10,6 +10,7 @@ class ProfileModel {
   final String? avatarUrl;
   final String role;
   final bool isVerified;
+  final bool isBlocked;
   final bool _isMainAdmin;
   final String? fcmToken;
   final DateTime? createdAt;
@@ -26,6 +27,7 @@ class ProfileModel {
     this.avatarUrl,
     this.role = 'user',
     this.isVerified = false,
+    this.isBlocked = false,
     bool isMainAdmin = false,
     this.fcmToken,
     this.createdAt,
@@ -67,6 +69,7 @@ class ProfileModel {
       avatarUrl: map['avatar_url'] as String?,
       role: (map['role'] as String?) ?? 'user',
       isVerified: (map['is_verified'] as bool?) ?? false,
+      isBlocked: (map['is_blocked'] as bool?) ?? false,
       isMainAdmin: (map['is_main_admin'] as bool?) ?? false,
       fcmToken: map['fcm_token'] as String?,
       createdAt: map['created_at'] != null
@@ -88,6 +91,7 @@ class ProfileModel {
       'avatar_url': avatarUrl,
       'role': role,
       'is_verified': isVerified,
+      'is_blocked': isBlocked,
       'is_main_admin': _isMainAdmin,
       'fcm_token': fcmToken,
     };
@@ -105,6 +109,7 @@ class ProfileModel {
     String? avatarUrl,
     String? role,
     bool? isVerified,
+    bool? isBlocked,
     bool? isMainAdmin,
     String? fcmToken,
     DateTime? createdAt,
@@ -121,6 +126,7 @@ class ProfileModel {
       avatarUrl: avatarUrl ?? this.avatarUrl,
       role: role ?? this.role,
       isVerified: isVerified ?? this.isVerified,
+      isBlocked: isBlocked ?? this.isBlocked,
       isMainAdmin: isMainAdmin ?? _isMainAdmin,
       fcmToken: fcmToken ?? this.fcmToken,
       createdAt: createdAt ?? this.createdAt,

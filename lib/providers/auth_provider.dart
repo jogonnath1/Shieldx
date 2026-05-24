@@ -30,6 +30,7 @@ final currentProfileProvider = FutureProvider<ProfileModel?>((ref) async {
 class AuthNotifier extends StateNotifier<AsyncValue<ProfileModel?>> {
   final AuthService _service;
   final Ref _ref;
+  RealtimeChannel? _profileSubscription;
 
   AuthNotifier(this._service, this._ref) : super(const AsyncValue.loading()) {
     _init();
@@ -42,6 +43,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<ProfileModel?>> {
           refresh();
         }
       } else if (event == AuthChangeEvent.signedOut) {
+        _cancelProfileSubscription();
         state = const AsyncValue.data(null);
       }
     });
@@ -59,9 +61,24 @@ class AuthNotifier extends StateNotifier<AsyncValue<ProfileModel?>> {
         final password = prefs.getSavedPassword();
         
         if (email != null && password != null) {
-          // Perform background sign in
-          await _service.signIn(email: email, password: password);
-          profile = await _service.getCurrentProfile();
+          // Check if email is blocked before auto-login
+          final isBlocked = await _service.isEmailBlocked(email);
+          if (!isBlocked) {
+            // Perform background sign in
+            await _service.signIn(email: email, password: password);
+            profile = await _service.getCurrentProfile();
+          }
+        }
+      }
+      
+      if (profile != null) {
+        if (profile.isBlocked) {
+          await _service.signOut();
+          profile = null;
+          final prefs = _ref.read(preferencesServiceProvider);
+          await prefs.clearCredentials();
+        } else {
+          _setupProfileSubscription(profile);
         }
       }
       state = AsyncValue.data(profile);
@@ -73,8 +90,24 @@ class AuthNotifier extends StateNotifier<AsyncValue<ProfileModel?>> {
   Future<bool> signIn(String email, String password) async {
     state = const AsyncValue.loading();
     try {
+      // 1. Perform early check for blocked email
+      final isBlocked = await _service.isEmailBlocked(email);
+      if (isBlocked) {
+        throw Exception('blocked_by_admin');
+      }
+
       await _service.signIn(email: email, password: password);
       final profile = await _service.getCurrentProfile();
+      if (profile != null) {
+        if (profile.isBlocked) {
+          await _service.signOut();
+          state = const AsyncValue.data(null);
+          final prefs = _ref.read(preferencesServiceProvider);
+          await prefs.clearCredentials();
+          throw Exception('blocked_by_admin');
+        }
+        _setupProfileSubscription(profile);
+      }
       state = AsyncValue.data(profile);
       if (profile != null) {
         await _ref.read(activityLogServiceProvider).logEvent(
@@ -85,11 +118,14 @@ class AuthNotifier extends StateNotifier<AsyncValue<ProfileModel?>> {
       return true;
     } catch (e, st) {
       state = AsyncValue.error(e, st);
-      await _ref.read(activityLogServiceProvider).logEvent(
-        actionType: 'suspicious_login',
-        fallbackEmail: email,
-        details: {'reason': e.toString()},
-      );
+      // Only log as suspicious login if it's not a known admin block
+      if (e.toString() != 'Exception: blocked_by_admin') {
+        await _ref.read(activityLogServiceProvider).logEvent(
+          actionType: 'suspicious_login',
+          fallbackEmail: email,
+          details: {'reason': e.toString()},
+        );
+      }
       rethrow; // let the UI show the real error
     }
   }
@@ -249,6 +285,7 @@ class AuthNotifier extends StateNotifier<AsyncValue<ProfileModel?>> {
 
 
   Future<void> signOut() async {
+    _cancelProfileSubscription();
     final profile = state.valueOrNull;
     if (profile != null) {
       await _ref.read(activityLogServiceProvider).logEvent(
@@ -263,9 +300,42 @@ class AuthNotifier extends StateNotifier<AsyncValue<ProfileModel?>> {
     await prefs.clearCredentials();
   }
 
+  void _setupProfileSubscription(ProfileModel profile) {
+    _cancelProfileSubscription();
+    _profileSubscription = _service.subscribeToProfile(profile.id, (updatedProfile) {
+      if (mounted) {
+        state = AsyncValue.data(updatedProfile);
+      }
+    });
+  }
+
+  void _cancelProfileSubscription() {
+    if (_profileSubscription != null) {
+      _service.removeChannel(_profileSubscription!);
+      _profileSubscription = null;
+    }
+  }
+
+  @override
+  void dispose() {
+    _cancelProfileSubscription();
+    super.dispose();
+  }
+
   Future<void> refresh() async {
     try {
       final profile = await _service.getCurrentProfile();
+      if (profile != null && profile.isBlocked) {
+        _cancelProfileSubscription();
+        await _service.signOut();
+        state = const AsyncValue.data(null);
+        final prefs = _ref.read(preferencesServiceProvider);
+        await prefs.clearCredentials();
+        return;
+      }
+      if (profile != null) {
+        _setupProfileSubscription(profile);
+      }
       state = AsyncValue.data(profile);
     } catch (e, st) {
       state = AsyncValue.error(e, st);
