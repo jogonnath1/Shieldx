@@ -193,6 +193,25 @@ class ComplaintService {
     );
   }
 
+  Future<void> deleteComplaints(List<String> ids) async {
+    await _client
+        .from(AppConstants.complaintsTable)
+        .update({'deleted_at': DateTime.now().toIso8601String()})
+        .inFilter('id', ids);
+
+    for (final id in ids) {
+      try {
+        await _logService.logEvent(
+          actionType: 'report_delete',
+          details: {
+            'complaint_id': id,
+            'type': 'soft_delete',
+          },
+        );
+      } catch (_) {}
+    }
+  }
+
   // Get soft-deleted user complaints
   Future<List<ComplaintModel>> getDeletedUserComplaints(String userId) async {
     final response = await _client

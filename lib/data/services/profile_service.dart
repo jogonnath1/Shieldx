@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
 import '../models/profile_model.dart';
 import '../../core/constants/app_constants.dart';
 
@@ -50,7 +51,26 @@ class ProfileService {
         .from(AppConstants.profilesTable)
         .update({'is_verified': verified})
         .eq('id', userId);
-  }
+
+    // Insert user notification about verification status change
+    try {
+      final uuid = const Uuid();
+      await _client.from('notifications').insert({
+        'id': uuid.v4(),
+        'user_id': userId,
+        'title': verified ? 'Account Verified ✅' : 'Verification Status Updated',
+        'message': verified
+            ? 'Congratulations! Your profile has been officially verified by the Shieldx Admin team.'
+            : 'Your profile verification status has been updated by the Shieldx Admin team.',
+            'type': 'system',
+            'is_read': false,
+            'created_at': DateTime.now().toIso8601String(),
+          });
+        } catch (e) {
+          // Gracefully handle notification insertion failure
+          print('Failed to send verification notification: $e');
+        }
+      }
 
   Future<void> setMainAdmin(String userId, bool isMainAdmin) async {
     final updates = <String, dynamic>{

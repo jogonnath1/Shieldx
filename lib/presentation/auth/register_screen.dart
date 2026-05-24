@@ -3,7 +3,9 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/services/preferences_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/connectivity_provider.dart';
 import '../widgets/common/widgets.dart';
@@ -40,11 +42,23 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   bool _isLoading = false;
   bool _isOtpSent = false;
   bool _isPhoneVerified = false;
+  bool _isEmailVerified = false;
   String? _mockOtpCode;
 
   @override
   void initState() {
     super.initState();
+
+    // Pre-fill email and mark verified if session is already active (from in-flight verification)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user != null && user.email != null) {
+        setState(() {
+          _emailCtrl.text = user.email!;
+          _isEmailVerified = true;
+        });
+      }
+    });
 
     // Listen to text controller changes to clear database warning instantly when the user edits
     _emailCtrl.addListener(() {
@@ -94,6 +108,18 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
     final emailRegExp = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
     if (!emailRegExp.hasMatch(email)) return;
+
+    // If the email matches the currently signed-in user (from a previous OTP
+    // verification in this session), do NOT flag it as already in use.
+    final currentUser = Supabase.instance.client.auth.currentUser;
+    if (currentUser != null &&
+        currentUser.email?.toLowerCase() == email.toLowerCase()) {
+      // This is their own verified email — mark as verified silently
+      if (mounted && !_isEmailVerified) {
+        setState(() => _isEmailVerified = true);
+      }
+      return;
+    }
 
     try {
       final notifier = ref.read(authNotifierProvider.notifier);
@@ -167,6 +193,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   Future<void> _register() async {
     if (!_formKey.currentState!.validate()) return;
+    if (!_isEmailVerified) {
+      _showError('Please verify your email address first');
+      return;
+    }
     if (!_isPhoneVerified) {
       _showError('Please verify your phone number first');
       return;
@@ -182,7 +212,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     try {
       final notifier = ref.read(authNotifierProvider.notifier);
 
-      // Prevent registration if email, phone, or NID is already registered
+      // Prevent registration if NID is already registered
       final nidExists = await notifier.checkNidExists(_nidCtrl.text.trim());
       if (nidExists) {
         if (!mounted) return;
@@ -196,13 +226,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         phone: _phoneCtrl.text.trim(),
       );
 
-      if (checks['email_exists'] == true) {
-        if (!mounted) return;
-        setState(() => _isLoading = false);
-        _showError('This email address is already in use.');
-        return;
-      }
-
       if (checks['phone_exists'] == true) {
         if (!mounted) return;
         setState(() => _isLoading = false);
@@ -210,27 +233,52 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
         return;
       }
 
-      final ok = await notifier.signUp(
-        email: _emailCtrl.text.trim(),
-        password: _passwordCtrl.text.trim(),
-        name: '${_firstNameCtrl.text.trim()} ${_lastNameCtrl.text.trim()}'.trim(),
-        phone: _phoneCtrl.text.trim(),
-        nid: _nidCtrl.text.trim(),
-        profession: _professionCtrl.text.trim(),
-        presentAddress: _presentAddressCtrl.text.trim(),
-        permanentAddress: _permanentAddressCtrl.text.trim(),
-      );
-      if (!context.mounted) return;
-      if (ok) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('🎉 Account created successfully!'),
-            backgroundColor: AppColors.success,
-            duration: Duration(seconds: 3),
-          ),
+      final currentUser = Supabase.instance.client.auth.currentUser;
+      if (currentUser != null) {
+        // Since email verification already signed them up/logged them in,
+        // we just need to update their profile and set their password!
+        await notifier.updateProfileDetails(
+          userId: currentUser.id,
+          name: '${_firstNameCtrl.text.trim()} ${_lastNameCtrl.text.trim()}'.trim(),
+          phone: _phoneCtrl.text.trim(),
+          nid: _nidCtrl.text.trim(),
+          profession: _professionCtrl.text.trim(),
+          presentAddress: _presentAddressCtrl.text.trim(),
+          permanentAddress: _permanentAddressCtrl.text.trim(),
+          password: _passwordCtrl.text.trim(),
         );
-        context.go('/login');
+      } else {
+        // Fallback
+        await notifier.signUp(
+          email: _emailCtrl.text.trim(),
+          password: _passwordCtrl.text.trim(),
+          name: '${_firstNameCtrl.text.trim()} ${_lastNameCtrl.text.trim()}'.trim(),
+          phone: _phoneCtrl.text.trim(),
+          nid: _nidCtrl.text.trim(),
+          profession: _professionCtrl.text.trim(),
+          presentAddress: _presentAddressCtrl.text.trim(),
+          permanentAddress: _permanentAddressCtrl.text.trim(),
+        );
       }
+
+      // Save credentials locally for auto sign-in
+      final prefs = ref.read(preferencesServiceProvider);
+      await prefs.saveCredentials(
+        _emailCtrl.text.trim(),
+        _passwordCtrl.text.trim(),
+      );
+
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('🎉 Account created successfully!'),
+          backgroundColor: AppColors.success,
+          duration: Duration(seconds: 3),
+        ),
+      );
+      
+      // Navigate to home screen
+      context.go('/home');
     } catch (e) {
       _showError(e.toString().replaceAll('AuthException: ', ''));
     } finally {
@@ -239,9 +287,234 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   }
 
   void _showError(String msg) {
+    if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(msg), backgroundColor: AppColors.error),
     );
+  }
+
+  Future<void> _verifyEmail() async {
+    final email = _emailCtrl.text.trim();
+    if (email.isEmpty) {
+      _showError('Please enter your email address first.');
+      return;
+    }
+    final emailRegExp = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
+    if (!emailRegExp.hasMatch(email)) {
+      _showError('Please enter a valid email address.');
+      return;
+    }
+
+    // If the user already has an active session for this same email
+    // (from a prior OTP in this registration attempt), just mark verified.
+    final currentUser = Supabase.instance.client.auth.currentUser;
+    if (currentUser != null &&
+        currentUser.email?.toLowerCase() == email.toLowerCase()) {
+      setState(() {
+        _isEmailVerified = true;
+        _emailCtrl.text = email;
+      });
+      ScaffoldMessenger.of(this.context).showSnackBar(
+        const SnackBar(
+          content: Text('✅ Email already verified for this session!'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+      return;
+    }
+
+    final isOnline = await ref.read(connectivityProvider.notifier).checkConnection();
+    if (!isOnline) {
+      _showError('Active internet connection is required for email verification.');
+      return;
+    }
+
+    setState(() => _isLoading = true);
+    try {
+      final notifier = ref.read(authNotifierProvider.notifier);
+
+      // Check if email is already in use by a COMPLETE profile
+      final checks = await notifier.checkContactExists(
+        email: email,
+        phone: '',
+      );
+
+      if (checks['email_exists'] == true) {
+        if (!mounted) return;
+        setState(() => _isLoading = false);
+        _showError('This email address is already registered.');
+        return;
+      }
+
+      // Trigger Supabase Email OTP
+      await notifier.sendEmailOtp(email);
+
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Verification code sent to your email!'),
+          backgroundColor: AppColors.success,
+        ),
+      );
+
+      // Show OTP entry Dialog
+      if (!context.mounted) return;
+      final TextEditingController emailOtpCtrl = TextEditingController();
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => Dialog(
+          backgroundColor: Colors.transparent,
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: Colors.grey[950],
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.15),
+                  blurRadius: 20,
+                  spreadRadius: 2,
+                )
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.mark_email_read_outlined,
+                    color: AppColors.primaryLight,
+                    size: 32,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Email OTP Verification',
+                  style: GoogleFonts.inter(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Enter the OTP code sent to\n$email',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.inter(
+                    color: Colors.grey[400],
+                    fontSize: 13,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                CustomTextField(
+                  label: 'OTP Code',
+                  hint: '******',
+                  controller: emailOtpCtrl,
+                  keyboardType: TextInputType.number,
+                  prefixIcon: Icons.lock_outline,
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          side: BorderSide(color: Colors.grey[800]!),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        child: const Text('Cancel'),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          final code = emailOtpCtrl.text.trim();
+                          if (code.length != 6 && code.length != 8) {
+                            ScaffoldMessenger.of(this.context).showSnackBar(
+                              const SnackBar(
+                                content: Text('OTP must be 6 or 8 digits.'),
+                                backgroundColor: AppColors.error,
+                              ),
+                            );
+                            return;
+                          }
+
+                          // Dismiss dialog FIRST, then use this.context (RegisterScreen context)
+                          Navigator.pop(context);
+
+                          // 'mounted' checks the RegisterScreen State — safe after dialog pop
+                          if (!mounted) return;
+                          setState(() => _isLoading = true);
+
+                          try {
+                            await notifier.verifyEmailOtp(email, code);
+
+                            // Use 'mounted' (State check), NOT context.mounted (dead dialog context)
+                            if (mounted) {
+                              setState(() {
+                                _isEmailVerified = true;
+                                _isLoading = false;
+                              });
+                              ScaffoldMessenger.of(this.context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('🎉 Email verified successfully!'),
+                                  backgroundColor: AppColors.success,
+                                ),
+                              );
+                            }
+                          } catch (err) {
+                            if (mounted) {
+                              setState(() => _isLoading = false);
+                              ScaffoldMessenger.of(this.context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    err.toString().replaceAll('AuthException: ', ''),
+                                  ),
+                                  backgroundColor: AppColors.error,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        child: const Text('Verify'),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) setState(() => _isLoading = false);
+      _showError(e.toString().replaceAll('AuthException: ', ''));
+    }
   }
 
   @override
@@ -258,7 +531,60 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 IconButton(
                   icon: const Icon(Icons.arrow_back_ios_new_rounded,
                       color: AppColors.textPrimary),
-                  onPressed: () => context.go('/login'),
+                  onPressed: () async {
+                    final user = Supabase.instance.client.auth.currentUser;
+                    if (user != null) {
+                      // User has an active session from email OTP verification.
+                      // Confirm before abandoning registration (will sign them out).
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          backgroundColor: const Color(0xFF1A1F2E),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          title: const Text(
+                            'Cancel Registration?',
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                          ),
+                          content: const Text(
+                            'Going back will sign you out and cancel your email verification. You will need to verify again next time.',
+                            style: TextStyle(color: Colors.grey),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: const Text('Stay', style: TextStyle(color: Colors.grey)),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.error,
+                              ),
+                              child: const Text('Cancel Registration'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirm == true && mounted) {
+                        // Show loading feedback
+                        setState(() => _isLoading = true);
+                        final notifier = ref.read(authNotifierProvider.notifier);
+                        // Delete user from Supabase auth + profiles entirely
+                        final deleted = await notifier.deleteIncompleteRegistration();
+                        if (!deleted) {
+                          // Fallback: just sign out if deletion failed for any reason
+                          await notifier.signOut();
+                        }
+                        if (context.mounted) {
+                          setState(() => _isLoading = false);
+                          context.go('/login');
+                        }
+                      }
+                    } else {
+                      context.go('/login');
+                    }
+                  },
                 ),
                 const SizedBox(height: 16),
                 Text('Create Account',
@@ -322,6 +648,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                         keyboardType: TextInputType.emailAddress,
                         prefixIcon: Icons.email_outlined,
                         textInputAction: TextInputAction.next,
+                        readOnly: _isEmailVerified,
                         validator: (v) {
                           if (v == null || v.trim().isEmpty) return 'Email is required';
                           final emailRegExp = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$');
@@ -331,6 +658,25 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           if (_emailDbError != null) return _emailDbError;
                           return null;
                         },
+                        suffix: _isEmailVerified
+                            ? const Padding(
+                                padding: EdgeInsets.only(right: 12.0),
+                                child: Icon(Icons.check_circle, color: AppColors.success),
+                              )
+                            : Padding(
+                                padding: const EdgeInsets.only(right: 8.0),
+                                child: TextButton(
+                                  onPressed: _verifyEmail,
+                                  child: Text(
+                                    'Verify',
+                                    style: GoogleFonts.inter(
+                                      color: AppColors.primaryLight,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ),
                       ).animate().fadeIn(delay: 200.ms).slideY(begin: 0.2),
                       const SizedBox(height: 14),
                       CustomTextField(

@@ -3,12 +3,15 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/date_time_extensions.dart';
 import '../../data/models/notification_model.dart';
+import '../../data/models/profile_model.dart';
+import '../../data/services/profile_service.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../widgets/common/user_profile_dialog.dart';
 
 class NotificationsScreen extends ConsumerStatefulWidget {
   const NotificationsScreen({super.key});
@@ -23,7 +26,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final notificationsAsync = ref.watch(notificationProvider);
+    final notificationsAsync = ref.watch(filteredNotificationProvider);
     final isAdmin = ref.watch(authNotifierProvider).valueOrNull?.isAdmin ?? false;
 
     return Scaffold(
@@ -34,6 +37,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           child: Column(
             children: [
               _buildHeader(isAdmin),
+              _buildFilterBar(),
               Expanded(
                 child: notificationsAsync.when(
                   data: (notifications) => notifications.isEmpty
@@ -53,7 +57,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
   }
 
   Widget _buildHeader(bool isAdmin) {
-    final notificationsAsync = ref.watch(notificationProvider);
+    final notificationsAsync = ref.watch(filteredNotificationProvider);
     final count = ref.watch(unreadNotificationCountProvider);
     final hasNotifications = notificationsAsync.maybeWhen(
       data: (list) => list.isNotEmpty,
@@ -414,6 +418,44 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                         height: 1.4,
                       ),
                     ),
+                    if (n.isSos) ...[
+                      const SizedBox(height: 8),
+                      GestureDetector(
+                        onTap: () => _showUserProfileFromSos(n),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: AppColors.error.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: AppColors.error.withValues(alpha: 0.35),
+                              width: 1,
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.person_outline_rounded,
+                                size: 14,
+                                color: AppColors.error,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'View Profile: ${_extractCitizenName(n.message)}',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white,
+                                  decoration: TextDecoration.underline,
+                                  decorationColor: AppColors.error,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 8),
                     // Type chip & Mark single as read
                     Row(
@@ -478,7 +520,109 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
     );
   }
 
+  Widget _buildFilterBar() {
+    final activeFilter = ref.watch(notificationFilterProvider);
+    final filterNotifier = ref.read(notificationFilterProvider.notifier);
+
+    final filters = [
+      {'value': 'all', 'label': 'All', 'icon': Icons.notifications_none_rounded},
+      {'value': 'unread', 'label': 'Unread', 'icon': Icons.mark_chat_unread_outlined},
+      {'value': 'complaint', 'label': 'Complaints', 'icon': Icons.description_outlined},
+      {'value': 'sos', 'label': 'SOS Alerts', 'icon': Icons.emergency_outlined},
+      {'value': 'system', 'label': 'System', 'icon': Icons.settings_outlined},
+    ];
+
+    return Container(
+      height: 52,
+      margin: const EdgeInsets.symmetric(vertical: 4),
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        itemCount: filters.length,
+        itemBuilder: (context, index) {
+          final filter = filters[index];
+          final isSelected = activeFilter == filter['value'];
+          final color = _colorForType(filter['value'] as String);
+
+          return Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _isSelectionMode = false;
+                  _selectedIds.clear();
+                });
+                filterNotifier.state = filter['value'] as String;
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  color: isSelected
+                      ? color.withValues(alpha: 0.2)
+                      : AppColors.surface.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: isSelected ? color : AppColors.cardBorder,
+                    width: isSelected ? 1.5 : 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      filter['icon'] as IconData,
+                      size: 14,
+                      color: isSelected ? color : AppColors.textSecondary,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      filter['label'] as String,
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                        color: isSelected ? Colors.white : AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildEmpty() {
+    final activeFilter = ref.watch(notificationFilterProvider);
+    String title = 'All caught up!';
+    String subtitle = 'You have no notifications right now.\nWe\'ll let you know when something happens.';
+    IconData icon = Icons.notifications_none_rounded;
+
+    switch (activeFilter) {
+      case 'unread':
+        title = 'No unread alerts';
+        subtitle = 'You have read all your notifications.\nCheck other tabs to review older alerts.';
+        icon = Icons.mark_chat_read_outlined;
+        break;
+      case 'complaint':
+        title = 'No case updates';
+        subtitle = 'You have no case status updates yet.';
+        icon = Icons.description_outlined;
+        break;
+      case 'sos':
+        title = 'No SOS history';
+        subtitle = 'No emergency SOS notifications registered.';
+        icon = Icons.emergency_outlined;
+        break;
+      case 'system':
+        title = 'No system notifications';
+        subtitle = 'You have no administrative or system messages.';
+        icon = Icons.settings_outlined;
+        break;
+    }
+
     return Center(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -489,8 +633,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
               color: AppColors.surface.withValues(alpha: 0.4),
               shape: BoxShape.circle,
             ),
-            child: const Icon(Icons.notifications_none_rounded,
-                color: AppColors.textHint, size: 56),
+            child: Icon(icon, color: AppColors.textHint, size: 56),
           )
               .animate(onPlay: (c) => c.repeat(reverse: true))
               .scale(
@@ -499,7 +642,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
                   duration: 2.seconds),
           const SizedBox(height: 24),
           Text(
-            'All caught up!',
+            title,
             style: GoogleFonts.inter(
               fontSize: 20,
               fontWeight: FontWeight.w700,
@@ -508,7 +651,7 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'You have no notifications right now.\nWe\'ll let you know when something happens.',
+            subtitle,
             style: GoogleFonts.inter(
                 fontSize: 14, color: AppColors.textSecondary, height: 1.6),
             textAlign: TextAlign.center,
@@ -537,6 +680,10 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
         return AppColors.error;
       case 'complaint':
         return AppColors.primaryLight;
+      case 'unread':
+        return const Color(0xFF00E5FF);
+      case 'system':
+        return const Color(0xFFFFB300);
       default:
         return AppColors.accent;
     }
@@ -735,6 +882,94 @@ class _NotificationsScreenState extends ConsumerState<NotificationsScreen> {
           SnackBar(
             content: Text('${ids.length} notifications moved to Recycle Bin successfully'),
             backgroundColor: AppColors.success,
+          ),
+        );
+      }
+    }
+  }
+
+  String _extractCitizenName(String message) {
+    final index = message.indexOf(' (');
+    if (index != -1) {
+      return message.substring(0, index);
+    }
+    return 'Citizen';
+  }
+
+  String? _extractCitizenPhone(String message) {
+    final start = message.indexOf(' (');
+    if (start == -1) return null;
+    final end = message.indexOf(')', start);
+    if (end == -1) return null;
+    final phone = message.substring(start + 2, end);
+    return phone == 'N/A' ? null : phone;
+  }
+
+  Future<void> _showUserProfileFromSos(NotificationModel n) async {
+    // Show a premium loading indicator
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => const Center(
+        child: CircularProgressIndicator(color: AppColors.primaryLight),
+      ),
+    );
+
+    try {
+      final client = Supabase.instance.client;
+      ProfileModel? profile;
+
+      // 1. Try fetching from emergency record using related_id
+      if (n.relatedId != null) {
+        final emergencyRes = await client
+            .from('emergencies')
+            .select()
+            .eq('id', n.relatedId!)
+            .maybeSingle();
+
+        if (emergencyRes != null) {
+          final userId = emergencyRes['user_id'] as String?;
+          if (userId != null) {
+            profile = await ProfileService().getProfile(userId);
+          }
+        }
+      }
+
+      // 2. Fallback: Search profile directly by phone number parsed from message
+      if (profile == null) {
+        final phone = _extractCitizenPhone(n.message);
+        if (phone != null) {
+          final profileRes = await client
+              .from('profiles')
+              .select()
+              .eq('phone', phone)
+              .maybeSingle();
+          if (profileRes != null) {
+            profile = ProfileModel.fromMap(profileRes);
+          }
+        }
+      }
+
+      if (mounted) {
+        Navigator.pop(context); // Dismiss loading indicator
+        if (profile != null) {
+          UserProfileDialog.show(context, profile);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Failed to load user profile: User not found'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Dismiss loading indicator
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error loading user profile: $e'),
+            backgroundColor: AppColors.error,
           ),
         );
       }

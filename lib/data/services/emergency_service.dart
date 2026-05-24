@@ -60,8 +60,8 @@ class EmergencyService {
           .eq('id', user.id)
           .maybeSingle();
       if (profileRes != null) {
-        citizenName = profileRes['display_name'] ?? 'A citizen';
-        citizenPhone = profileRes['phone_number'] ?? 'N/A';
+        citizenName = profileRes['name'] ?? 'A citizen';
+        citizenPhone = profileRes['phone'] ?? 'N/A';
       }
     } catch (_) {}
 
@@ -135,8 +135,20 @@ class EmergencyService {
               .eq('id', userId)
               .maybeSingle();
               
-          final name = profileRes != null ? (profileRes['display_name'] ?? 'A citizen') : 'A citizen';
-          final phone = profileRes != null ? (profileRes['phone_number'] ?? 'N/A') : 'N/A';
+          final name = profileRes != null ? (profileRes['name'] ?? 'A citizen') : 'A citizen';
+          final phone = profileRes != null ? (profileRes['phone'] ?? 'N/A') : 'N/A';
+          
+          // Automatically delete old SOS trigger notifications to unclutter admins' notifications
+          try {
+            await _client
+                .from('notifications')
+                .delete()
+                .eq('related_id', emergencyId)
+                .eq('type', 'sos')
+                .like('title', '🚨%');
+          } catch (e) {
+            print('Failed to delete old SOS notifications: $e');
+          }
           
           // Notify all admins that the user marked themselves safe
           await _notifyAdmins(

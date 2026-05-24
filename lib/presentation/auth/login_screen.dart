@@ -56,7 +56,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       );
 
       final profile = ref.read(authNotifierProvider).valueOrNull;
-      context.go(profile?.isAdmin == true ? '/admin/dashboard' : '/home');
+      // If profile is incomplete, GoRouter will redirect to /register automatically.
+      // We just navigate to /home and let GoRouter handle the guard.
+      final phone = profile?.phone;
+      final nid = profile?.nid;
+      final isIncomplete = phone == null || phone.trim().isEmpty ||
+          nid == null || nid.trim().isEmpty;
+
+      if (isIncomplete) {
+        if (context.mounted) context.go('/register');
+      } else {
+        if (context.mounted) {
+          context.go(profile?.isAdmin == true ? '/admin/dashboard' : '/home');
+        }
+      }
     } catch (e) {
       if (!mounted) return;
       final msg = e.toString().toLowerCase();

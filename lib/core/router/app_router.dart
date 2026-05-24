@@ -36,42 +36,71 @@ import '../../providers/navigation_trigger_provider.dart';
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _adminShellKey = GlobalKey<NavigatorState>();
 
+/// A ChangeNotifier that listens to auth state changes and notifies GoRouter
+/// to re-run its redirect function. This avoids recreating the entire GoRouter
+/// instance (which causes infinite loops) while still reacting to auth changes.
+class _RouterNotifier extends ChangeNotifier {
+  final Ref _ref;
+
+  _RouterNotifier(this._ref) {
+    _ref.listen<AsyncValue<dynamic>>(authNotifierProvider, (_, __) {
+      notifyListeners();
+    });
+  }
+}
+
+final _routerNotifierProvider = Provider<_RouterNotifier>((ref) {
+  return _RouterNotifier(ref);
+});
+
 final routerProvider = Provider<GoRouter>((ref) {
-  // Recreate the router object ONLY if loading status, user ID, or role changes.
-  final isLoading = ref.watch(authNotifierProvider.select((state) => state.isLoading));
-  final profileId = ref.watch(authNotifierProvider.select((state) => state.valueOrNull?.id));
-  final profileRole = ref.watch(authNotifierProvider.select((state) => state.valueOrNull?.role));
+  final notifier = ref.watch(_routerNotifierProvider);
   final prefsService = ref.read(preferencesServiceProvider);
 
   final router = GoRouter(
     navigatorKey: _rootNavigatorKey,
     initialLocation: '/splash',
+    refreshListenable: notifier,
     redirect: (context, state) {
+      final authState = ref.read(authNotifierProvider);
+      final isLoading = authState.isLoading;
+      final profile = authState.valueOrNull;
       final isLoggedIn = Supabase.instance.client.auth.currentUser != null;
       final location = state.matchedLocation;
 
       final authRoutes = ['/login', '/register', '/forgot-password', '/splash'];
       final isOnAuthRoute = authRoutes.contains(location);
 
+      // Still loading — go to splash
       if (isLoading) {
-        return '/splash';
+        return isOnAuthRoute ? null : '/splash';
       }
 
+      // Not logged in — redirect to login if not already on an auth route
       if (!isLoggedIn) {
-        if (!isOnAuthRoute) return '/login';
-        return null;
+        return isOnAuthRoute ? null : '/login';
       }
 
-      // If logged in and on an auth route (including splash)
+      // Logged in but profile is incomplete — lock to /register
+      final phone = profile?.phone;
+      final nid = profile?.nid;
+      final isProfileIncomplete = phone == null || phone.trim().isEmpty ||
+          nid == null || nid.trim().isEmpty;
+
+      if (isProfileIncomplete) {
+        // Only redirect if NOT already on /register
+        return location == '/register' ? null : '/register';
+      }
+
+      // Profile complete — if on an auth route, redirect to home/admin
       if (isOnAuthRoute) {
-        // If profileId is still null but not loading, allow home (could be a missing profile row fallback)
-        if (profileId == null) return '/home';
+        final isAdmin = profile?.role == 'admin';
 
-        final isAdmin = profileRole == 'admin';
-
-        // Restore the last route they were visiting
+        // Try to restore last visited route (skip auth routes to avoid loops)
         final lastRoute = prefsService.getLastRoute();
-        if (lastRoute != null && lastRoute.isNotEmpty) {
+        if (lastRoute != null &&
+            lastRoute.isNotEmpty &&
+            !authRoutes.contains(lastRoute)) {
           final isRouteAdmin = lastRoute.startsWith('/admin');
           if (isAdmin == isRouteAdmin) {
             return lastRoute;
@@ -80,7 +109,7 @@ final routerProvider = Provider<GoRouter>((ref) {
 
         return isAdmin ? '/admin/dashboard' : '/home';
       }
-      
+
       return null;
     },
     routes: [

@@ -6,14 +6,31 @@ import 'auth_provider.dart';
 
 final notificationServiceProvider = Provider<NotificationService>((ref) => NotificationService());
 
+// The active filter state provider: 'all', 'unread', 'complaint', 'sos', 'system'
+final notificationFilterProvider = StateProvider<String>((ref) => 'all');
+
+// Raw unfiltered notification provider - SINGLE SOURCE OF TRUTH
 final notificationProvider = StateNotifierProvider<NotificationNotifier, AsyncValue<List<NotificationModel>>>((ref) {
-  final authState = ref.watch(authNotifierProvider);
-  return NotificationNotifier(authState.valueOrNull?.id);
+  final user = ref.watch(currentUserProvider);
+  return NotificationNotifier(user?.id);
 });
 
+// Database-filtered notification provider for screen lists (derived)
+final filteredNotificationProvider = Provider<AsyncValue<List<NotificationModel>>>((ref) {
+  final filter = ref.watch(notificationFilterProvider);
+  final notificationsAsync = ref.watch(notificationProvider);
+
+  return notificationsAsync.whenData((list) {
+    if (filter == 'all') return list;
+    if (filter == 'unread') return list.where((n) => !n.isRead).toList();
+    return list.where((n) => n.type == filter).toList();
+  });
+});
+
+// Total global unread notification count (derived from notificationProvider)
 final unreadNotificationCountProvider = Provider<int>((ref) {
-  final notifications = ref.watch(notificationProvider);
-  return notifications.maybeWhen(
+  final notificationsAsync = ref.watch(notificationProvider);
+  return notificationsAsync.maybeWhen(
     data: (list) => list.where((n) => !n.isRead).length,
     orElse: () => 0,
   );
@@ -54,7 +71,7 @@ class NotificationNotifier extends StateNotifier<AsyncValue<List<NotificationMod
   }
 
   void _subscribeToNotifications() {
-    _subscription = _supabase.channel('public:notifications')
+    _subscription = _supabase.channel('public:notifications:all')
       .onPostgresChanges(
         event: PostgresChangeEvent.all,
         schema: 'public',
@@ -82,24 +99,14 @@ class NotificationNotifier extends StateNotifier<AsyncValue<List<NotificationMod
       state.whenData((notifications) {
         final updated = notifications.map((n) {
           if (n.id == notificationId) {
-            return NotificationModel(
-              id: n.id,
-              userId: n.userId,
-              title: n.title,
-              message: n.message,
-              type: n.type,
-              relatedId: n.relatedId,
-              isRead: true,
-              createdAt: n.createdAt,
-              deletedAt: n.deletedAt,
-            );
+            return n.copyWith(isRead: true);
           }
           return n;
         }).toList();
         state = AsyncValue.data(updated);
       });
     } catch (e) {
-      // Handle error if needed
+      // Handle error
     }
   }
 
@@ -113,19 +120,7 @@ class NotificationNotifier extends StateNotifier<AsyncValue<List<NotificationMod
           
       // Optimistic update
       state.whenData((notifications) {
-        final updated = notifications.map((n) {
-          return NotificationModel(
-            id: n.id,
-            userId: n.userId,
-            title: n.title,
-            message: n.message,
-            type: n.type,
-            relatedId: n.relatedId,
-            isRead: true,
-            createdAt: n.createdAt,
-            deletedAt: n.deletedAt,
-          );
-        }).toList();
+        final updated = notifications.map((n) => n.copyWith(isRead: true)).toList();
         state = AsyncValue.data(updated);
       });
     } catch (e) {
@@ -179,17 +174,7 @@ class NotificationNotifier extends StateNotifier<AsyncValue<List<NotificationMod
       state.whenData((notifications) {
         final updated = notifications.map((n) {
           if (notificationIds.contains(n.id)) {
-            return NotificationModel(
-              id: n.id,
-              userId: n.userId,
-              title: n.title,
-              message: n.message,
-              type: n.type,
-              relatedId: n.relatedId,
-              isRead: true,
-              createdAt: n.createdAt,
-              deletedAt: n.deletedAt,
-            );
+            return n.copyWith(isRead: true);
           }
           return n;
         }).toList();
@@ -225,4 +210,3 @@ class NotificationNotifier extends StateNotifier<AsyncValue<List<NotificationMod
     super.dispose();
   }
 }
-

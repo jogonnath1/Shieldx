@@ -124,11 +124,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   keyboardType: TextInputType.phone,
                   validator: (v) {
                     if (v == null || v.trim().isEmpty) return 'Required';
-                    if (!v.startsWith('+')) return 'Must start with country code (e.g., +880)';
-                    final digits = v.substring(1);
+                    final val = v.trim();
+                    if (!val.startsWith('+8801')) return 'Must start with Bangladesh country code (+8801)';
+                    final digits = val.substring(1);
                     if (digits.isEmpty || !RegExp(r'^[0-9]+$').hasMatch(digits)) {
                       return 'Only numeric numbers are allowed after +';
                     }
+                    if (val.length != 14) return 'Phone number must be exactly 14 characters (e.g., +8801610635446)';
                     return null;
                   },
                 ).animate().fadeIn(delay: 100.ms).slideY(begin: 0.1),

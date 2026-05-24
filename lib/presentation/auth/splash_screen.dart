@@ -23,34 +23,49 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
   Future<void> _navigate() async {
     // Wait for the minimum splash animation time
     await Future.delayed(const Duration(seconds: 3));
-    
+
     // Wait until authNotifierProvider is no longer loading
     while (mounted && ref.read(authNotifierProvider).isLoading) {
       await Future.delayed(const Duration(milliseconds: 100));
     }
-    
+
     if (!mounted) return;
-    
-    final profile = ref.read(authNotifierProvider).valueOrNull;
+
+    final authState = ref.read(authNotifierProvider);
+    final profile = authState.valueOrNull;
+
     if (profile != null) {
+      // Check if profile is incomplete (missing phone or nid)
+      final phone = profile.phone;
+      final nid = profile.nid;
+      final isIncomplete = phone == null || phone.trim().isEmpty ||
+          nid == null || nid.trim().isEmpty;
+
+      if (isIncomplete) {
+        // Let GoRouter handle — just navigate to register
+        if (mounted) context.go('/register');
+        return;
+      }
+
       final prefs = ref.read(preferencesServiceProvider);
       final savedRoute = prefs.getLastRoute();
-      
       final authRoutes = ['/login', '/register', '/forgot-password', '/splash'];
       final isAdmin = profile.isAdmin;
-      if (savedRoute != null && savedRoute.isNotEmpty && !authRoutes.contains(savedRoute) && !isAdmin) {
-        // Go to home first, then push the saved route on top so the back button works
+
+      if (savedRoute != null &&
+          savedRoute.isNotEmpty &&
+          !authRoutes.contains(savedRoute) &&
+          !isAdmin) {
         context.go('/home');
-        // Small delay to let the home screen settle before pushing on top
         await Future.delayed(const Duration(milliseconds: 100));
         if (mounted && savedRoute != '/home') {
           context.push(savedRoute);
         }
       } else {
-        context.go(isAdmin ? '/admin/dashboard' : '/home');
+        if (mounted) context.go(isAdmin ? '/admin/dashboard' : '/home');
       }
     } else {
-      context.go('/login');
+      if (mounted) context.go('/login');
     }
   }
 

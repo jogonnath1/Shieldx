@@ -166,6 +166,51 @@ class AuthNotifier extends StateNotifier<AsyncValue<ProfileModel?>> {
     }
   }
 
+  Future<void> sendEmailOtp(String email) async {
+    try {
+      await _service.sendEmailOtp(email);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<bool> verifyEmailOtp(String email, String token) async {
+    try {
+      await _service.verifyEmailOtp(email, token);
+      return true;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  Future<void> updateProfileDetails({
+    required String userId,
+    required String name,
+    required String phone,
+    required String nid,
+    required String profession,
+    required String presentAddress,
+    required String permanentAddress,
+    String? password,
+  }) async {
+    try {
+      if (password != null && password.isNotEmpty) {
+        await _service.updatePassword(password);
+      }
+      await _service.updateProfile(userId, {
+        'name': name,
+        'phone': phone,
+        'nid': nid,
+        'profession': profession,
+        'present_address': presentAddress,
+        'permanent_address': permanentAddress,
+      });
+      await refresh();
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<void> saveMockOtp(String phone, String otp) async {
     try {
       await _service.saveMockOtp(phone, otp);
@@ -179,6 +224,25 @@ class AuthNotifier extends StateNotifier<AsyncValue<ProfileModel?>> {
       return await _service.verifyMockOtp(phone, otp);
     } catch (e) {
       rethrow;
+    }
+  }
+
+  /// Deletes the incomplete registration from Supabase auth + profiles.
+  /// Safe — the DB function only deletes if phone and nid are both null.
+  /// The service layer always calls auth.signOut() so the local JWT is cleared.
+  Future<bool> deleteIncompleteRegistration() async {
+    try {
+      final deleted = await _service.deleteIncompleteRegistration();
+      // Always clear local state and credentials regardless of RPC success,
+      // because the service already signed out the local session.
+      state = const AsyncValue.data(null);
+      final prefs = _ref.read(preferencesServiceProvider);
+      await prefs.clearCredentials();
+      return deleted;
+    } catch (e) {
+      // Even on exception, clear local state so user isn't stuck
+      state = const AsyncValue.data(null);
+      return false;
     }
   }
 

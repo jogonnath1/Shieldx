@@ -105,6 +105,18 @@ class AuthService {
     );
   }
 
+  Future<void> sendEmailOtp(String email) async {
+    await _client.auth.signInWithOtp(email: email);
+  }
+
+  Future<AuthResponse> verifyEmailOtp(String email, String token) async {
+    return await _client.auth.verifyOTP(
+      type: OtpType.email,
+      token: token,
+      email: email,
+    );
+  }
+
   Future<void> saveMockOtp(String phone, String otp) async {
     await _client.from('phone_verifications').upsert({
       'phone': phone,
@@ -123,6 +135,38 @@ class AuthService {
           .maybeSingle();
       return res != null;
     } catch (e) {
+      return false;
+    }
+  }
+
+  /// Deletes the current user from auth.users (and cascades to profiles)
+  /// ONLY if their profile is incomplete (no phone + no nid).
+  /// Returns true if deleted, false if the profile was already complete (safety guard).
+  Future<bool> deleteIncompleteRegistration() async {
+    final user = currentUser;
+    if (user == null) {
+      // No session — nothing to delete, just treat as success
+      return true;
+    }
+    try {
+      final result = await _client.rpc(
+        'delete_incomplete_registration',
+        params: {'user_id_to_delete': user.id},
+      );
+      final deleted = result as bool? ?? false;
+
+      // Whether or not deletion worked, always clear the local JWT session
+      // so GoRouter sees the user as logged-out and stops redirecting to /register
+      try {
+        await _client.auth.signOut();
+      } catch (_) {}
+
+      return deleted;
+    } catch (e) {
+      // RPC failed — still sign out locally so the user can escape /register
+      try {
+        await _client.auth.signOut();
+      } catch (_) {}
       return false;
     }
   }

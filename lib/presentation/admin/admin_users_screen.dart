@@ -518,65 +518,102 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
       appBar: AppBar(title: const Text('Users')),
       body: Container(
         decoration: const BoxDecoration(gradient: AppColors.backgroundGradient),
-        child: Column(
-          children: [
-            logsAsync.hasValue
-                ? Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                    child: CurrentlyActiveUsersList(logs: logsAsync.value!, isVertical: true),
-                  )
-                : logsAsync.when(
-                    data: (logs) => Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                      child: CurrentlyActiveUsersList(logs: logs, isVertical: true),
+        child: RefreshIndicator(
+          onRefresh: _load,
+          color: AppColors.primary,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                logsAsync.hasValue
+                    ? Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                        child: CurrentlyActiveUsersList(logs: logsAsync.value!, isVertical: true),
+                      )
+                    : logsAsync.when(
+                        data: (logs) => Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                          child: CurrentlyActiveUsersList(logs: logs, isVertical: true),
+                        ),
+                        loading: () => const SizedBox(
+                          height: 80,
+                          child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                        ),
+                        error: (e, _) => Text('Error loading active users: $e', style: const TextStyle(color: AppColors.error)),
+                      ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                  child: TextField(
+                    onChanged: (v) => setState(() => _search = v),
+                    style: GoogleFonts.inter(color: AppColors.textPrimary),
+                    decoration: InputDecoration(
+                      hintText: 'Search users...',
+                      prefixIcon: const Icon(Icons.search, color: AppColors.textHint),
+                      filled: true,
+                      fillColor: AppColors.surfaceLight,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: AppColors.cardBorder),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: AppColors.cardBorder),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    loading: () => const SizedBox(
-                      height: 80,
-                      child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
-                    ),
-                    error: (e, _) => Text('Error loading active users: $e', style: const TextStyle(color: AppColors.error)),
                   ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: TextField(
-                onChanged: (v) => setState(() => _search = v),
-                style: GoogleFonts.inter(color: AppColors.textPrimary),
-                decoration: InputDecoration(
-                  hintText: 'Search users...',
-                  prefixIcon: const Icon(Icons.search, color: AppColors.textHint),
-                  filled: true,
-                  fillColor: AppColors.surfaceLight,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: AppColors.cardBorder),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: AppColors.cardBorder),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: AppColors.primary, width: 2),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 12),
                 ),
-              ),
-            ),
-            _buildRoleSegmentedControl(),
-            _buildVerificationFilterRow(),
-            Expanded(
-              child: _isLoading
-                  ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-                  : _filtered.isEmpty
-                      ? const EmptyState(
-                          icon: Icons.people_outline,
-                          title: 'No Users Found',
-                          subtitle: 'No users match your search.')
-                      : RefreshIndicator(
-                          onRefresh: _load,
-                          color: AppColors.primary,
-                          child: ListView.separated(
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 4,
+                        height: 18,
+                        decoration: BoxDecoration(
+                          gradient: const LinearGradient(
+                            colors: [Color(0xFF8B5CF6), Color(0xFF2563EB)],
+                          ),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        'All User List',
+                        style: GoogleFonts.inter(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                _buildRoleSegmentedControl(),
+                _buildVerificationFilterRow(),
+                _isLoading
+                    ? const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 40),
+                        child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                      )
+                    : _filtered.isEmpty
+                        ? const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 40),
+                            child: EmptyState(
+                                icon: Icons.people_outline,
+                                title: 'No Users Found',
+                                subtitle: 'No users match your search.'),
+                          )
+                        : ListView.separated(
                             padding: const EdgeInsets.fromLTRB(16, 4, 16, 100),
+                            shrinkWrap: true,
+                            physics: const NeverScrollableScrollPhysics(),
                             itemCount: _filtered.length,
                             separatorBuilder: (_, __) => const SizedBox(height: 10),
                             itemBuilder: (ctx, i) {
@@ -740,9 +777,9 @@ class _AdminUsersScreenState extends ConsumerState<AdminUsersScreen> {
                               ).animate().fadeIn(delay: (i * 40).ms).slideY(begin: 0.1);
                             },
                           ),
-                        ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
