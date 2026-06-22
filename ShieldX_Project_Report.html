@@ -1,0 +1,218 @@
+<html><body>
+<h1>ShieldX — Crime Reporting Management System</h1>
+
+<p><strong>Project Report</strong></p>
+
+<hr />
+
+<h1>Abstract</h1>
+
+<p>ShieldX is a mobile application developed to revolutionize crime reporting and management within the Sylhet Metropolitan Police (SMP) jurisdiction. Traditional manual reporting systems are often slow and inefficient. ShieldX addresses this by providing citizens with a secure, real-time platform to submit complaints, upload evidence, and track the status of their reports. For administrators and police officers, it offers a comprehensive dashboard to manage, assign, and respond to these complaints effectively. Built using Flutter for the frontend and Supabase for a robust, real-time backend, ShieldX ensures fast response times, especially through its one-tap SOS emergency feature with live GPS tracking. This project demonstrates the successful integration of modern mobile app technologies to improve public safety and police transparency.</p>
+
+<p><strong>Index Terms</strong> — Crime Reporting; Flutter; Supabase; Real-time; Emergency Tracking; Mobile Application.</p>
+
+<hr />
+
+<h1>Acknowledgements</h1>
+
+<p>We would like to thank the Department of Computer Science and Engineering, Leading University, Sylhet 3112, Bangladesh, for supporting this course work. We also extend our gratitude to our supervisor for their continuous guidance and to everyone who assisted us during the development of ShieldX.</p>
+
+<hr />
+
+<h1>Dedication</h1>
+
+<p>We would like to dedicate our work to our parents, relatives, and friends who have constantly supported and encouraged us throughout this journey.</p>
+
+<hr />
+
+<h1>Chapter 1: Introduction</h1>
+
+<p>In today's fast-paced world, public safety relies heavily on the efficiency of crime reporting and the responsiveness of law enforcement. The Sylhet Metropolitan Police (SMP) requires an effective system to manage citizen complaints, track emergencies, and visualize crime data in real-time. ShieldX is developed to bridge the gap between citizens and the police department by offering a dedicated mobile application for both parties. </p>
+
+<p>This report is structured to guide the reader through the research, design, and implementation of ShieldX systematically. Chapter 2 describes the problem and our objectives. Chapter 3 outlines the functional and non-functional requirements, including UML design diagrams. Chapter 4 details the methodology, architecture, and accomplishments during development. Chapter 5 presents the outcomes and results. Finally, Chapter 6 concludes the study, discussing its limitations and potential future enhancements.</p>
+
+<hr />
+
+<h1>Chapter 2: Problem Description</h1>
+
+<h2>2.1 Problem Statement</h2>
+
+<p>The traditional methods of reporting crimes—such as making phone calls or physically visiting a police station to file a First Information Report (FIR)—are often time-consuming and lack transparency for the citizen. Furthermore, law enforcement agencies struggle with paper-based records or fragmented digital systems that do not provide real-time analytical dashboards or live tracking of emergencies. The goal of this project is to create "ShieldX", a comprehensive mobile-based Crime Reporting Management System that provides real-time communication, automated status tracking, and emergency GPS alerts.</p>
+
+<h2>2.2 Goals</h2>
+
+<ul>
+<li>Develop a multi-platform mobile application using Flutter for citizens and police administrators.</li>
+<li>Implement secure user authentication including NID validation and OTP verification.</li>
+<li>Provide a seamless interface for citizens to submit and track crime reports with multimedia evidence.</li>
+<li>Build a real-time admin dashboard with statistical charts, location heatmaps, and complaint management tools.</li>
+<li>Implement an SOS emergency feature with live GPS tracking.</li>
+</ul>
+
+<h2>2.3 Purposes</h2>
+
+<p>The primary purpose of ShieldX is to increase crime reporting rates by making the process accessible and transparent, thereby improving public trust. For the police department, it aims to reduce response times, centralize data management, and provide actionable insights into crime trends across different jurisdictions in Sylhet.</p>
+
+<h2>2.4 Methods</h2>
+
+<p>The project is built using a modern, layered architecture. The front-end is developed using <strong>Flutter (Dart)</strong> for cross-platform compatibility. The state management is handled by <strong>Riverpod</strong>, and navigation is managed by <strong>GoRouter</strong>. The backend is powered by <strong>Supabase</strong>, utilizing PostgreSQL for the database, Row Level Security (RLS) for data protection, and Supabase Realtime for instant updates across devices.</p>
+
+<h2>2.5 Related Work</h2>
+
+<p>While there are national emergency numbers (like 999) and various generic reporting tools, specialized apps dedicated to localized jurisdictions with integrated real-time tracking, evidence uploading, and dedicated admin management panels are limited. ShieldX builds upon the concepts of existing national platforms but offers a much more targeted, feature-rich, and real-time experience specific to the Sylhet Metropolitan Police structure.</p>
+
+<hr />
+
+<h1>Chapter 3: Requirement Specification</h1>
+
+<h2>3.1 Functional Requirements</h2>
+
+<ul>
+<li><strong>Authentication:</strong> Multi-step registration with email/phone OTP verification and NID validation.</li>
+<li><strong>Complaint Management (Citizen):</strong> Submit complaints with auto-classification, map-based location picking, and photo evidence. Track real-time status (submitted → in progress → investigating → resolved).</li>
+<li><strong>SOS Emergency:</strong> One-tap alert with a 3-second cancellation window and live GPS location tracking.</li>
+<li><strong>Admin Dashboard:</strong> Live statistics (pie/bar charts), monthly trends, and location heatmaps. Filter, sort, assign, and update complaints.</li>
+<li><strong>User Management (Admin):</strong> Verify, block/unblock, promote, and manage field officers.</li>
+<li><strong>Notifications:</strong> Real-time push notifications for status changes.</li>
+</ul>
+
+<h2>3.2 Nonfunctional Requirements</h2>
+
+<ul>
+<li><strong>Security:</strong> Strict Row Level Security (RLS) ensuring citizens only access their own data. Admin routes protected via router redirects and database policies.</li>
+<li><strong>Performance:</strong> Real-time data synchronization using Supabase Realtime Postgres Change Events.</li>
+<li><strong>Reliability:</strong> Offline fallback for complaint submission (syncing when reconnected) and a 4-step GPS fallback chain to ensure location accuracy.</li>
+<li><strong>Maintainability:</strong> Layered architecture separating UI, State (Riverpod), and Data (Services), with 0 errors/warnings in static analysis.</li>
+</ul>
+
+<h2>3.3 UML Diagram</h2>
+
+<h3>3.3.1 Activity Diagram</h3>
+
+<p><em>Process Flow for Complaint Submission:</em>
+1. Citizen logs into the application.
+2. Selects "Submit Complaint" and fills out the 3-step form.
+3. Attaches GPS location and photo evidence.
+4. Submits the form; the app stores data in Supabase.
+5. Supabase triggers a Realtime Postgres change event.
+6. The Admin Dashboard automatically updates via a stream provider to show the new complaint.
+7. Admin assigns an officer and updates the status.
+8. Citizen receives a real-time notification of the status change.</p>
+
+<h3>3.3.2 Use Case Diagram</h3>
+
+<ul>
+<li><strong>Citizen Actor:</strong> Register, Login, Submit Complaint, Track Complaint, Trigger SOS, View Nearest Station, Manage Profile.</li>
+<li><strong>Admin Actor:</strong> Login, View Dashboard Analytics, Manage Complaints (Update Status, Assign), Manage Users, Monitor Live SOS Panel.</li>
+</ul>
+
+<h3>3.3.3 Class Diagram</h3>
+
+<p>The system primarily utilizes data models to interact with the backend:
+- <code>ProfileModel</code>: id, name, phone, NID, role, verification<em>status.
+- <code>ComplaintModel</code>: id, user</em>id, title, description, category, status, coordinates, evidence<em>urls, created</em>at.
+- <code>EmergencyModel</code>: id, user<em>id, active, latitude, longitude, triggered</em>at.</p>
+
+<h3>3.3.4 ER Diagram</h3>
+
+<p>The PostgreSQL database consists of the following relationships:
+- <strong>profiles</strong> (1) to (N) <strong>complaints</strong>
+- <strong>profiles</strong> (1) to (N) <strong>emergencies</strong>
+- <strong>complaints</strong> (1) to (N) <strong>status_history</strong>
+- <strong>profiles</strong> (1) to (N) <strong>notifications</strong></p>
+
+<h3>3.3.5 Data Flow Diagram</h3>
+
+<ul>
+<li><strong>Level 0 (Context):</strong> Citizen interacts with ShieldX App -> Data sent to Supabase Backend -> Real-time updates pushed to Admin Dashboard.</li>
+<li><strong>Level 1 (Processes):</strong> 
+<ul>
+<li><em>Process 1.0:</em> Authentication &amp; Verification.</li>
+<li><em>Process 2.0:</em> Complaint Data Collection &amp; Media Upload.</li>
+<li><em>Process 3.0:</em> Admin Data Aggregation &amp; Statistical Analysis.</li>
+<li><em>Process 4.0:</em> Real-time SOS Location Streaming.</li>
+</ul></li>
+</ul>
+
+<hr />
+
+<h1>Chapter 4: Accomplishment</h1>
+
+<h2>4.1 Preliminaries</h2>
+
+<p>The project began by defining the architecture and selecting the appropriate tech stack. Flutter SDK (≥ 3.0) and Dart SDK (≥ 3.0) were chosen for the UI, while Supabase was configured to act as the Backend-as-a-Service, handling PostgreSQL tables, RPC functions, Storage, and Realtime channels. </p>
+
+<h2>4.2 How the Work Was Done</h2>
+
+<p>The application was built adhering to a <strong>layered architecture</strong>:
+1. <strong>Data Layer (<code>lib/data/services/</code>)</strong>: Isolated all Supabase API communications. Created distinct services like <code>AuthService</code>, <code>ComplaintService</code>, <code>EmergencyService</code>, and <code>SyncService</code> for offline support.
+2. <strong>Provider Layer (<code>lib/providers/</code>)</strong>: Utilized Riverpod <code>StateNotifiers</code> and <code>StreamProviders</code> to manage application state securely and responsively. This layer acts as the single source of truth for the UI.
+3. <strong>Presentation Layer (<code>lib/presentation/</code>)</strong>: Developed role-specific interfaces (Admin vs. User) utilizing GoRouter for declarative, redirect-based navigation. </p>
+
+<p>Key design decisions included extracting duplicate logic into shared helpers (e.g., <code>_buildStatusStats()</code>), implementing a robust 4-step GPS fallback chain (Simulation -> Device GPS -> Last Known -> Default Location), and utilizing Supabase Realtime for instant UI updates when admins modify user roles or complaint statuses. Extensive code cleanup was performed, resulting in a strictly formatted, zero-error codebase.</p>
+
+<hr />
+
+<h1>Chapter 5: Results</h1>
+
+<p>The successful outcome of this project is the fully functional ShieldX mobile application. 
+- <strong>User Interface</strong>: A seamless, animated (via <code>flutter_animate</code>), and intuitive UI for both citizens and administrators.
+- <strong>Functional Outcomes</strong>: Citizens can successfully authenticate via OTP, submit detailed complaints with media, and trigger an SOS. Administrators have access to a rich dashboard populated with <code>fl_chart</code> visualizations and an interactive <code>flutter_map</code>.
+- <strong>Technical Outcomes</strong>: The application achieves real-time data sync without manual polling, enforces strict row-level security for data privacy, and gracefully handles offline scenarios.</p>
+
+<hr />
+
+<h1>Chapter 6: Conclusion</h1>
+
+<p>The ShieldX project successfully achieved its original goals of providing a comprehensive, real-time crime reporting and management system. By leveraging Flutter and Supabase, the application delivers a modern user experience with robust backend security and real-time synchronization.</p>
+
+<h2>6.1 Restrictions</h2>
+
+<p>The application requires active internet connectivity for real-time features (though it supports offline queueing for complaint submissions) and necessitates user permission for GPS location tracking.</p>
+
+<h2>6.2 Limitations</h2>
+
+<p>Currently, the system is constrained to handling image-based evidence; video uploads are not fully supported due to storage constraints. Additionally, the map bounds and station logic are heavily tailored exclusively to the Sylhet Metropolitan Police (SMP) region.</p>
+
+<h2>6.3 Future Work</h2>
+
+<p>Future iterations of ShieldX could include:
+- AI-based automatic classification and prioritization of submitted complaints.
+- Support for video evidence compression and uploading.
+- Expansion to support multiple city jurisdictions beyond Sylhet.
+- Integration with national identity databases for automated, instant NID verification.</p>
+
+<hr />
+
+<h1>References</h1>
+
+<p>[1] Flutter Documentation, Google. [Online]. Available: https://flutter.dev/docs
+[2] Supabase Documentation, Supabase Inc. [Online]. Available: https://supabase.com/docs
+[3] Riverpod State Management. [Online]. Available: https://riverpod.dev/</p>
+
+<hr />
+
+<h1>Appendices</h1>
+
+<h2>Appendix A: Source Code</h2>
+
+<p>The complete source code is maintained in the project repository. Key structural directories include:
+- <code>lib/core/</code> - Routing, theme, and utility functions.
+- <code>lib/data/</code> - Supabase services and plain Dart models.
+- <code>lib/providers/</code> - Riverpod state management.
+- <code>lib/presentation/</code> - UI screens separated into admin, user, auth, and common widgets.</p>
+
+<h2>Appendix B: User's Guide</h2>
+
+<p><strong>For Citizens:</strong>
+1. Download and open ShieldX.
+2. Register using your Email, Phone Number, and NID.
+3. Verify your account via the OTP sent to your device.
+4. Use the "Submit Complaint" button to report an incident, or press and hold the "SOS" button in case of an emergency.</p>
+
+<p><strong>For Administrators:</strong>
+1. Log in with admin credentials.
+2. Review the live Dashboard for an overview of recent activities and statistics.
+3. Navigate to the "Complaints" tab to review pending reports, assign officers, and update statuses to keep citizens informed.</p>
+
+</body></html>

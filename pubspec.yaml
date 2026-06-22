@@ -37,13 +37,18 @@ dependencies:
   url_launcher: ^6.3.2
   geolocator: ^14.0.2
   http: ^1.6.0
-  flutter_map_location_marker: ^10.2.0
   file_picker: ^11.0.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.0
+  flutter_launcher_icons: ^0.13.1
+
+flutter_icons:
+  android: true
+  ios: true
+  image_path: "assets/icons/app_icon_1024.png"
 
 flutter:
   uses-material-design: true

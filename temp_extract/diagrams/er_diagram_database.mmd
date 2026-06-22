@@ -1,0 +1,69 @@
+﻿%% Sources:
+%% - lib/data/models/*.dart (Inferring schema)
+%% - Report database definitions
+%% Notation: Crow's Foot
+erDiagram
+    profiles ||--o{ complaints : "submits (user_id)"
+    profiles ||--o{ emergencies : "triggers (user_id)"
+    profiles ||--o{ notifications : "receives (user_id)"
+    profiles ||--o| officers : "is associated with (user_id)"
+    profiles ||--o{ messages : "sends (sender_id)"
+    profiles ||--o{ status_history : "changes (changed_by)"
+    
+    complaints ||--o{ status_history : "has (complaint_id)"
+    complaints ||--o{ messages : "contains (complaint_id)"
+    officers |o--o{ complaints : "assigned to (assigned_officer_id)"
+
+    profiles {
+        uuid id PK
+        string role
+        string email
+        string phone
+        string nid
+    }
+
+    complaints {
+        uuid id PK
+        uuid user_id FK
+        uuid assigned_officer_id FK
+        string status
+        string crime_category
+    }
+
+    emergencies {
+        uuid id PK
+        uuid user_id FK
+        string status
+        double latitude
+        double longitude
+    }
+
+    notifications {
+        uuid id PK
+        uuid user_id FK
+        string title
+        string type
+    }
+
+    officers {
+        uuid id PK
+        uuid user_id FK
+        string name
+        string rank
+        string station
+    }
+
+    status_history {
+        uuid id PK
+        uuid complaint_id FK
+        uuid changed_by FK
+        string status
+        string note
+    }
+
+    messages {
+        uuid id PK
+        uuid complaint_id FK
+        uuid sender_id FK
+        string content
+    }

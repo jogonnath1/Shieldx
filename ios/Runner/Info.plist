@@ -56,5 +56,13 @@
 			</array>
 		</dict>
 	</array>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>ShieldX needs access to your location to accurately report the location of emergencies and complaints.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>ShieldX needs access to your location to accurately report the location of emergencies.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>ShieldX needs camera access to let you capture and upload evidence photos.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>ShieldX needs photo library access to let you select and upload evidence photos.</string>
 </dict>
 </plist>

@@ -3,23 +3,17 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'core/constants/app_constants.dart';
-import 'core/services/preferences_service.dart';
-import 'app.dart';
+import 'package:shieldx/common/core/constants/app_constants.dart';
+import 'package:shieldx/common/core/services/preferences_service.dart';
+import 'package:shieldx/app.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Initialize SharedPreferences
   final sharedPreferences = await SharedPreferences.getInstance();
-
-  // Lock to portrait
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
   ]);
-
-  // Set status bar style
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
@@ -28,8 +22,6 @@ void main() async {
       systemNavigationBarIconBrightness: Brightness.light,
     ),
   );
-
-  // Initialize Supabase
   await Supabase.initialize(
     url: AppConstants.supabaseUrl,
     anonKey: AppConstants.supabaseAnonKey,
@@ -40,7 +32,6 @@ void main() async {
       ),
     ),
   );
-
   runApp(
     ProviderScope(
       overrides: [

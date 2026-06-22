@@ -1,0 +1,48 @@
+﻿%% UML 2.5 Sequence Diagram
+%% Note: Mermaid sequenceDiagram handles UML perfectly including activation bars and arrows.
+sequenceDiagram
+    actor U as User
+    participant SOS as Flutter App (SOSNotifier)
+    participant Geo as Geolocator
+    participant DB as Supabase
+    participant Admin as Admin Dashboard
+
+    U->>+SOS: startSOS()
+    SOS->>SOS: start countdown (3s)
+    
+    alt User cancels
+        U->>SOS: cancelSOSCountdown()
+        SOS->>SOS: stop timer
+    else Timer expires
+        SOS->>SOS: _triggerSOSAlert()
+        
+        alt isSimulationActive == true
+            SOS->>SOS: lat, lng = simState
+        else isSimulationActive == false
+            SOS->>+Geo: getCurrentPosition(8s)
+            alt GPS Success
+                Geo-->>-SOS: Position
+            else GPS Timeout/Error
+                SOS->>+Geo: getLastKnownPosition()
+                alt Cached Success
+                    Geo-->>-SOS: Cached Position
+                else Cached Failure
+                    SOS->>SOS: default = 24.89996, 91.87030
+                end
+            end
+        end
+        
+        SOS->>+DB: triggerSOS(lat, lng) (sync call)
+        DB-->>-SOS: Return Emergency Record
+        
+        SOS-)DB: insert into 'notifications' (async)
+        DB-)Admin: Realtime Event Push (Emergency)
+        
+        SOS->>SOS: _startLiveTracking()
+        loop Every location update
+            Geo-->>SOS: Position Stream (return)
+            SOS-)DB: update 'emergencies' (lat, lng)
+            DB-)Admin: Realtime Broadcast (Location)
+        end
+    end
+    deactivate SOS

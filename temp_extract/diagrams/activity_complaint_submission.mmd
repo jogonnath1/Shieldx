@@ -1,0 +1,58 @@
+﻿%% UML 2.5 Activity Diagram
+%% Note: Mermaid stateDiagram-v2 simulates Activity diagrams. 
+%% Manual fixes needed in StarUML: Draw vertical partitions for "Citizen" and "System/Admin" swimlanes.
+stateDiagram-v2
+    [*] --> AuthCheck
+    
+    state AuthCheck <<choice>>
+    AuthCheck --> EnterCredentials : if Not Logged In
+    AuthCheck --> ProfileCheck : if Logged In
+    
+    state EnterCredentials {
+        [*] --> SendOTP
+        SendOTP --> VerifyOTP
+        
+        state OTPBranch <<choice>>
+        VerifyOTP --> OTPBranch
+        OTPBranch --> EmailOTP : if Email
+        OTPBranch --> PhoneOTP : if Phone
+        
+        EmailOTP --> LoginSuccess
+        PhoneOTP --> LoginSuccess
+        LoginSuccess --> [*]
+    }
+    EnterCredentials --> ProfileCheck
+    
+    state ProfileCheck <<choice>>
+    ProfileCheck --> CompleteProfile : if Incomplete
+    CompleteProfile --> Dashboard
+    ProfileCheck --> Dashboard : if Complete
+    
+    Dashboard --> SelectSubmitComplaint
+    SelectSubmitComplaint --> FillForm
+    FillForm --> PickLocation
+    PickLocation --> UploadPhoto
+    UploadPhoto --> SubmitAction
+    
+    state ConnectivityCheck <<choice>>
+    SubmitAction --> ConnectivityCheck
+    
+    ConnectivityCheck --> SaveToOfflineOutbox : if Offline
+    SaveToOfflineOutbox --> SyncDaemon
+    
+    ConnectivityCheck --> SubmitToSupabase : if Online
+    SubmitToSupabase --> SaveToDatabase
+    
+    state ForkSubmit <<fork>>
+    SyncDaemon --> ForkSubmit
+    SaveToDatabase --> ForkSubmit
+    
+    ForkSubmit --> AdminAssignsOfficer
+    ForkSubmit --> StatusHistoryUpdate
+    
+    state JoinSubmit <<join>>
+    AdminAssignsOfficer --> JoinSubmit
+    StatusHistoryUpdate --> JoinSubmit
+    
+    JoinSubmit --> NotificationToCitizen
+    NotificationToCitizen --> [*]

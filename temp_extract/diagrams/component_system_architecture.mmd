@@ -1,0 +1,16 @@
+﻿%% UML 2.5 Component Diagram
+%% Note: Mermaid flowchart simulates Component diagrams. 
+%% Manual fixes needed in StarUML: 
+%% 1. Replace boxes with official UML Component shape (rectangle with 2 small jutting rectangles).
+%% 2. Replace the dashed dependency arrows with Ball-and-Socket (Lollipop) interfaces to show Provided/Required APIs.
+flowchart TD
+    %% Components
+    C_Pres["«Component»\nPresentation Layer\n(lib/presentation/)"]
+    C_Prov["«Component»\nProvider Layer\n(lib/providers/)"]
+    C_Data["«Component»\nData Layer\n(lib/data/)"]
+    C_Supabase["«Component»\nSupabase Backend"]
+
+    %% Dependency Arrows (Dashed, open arrowhead)
+    C_Pres -.->|"depends on"| C_Prov
+    C_Prov -.->|"depends on"| C_Data
+    C_Data -.->|"depends on"| C_Supabase

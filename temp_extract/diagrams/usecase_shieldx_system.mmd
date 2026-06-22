@@ -1,0 +1,59 @@
+%% UML 2.5 Use Case Diagram
+%% Note: Mermaid flowchart simulates Use Case diagrams.
+%% Manual fixes needed in StarUML: Change Actor nodes from circles to Stick Figures. Ensure "ShieldX System" title is anchored top-left of the boundary.
+flowchart LR
+    Citizen(("Citizen"))
+    Admin(("Admin"))
+    
+    subgraph System ["ShieldX System"]
+        direction TB
+        UC_Reg(["Register"])
+        UC_Login(["Login"])
+        UC_Submit(["Submit Complaint"])
+        UC_Upload(["Upload Evidence"])
+        UC_Track(["Track Status"])
+        UC_SOS(["Trigger SOS"])
+        UC_Safe(["Mark Safe"])
+        UC_Stations(["View Stations"])
+        UC_Chat(["Chat"])
+        UC_Edit(["Edit Profile"])
+        UC_Notif(["View Notifications"])
+        
+        UA_Dash(["View Dashboard"])
+        UA_ManageC(["Manage Complaints"])
+        UA_Update(["Update Status"])
+        UA_Assign(["Assign Officer"])
+        UA_Filter(["Filter by Thana"])
+        UA_Monitor(["Monitor SOS"])
+        UA_Users(["Manage Users"])
+        UA_Officers(["Manage Officers"])
+        UA_Stations(["Manage Stations"])
+    end
+    
+    Citizen --- UC_Reg
+    Citizen --- UC_Login
+    Citizen --- UC_Submit
+    UC_Submit -.->|"<<include>>"| UC_Upload
+    
+    Citizen --- UC_Track
+    Citizen --- UC_SOS
+    UC_Safe -.->|"<<extend>>"| UC_SOS
+    
+    Citizen --- UC_Stations
+    Citizen --- UC_Chat
+    Citizen --- UC_Edit
+    Citizen --- UC_Notif
+    
+    Admin --- UC_Login
+    Admin --- UA_Dash
+    Admin --- UA_ManageC
+    UA_ManageC -.->|"<<include>>"| UA_Update
+    UA_ManageC -.->|"<<include>>"| UA_Assign
+    UA_ManageC -.->|"<<include>>"| UA_Filter
+    
+    Admin --- UA_Monitor
+    Admin --- UA_Users
+    Admin --- UA_Officers
+    Admin --- UA_Stations
+    Admin --- UC_Chat
+    Admin --- UC_Notif

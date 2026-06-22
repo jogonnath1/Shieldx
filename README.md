@@ -1,68 +1,107 @@
-# ShieldX 🛡️
+# ShieldX — Crime Reporting Management System
 
-![ShieldX Banner](assets/images/banner.png)
+A mobile application for citizens to report crimes and for police administrators to manage, track, and respond to those reports in real time.
 
-**ShieldX** is a sophisticated **Crime Report Portal Management** platform built with Flutter. It empowers citizens to report incidents, locate emergency services, and provides authorities with a robust system to manage and track reports securely and efficiently.
-
-## ✨ Features
-
-- **🛡️ Secure Reporting**: Submit and track complaints with real-time status updates.
-- **🕵️ Anonymous Mode**: Report incidents without revealing your identity for sensitive cases.
-- **📍 Smart Mapping**: Locate the nearest police stations and emergency services using live GPS and the Overpass API.
-- **💬 Real-time Chat**: Direct, encrypted communication between citizens and police officers.
-- **📊 Admin Dashboard**: Data-driven insights and complaint management for authorities.
-- **🔔 Instant Notifications**: Stay updated on the progress of your reports and new messages.
-
-## 🛠️ Technology Stack
-
-- **Framework**: [Flutter](https://flutter.dev/) (Cross-platform)
-- **State Management**: [Riverpod](https://riverpod.dev/)
-- **Backend-as-a-Service**: [Supabase](https://supabase.com/) (Auth, Database, Storage, Edge Functions)
-- **Maps**: Google Maps Flutter & OSM (Overpass API)
-- **Architecture**: Clean Architecture with Provider/Service patterns
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-- Flutter SDK (latest version)
-- Dart SDK
-- A Supabase account and project
-
-### Installation
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/jogonnath1/Shieldx.git
-   cd Shieldx
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   flutter pub get
-   ```
-
-3. **Configure Supabase:**
-   Create a `lib/core/constants/secrets.dart` (ensure this is in your `.gitignore`) and add your Supabase credentials:
-   ```dart
-   class SupabaseSecrets {
-     static const String url = 'YOUR_SUPABASE_URL';
-     static const String anonKey = 'YOUR_ANON_KEY';
-   }
-   ```
-
-4. **Run the app:**
-   ```bash
-   flutter run
-   ```
-
-## 📜 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙌 Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
+Built with **Flutter**, powered by **Supabase**, and designed for the Sylhet Metropolitan Police (SMP) jurisdiction.
 
 ---
-Developed with ❤️ by [Jogonnath](https://github.com/jogonnath1)
+
+## Features
+
+### Citizen (User) Side
+- **Register & Login** — Multi-step registration with email/phone OTP verification and NID validation
+- **Submit Complaint** — 3-step complaint form with auto crime classification, location picker, and evidence photo upload
+- **Track Complaints** — Real-time status updates (`submitted → in progress → investigating → resolved`)
+- **SOS Emergency** — One-tap emergency alert with live GPS location tracking and 3-second cancellation window
+- **Police Station Map** — Interactive map showing nearest Sylhet police station based on GPS location
+- **Notifications** — Real-time push notifications for every status change
+- **Profile Management** — Edit profile, change email/password with OTP verification
+
+### Admin Side
+- **Dashboard** — Live statistics with pie chart, bar charts, monthly trends, and location heatmap
+- **Complaint Management** — Filter, sort, bulk-delete, assign officers, update statuses
+- **User Management** — Verify, block/unblock, promote to admin, delete citizens
+- **Officer Management** — Add and manage field officers linked to specific stations
+- **SOS Alert Panel** — Real-time panel showing active emergency alerts with citizen GPS coordinates
+- **Station Switcher** — View statistics filtered per police station (Kotwali, Moglabazar, etc.)
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| UI Framework | Flutter (Dart) |
+| State Management | Riverpod (`StateNotifier`, `StreamProvider`) |
+| Navigation | GoRouter (declarative, redirect-based) |
+| Backend / Auth | Supabase (PostgreSQL + Row Level Security) |
+| Real-time | Supabase Realtime (Postgres Change Events) |
+| Maps | flutter_map + OpenStreetMap tiles |
+| Charts | fl_chart |
+| Local Storage | SharedPreferences |
+| Animations | flutter_animate |
+
+---
+
+## Project Structure
+
+```
+lib/
+├── admin/            # Admin-specific modules
+│   ├── data/         # Admin data models and services
+│   ├── presentation/ # Admin screens (dashboard, complaints, users, etc.)
+│   └── providers/    # Admin state management (Riverpod)
+│
+├── common/           # Shared modules and core configurations
+│   ├── core/         # Constants, routing, theme, utils
+│   ├── data/         # Shared data models and services (Auth)
+│   ├── presentation/ # Shared screens (splash, notifications) and widgets
+│   └── providers/    # Shared state management
+│
+└── user/             # Citizen/User-specific modules
+    ├── data/         # User data models and services
+    ├── presentation/ # Citizen screens (submit, map, profile, etc.)
+    └── providers/    # User state management (Riverpod)
+```
+
+---
+
+## Getting Started
+
+### Prerequisites
+- Flutter SDK ≥ 3.0
+- Dart SDK ≥ 3.0
+- A Supabase project with the required tables and RPC functions
+
+### Run the App
+```bash
+flutter pub get
+flutter run
+```
+
+### Code Quality
+```bash
+dart format --line-length 120 lib/   # Format all files
+dart analyze lib/                     # Static analysis (0 errors, 0 warnings)
+```
+
+---
+
+## Database Tables
+
+| Table | Purpose |
+|---|---|
+| `profiles` | Extended user info (name, phone, NID, role, verification status) |
+| `complaints` | Crime reports with status, coordinates, evidence URLs |
+| `status_history` | Audit log of every complaint status change |
+| `emergencies` | Active SOS alerts with live GPS coordinates |
+| `notifications` | Per-user notification inbox |
+| `phone_verifications` | OTP records for demo phone verification |
+
+---
+
+## Security Notes
+
+- **Row Level Security (RLS)** is enabled on all Supabase tables — citizens can only read/write their own data.
+- The Supabase **anon key** in `app_constants.dart` is intentionally public; it grants no privileged access without a valid JWT.
+- Admin routes are protected both at the router level (redirect) and at the database level (RLS policies check the `role` field).
