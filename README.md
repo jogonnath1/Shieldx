@@ -7,6 +7,8 @@
     <img src="https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter" />
     <img src="https://img.shields.io/badge/Dart-0175C2?style=for-the-badge&logo=dart&logoColor=white" alt="Dart" />
     <img src="https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" />
+    <img src="https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge" alt="License" />
+    <img src="https://img.shields.io/badge/Docs-19_Parts-blue?style=for-the-badge" alt="Documentation" />
   </p>
 </div>
 
@@ -15,6 +17,14 @@
 ## 📖 Overview
 
 **ShieldX** is a comprehensive mobile application designed to bridge the gap between citizens and law enforcement. Tailored for the **Sylhet Metropolitan Police (SMP)** jurisdiction, it empowers citizens to report crimes, track complaints in real-time, and trigger SOS alerts during emergencies. Simultaneously, it provides police administrators with a powerful dashboard to manage reports, dispatch officers, and monitor active emergencies.
+
+<div align="center">
+  <img src="diagrams/rendered/screenshot_citizen_home.png" alt="Citizen Home" width="250"/>
+  &nbsp;&nbsp;
+  <img src="diagrams/rendered/screenshot_complaint_form.png" alt="Complaint Form" width="250"/>
+  &nbsp;&nbsp;
+  <img src="diagrams/rendered/screenshot_admin_dashboard.png" alt="Admin Dashboard" width="250"/>
+</div>
 
 ---
 
@@ -53,9 +63,12 @@
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ Architecture & System Design
 
-The project follows a clean, modular architecture separating the Admin and User environments:
+The project follows a clean, modular architecture separating the Admin and User environments.
+
+<details>
+<summary><b>Click to expand Directory Structure</b></summary>
 
 ```text
 lib/
@@ -75,6 +88,40 @@ lib/
     ├── presentation/ # Complaint submission, SOS, interactive maps, profiles
     └── providers/    # Citizen state management
 ```
+</details>
+
+### System Architecture
+<div align="center">
+  <img src="diagrams/rendered/component_system_architecture.png" alt="System Architecture Diagram" width="600"/>
+</div>
+
+---
+
+## 🗄️ Database Schema
+
+The backend relies on a robust PostgreSQL database hosted on Supabase:
+
+| Table | Purpose |
+|---|---|
+| `profiles` | Extended user data including name, phone, NID, role, and verification status. |
+| `complaints` | Core table for crime reports containing status, geospatial data, and evidence URLs. |
+| `status_history` | Audit trail logging every status change of a complaint for transparency. |
+| `emergencies` | Live SOS alerts storing real-time GPS coordinates of users in distress. |
+| `notifications` | Isolated notification inboxes for individual users. |
+| `phone_verifications` | Temporary records handling OTP logic for phone verification. |
+
+### Entity-Relationship Diagram
+<div align="center">
+  <img src="diagrams/rendered/er_diagram_database.png" alt="ER Diagram" width="600"/>
+</div>
+
+---
+
+## 📚 Comprehensive Documentation
+
+ShieldX has a comprehensive 19-part documentation suite. You can explore all details regarding the project setup, architectural decisions, and use cases inside the `docs/` folder.
+
+👉 **[Start with the Documentation Index (docs/INDEX.md)](docs/INDEX.md)**
 
 ---
 
@@ -95,12 +142,15 @@ Follow these steps to set up the project locally.
    cd Shieldx
    ```
 
-2. **Install dependencies:**
+2. **Environment Configuration:**
+   If the project requires environment variables (e.g. Supabase keys), configure them according to `.env.example` or the documentation.
+
+3. **Install dependencies:**
    ```bash
    flutter pub get
    ```
 
-3. **Run the application:**
+4. **Run the application:**
    ```bash
    flutter run
    ```
@@ -114,21 +164,6 @@ dart analyze lib/                     # Run static analysis
 
 ---
 
-## 🗄️ Database Schema
-
-The backend relies on a robust PostgreSQL database hosted on Supabase:
-
-| Table | Purpose |
-|---|---|
-| `profiles` | Extended user data including name, phone, NID, role, and verification status. |
-| `complaints` | Core table for crime reports containing status, geospatial data, and evidence URLs. |
-| `status_history` | Audit trail logging every status change of a complaint for transparency. |
-| `emergencies` | Live SOS alerts storing real-time GPS coordinates of users in distress. |
-| `notifications` | Isolated notification inboxes for individual users. |
-| `phone_verifications` | Temporary records handling OTP logic for phone verification. |
-
----
-
 ## 🔒 Security & Privacy
 
 Security is a foundational element of ShieldX:
@@ -137,6 +172,19 @@ Security is a foundational element of ShieldX:
 - **Route Protection:** Admin pages are fortified at both the application level (GoRouter redirects) and database level (RLS policy `role` validation).
 
 ---
+
+## 🤝 Contributing
+
+We welcome contributions to ShieldX! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details on how to submit pull requests, report issues, and suggest enhancements.
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+---
+
 <div align="center">
   <sub>Built with ❤️ for a safer tomorrow.</sub>
 </div>
