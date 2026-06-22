@@ -1,107 +1,142 @@
-# ShieldX — Crime Reporting Management System
-
-A mobile application for citizens to report crimes and for police administrators to manage, track, and respond to those reports in real time.
-
-Built with **Flutter**, powered by **Supabase**, and designed for the Sylhet Metropolitan Police (SMP) jurisdiction.
-
----
-
-## Features
-
-### Citizen (User) Side
-- **Register & Login** — Multi-step registration with email/phone OTP verification and NID validation
-- **Submit Complaint** — 3-step complaint form with auto crime classification, location picker, and evidence photo upload
-- **Track Complaints** — Real-time status updates (`submitted → in progress → investigating → resolved`)
-- **SOS Emergency** — One-tap emergency alert with live GPS location tracking and 3-second cancellation window
-- **Police Station Map** — Interactive map showing nearest Sylhet police station based on GPS location
-- **Notifications** — Real-time push notifications for every status change
-- **Profile Management** — Edit profile, change email/password with OTP verification
-
-### Admin Side
-- **Dashboard** — Live statistics with pie chart, bar charts, monthly trends, and location heatmap
-- **Complaint Management** — Filter, sort, bulk-delete, assign officers, update statuses
-- **User Management** — Verify, block/unblock, promote to admin, delete citizens
-- **Officer Management** — Add and manage field officers linked to specific stations
-- **SOS Alert Panel** — Real-time panel showing active emergency alerts with citizen GPS coordinates
-- **Station Switcher** — View statistics filtered per police station (Kotwali, Moglabazar, etc.)
+<div align="center">
+  <img src="assets/icons/app_icon_1024.png" alt="ShieldX Logo" width="150"/>
+  <h1>🛡️ ShieldX</h1>
+  <p><strong>Crime Reporting & Emergency Management System</strong></p>
+  
+  <p>
+    <img src="https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white" alt="Flutter" />
+    <img src="https://img.shields.io/badge/Dart-0175C2?style=for-the-badge&logo=dart&logoColor=white" alt="Dart" />
+    <img src="https://img.shields.io/badge/Supabase-3ECF8E?style=for-the-badge&logo=supabase&logoColor=white" alt="Supabase" />
+  </p>
+</div>
 
 ---
 
-## Tech Stack
+## 📖 Overview
+
+**ShieldX** is a comprehensive mobile application designed to bridge the gap between citizens and law enforcement. Tailored for the **Sylhet Metropolitan Police (SMP)** jurisdiction, it empowers citizens to report crimes, track complaints in real-time, and trigger SOS alerts during emergencies. Simultaneously, it provides police administrators with a powerful dashboard to manage reports, dispatch officers, and monitor active emergencies.
+
+---
+
+## ✨ Key Features
+
+### 👤 Citizen (User) Portal
+- 🔐 **Secure Onboarding:** Multi-step registration with email/phone OTP verification and NID validation.
+- 📝 **Smart Complaint Submission:** 3-step intuitive form with auto crime classification, live location picker, and multimedia evidence upload.
+- 📡 **Real-time Tracking:** Live status updates tracking the journey of a complaint (`Submitted` ➡️ `In Progress` ➡️ `Investigating` ➡️ `Resolved`).
+- 🚨 **SOS Emergency:** Instant one-tap panic button broadcasting live GPS coordinates, equipped with a 3-second cancellation window.
+- 🗺️ **Interactive Police Map:** Integrated maps highlighting the nearest SMP stations based on the user's live geolocation.
+- 🔔 **Instant Notifications:** Real-time push notifications keeping users informed of every status change.
+
+### 👮 Admin & Officer Portal
+- 📊 **Command Dashboard:** Live analytics featuring pie charts, trend graphs, and geographical location heatmaps.
+- 📋 **Complaint Management:** Advanced filtering, sorting, officer assignment, and status updates for efficient case handling.
+- 👥 **Access Control:** Manage citizen profiles, block/unblock malicious users, and assign admin privileges.
+- 🚓 **Officer Dispatch:** Add and deploy field officers linked to specific regional stations.
+- 🔴 **Live SOS Panel:** Real-time monitoring of active emergency alerts with precise citizen GPS coordinates.
+- 🏢 **Station Switcher:** Dedicated views to analyze statistics for specific stations (e.g., Kotwali, Moglabazar).
+
+---
+
+## 🛠️ Technology Stack
 
 | Layer | Technology |
 |---|---|
-| UI Framework | Flutter (Dart) |
-| State Management | Riverpod (`StateNotifier`, `StreamProvider`) |
-| Navigation | GoRouter (declarative, redirect-based) |
-| Backend / Auth | Supabase (PostgreSQL + Row Level Security) |
-| Real-time | Supabase Realtime (Postgres Change Events) |
-| Maps | flutter_map + OpenStreetMap tiles |
-| Charts | fl_chart |
-| Local Storage | SharedPreferences |
-| Animations | flutter_animate |
+| **UI Framework** | [Flutter](https://flutter.dev/) (Dart) |
+| **State Management** | [Riverpod](https://riverpod.dev/) (`StateNotifier`, `StreamProvider`) |
+| **Routing** | [GoRouter](https://pub.dev/packages/go_router) (Declarative, Redirect-based) |
+| **Backend & Database**| [Supabase](https://supabase.com/) (PostgreSQL + Row Level Security) |
+| **Real-time Sync** | Supabase Realtime (Postgres Change Events) |
+| **Mapping Services** | `flutter_map` + OpenStreetMap Tiles |
+| **Data Visualization** | `fl_chart` |
+| **Animations** | `flutter_animate` |
 
 ---
 
-## Project Structure
+## 🏗️ Architecture
 
-```
+The project follows a clean, modular architecture separating the Admin and User environments:
+
+```text
 lib/
-├── admin/            # Admin-specific modules
-│   ├── data/         # Admin data models and services
-│   ├── presentation/ # Admin screens (dashboard, complaints, users, etc.)
-│   └── providers/    # Admin state management (Riverpod)
+├── admin/            # 👮 Admin-specific features and modules
+│   ├── data/         # Models, repositories, and backend services
+│   ├── presentation/ # Dashboards, complaint management, user control screens
+│   └── providers/    # Admin-specific state management (Riverpod)
 │
-├── common/           # Shared modules and core configurations
-│   ├── core/         # Constants, routing, theme, utils
-│   ├── data/         # Shared data models and services (Auth)
-│   ├── presentation/ # Shared screens (splash, notifications) and widgets
-│   └── providers/    # Shared state management
+├── common/           # 📦 Shared modules and core infrastructure
+│   ├── core/         # Theming, routing, constants, and utilities
+│   ├── data/         # Shared data models and Authentication services
+│   ├── presentation/ # Splash screens, notification panels, reusable widgets
+│   └── providers/    # Global state management
 │
-└── user/             # Citizen/User-specific modules
-    ├── data/         # User data models and services
-    ├── presentation/ # Citizen screens (submit, map, profile, etc.)
-    └── providers/    # User state management (Riverpod)
+└── user/             # 👤 Citizen-specific features and modules
+    ├── data/         # User-focused data handling
+    ├── presentation/ # Complaint submission, SOS, interactive maps, profiles
+    └── providers/    # Citizen state management
 ```
 
 ---
 
-## Getting Started
+## 🚀 Getting Started
+
+Follow these steps to set up the project locally.
 
 ### Prerequisites
-- Flutter SDK ≥ 3.0
-- Dart SDK ≥ 3.0
-- A Supabase project with the required tables and RPC functions
+- **Flutter SDK** `>= 3.0`
+- **Dart SDK** `>= 3.0`
+- A **Supabase** project configured with the required schema and RPC functions.
 
-### Run the App
-```bash
-flutter pub get
-flutter run
-```
+### Installation
 
-### Code Quality
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/jogonnath1/Shieldx.git
+   cd Shieldx
+   ```
+
+2. **Install dependencies:**
+   ```bash
+   flutter pub get
+   ```
+
+3. **Run the application:**
+   ```bash
+   flutter run
+   ```
+
+### Code Quality & Formatting
+Ensure the codebase remains clean and consistent:
 ```bash
-dart format --line-length 120 lib/   # Format all files
-dart analyze lib/                     # Static analysis (0 errors, 0 warnings)
+dart format --line-length 120 lib/   # Auto-format code
+dart analyze lib/                     # Run static analysis
 ```
 
 ---
 
-## Database Tables
+## 🗄️ Database Schema
+
+The backend relies on a robust PostgreSQL database hosted on Supabase:
 
 | Table | Purpose |
 |---|---|
-| `profiles` | Extended user info (name, phone, NID, role, verification status) |
-| `complaints` | Crime reports with status, coordinates, evidence URLs |
-| `status_history` | Audit log of every complaint status change |
-| `emergencies` | Active SOS alerts with live GPS coordinates |
-| `notifications` | Per-user notification inbox |
-| `phone_verifications` | OTP records for demo phone verification |
+| `profiles` | Extended user data including name, phone, NID, role, and verification status. |
+| `complaints` | Core table for crime reports containing status, geospatial data, and evidence URLs. |
+| `status_history` | Audit trail logging every status change of a complaint for transparency. |
+| `emergencies` | Live SOS alerts storing real-time GPS coordinates of users in distress. |
+| `notifications` | Isolated notification inboxes for individual users. |
+| `phone_verifications` | Temporary records handling OTP logic for phone verification. |
 
 ---
 
-## Security Notes
+## 🔒 Security & Privacy
 
-- **Row Level Security (RLS)** is enabled on all Supabase tables — citizens can only read/write their own data.
-- The Supabase **anon key** in `app_constants.dart` is intentionally public; it grants no privileged access without a valid JWT.
-- Admin routes are protected both at the router level (redirect) and at the database level (RLS policies check the `role` field).
+Security is a foundational element of ShieldX:
+- **Row Level Security (RLS):** Strictly enforced on all Supabase tables ensuring citizens can only access their own data.
+- **Authentication:** JWT-based access. The Supabase *anon key* is public by design and grants zero privileged access without a validated token.
+- **Route Protection:** Admin pages are fortified at both the application level (GoRouter redirects) and database level (RLS policy `role` validation).
+
+---
+<div align="center">
+  <sub>Built with ❤️ for a safer tomorrow.</sub>
+</div>
