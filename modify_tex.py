@@ -120,9 +120,6 @@ content = re.sub(r'\\chapter\*\{Certificate of Acceptance of the Project\}.*?(?=
 # 5. Acknowledgements
 content = content.replace(r'\chapter*{Acknowledgement}', r'\chapter*{Acknowledgements}')
 content = content.replace(r'\addcontentsline{toc}{chapter}{Acknowledgement}', r'\addcontentsline{toc}{chapter}{Acknowledgements}')
-ack_text = r"It is common to thank the supervisors and others who have contributed.\\[0.5cm]"
-if ack_text not in content:
-    content = content.replace(r'First and foremost', ack_text + '\nFirst and foremost')
 
 # 6. Appendices renaming
 content = content.replace(r'\chapter{Important Source Code Snippets}', r'\chapter{Source Code}')

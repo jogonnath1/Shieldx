@@ -82,7 +82,7 @@
 \pagenumbering{roman}
 \chapter*{Recommendation Letter from the Project Supervisor}
 \addcontentsline{toc}{chapter}{Recommendation Letter from the Project Supervisor}
-The project entitled ``ShieldX - Crime Reporting Portal Management System'' was submitted by the students,
+The project entitled ``ShieldX - Crime Reporting Portal Management System'' submitted by the students,
 
 \begin{enumerate}[label=\arabic*.]
     \item Mr. Jogonnath Das Talukder\\
@@ -93,7 +93,7 @@ The project entitled ``ShieldX - Crime Reporting Portal Management System'' was 
           ID : 0182320012101400
 \end{enumerate}
 
-is a record of research work carried out under my supervision and I, hereby, approve that the report be submitted in partial fulfillment of the requirements for the award of their Bachelor Degrees.
+is a record of research work carried out under my supervision and I, hereby, approve that the report be submitted in partial fulfillment of the requirements for the award of their Bachelor's Degrees.
 \vspace{2cm}
 
 \noindent\textbf{Signature of the Supervisor:}\\[1.5cm]
@@ -107,9 +107,9 @@ Date: 24\textsuperscript{th} June 2026
 
 \chapter*{Recommendation Letter from the Head of the Department}
 \addcontentsline{toc}{chapter}{Recommendation Letter from the Head of the Department}
-The project entitled ``ShieldX - Crime Reporting Portal Management System'' was submitted by the students,
+The project entitled ``ShieldX - Crime Reporting Portal Management System'' submitted by the students,
 
-\begin{enumerate}[label=\arabic*., start=4]
+\begin{enumerate}[label=\arabic*.]
     \item Name: Jogonnath Das Talukder\\
           ID : 0182320012101060
     \item Name: Shrestta Das\\
@@ -132,7 +132,7 @@ Leading University, Sylhet
 
 \chapter*{Certificate of Acceptance of the Project}
 \addcontentsline{toc}{chapter}{Certificate of Acceptance of the Project}
-The project entitled ``ShieldX - Crime Reporting Portal Management System'' was submitted by the students,
+The project entitled ``ShieldX - Crime Reporting Portal Management System'' submitted by the students,
 
 \begin{enumerate}[label=\arabic*.]
     \item Mr. Jogonnath Das Talukder\\
@@ -282,7 +282,7 @@ ShieldX is a specialized, multi-platform Crime Reporting Portal Management Syste
     \item Enhance administrative oversight via data visualization.
 \end{itemize}
 
-\section{Purposes}
+\section{Purpose}
 The purpose of ShieldX is to digitize and democratize public safety. By removing friction from the reporting process, it aims to encourage higher reporting rates, thereby generating better data for police to act upon. It seeks to modernize the Bangladesh Police's technological capabilities, fostering a safer community.
 
 \section{Methods}
@@ -580,11 +580,11 @@ This diagram outlines the interactions between the primary actors and the system
     \draw [dashedarrow] (uc_filter) -- node[above, sloped, font=\footnotesize] {$\ll$extend$\gg$} (ua_manage);
     \draw [dashedarrow] (uc_sos) to[bend right=40] node[right, font=\footnotesize] {$\ll$extend$\gg$} (uc_submit);
     
-\end{tikzpicture}
+\end{tikzpicture}}
 \caption{Use Case Diagram - ShieldX System}
 \label{fig:usecase-diagram}
 \end{figure}
-\subsection{UML Class Diagram (Optional)}
+\subsection{UML Class Diagram}
 This diagram defines the structural data models of the application, matching the actual Dart classes in \texttt{lib/data/models/}.
 \begin{figure}[H]
 \centering
@@ -736,7 +736,7 @@ This diagram defines the structural data models of the application, matching the
                                   node[near start, right, font=\footnotesize, fill=white, inner sep=1pt] {1} 
                                   node[near end, right, font=\footnotesize, fill=white, inner sep=1pt] {1..*} (messages);
 
-\end{tikzpicture}
+\end{tikzpicture}}
 \caption{Class Diagram - ShieldX Data Models}
 \label{fig:class-diagram}
 \end{figure}
@@ -869,8 +869,8 @@ The application utilizes PostgreSQL managed by Supabase. The following schema re
 \end{table}
 \begin{table}[ht]
 \centering
-\caption{Database Schema - Supporting Tables}
-\label{tab:supporting}
+\caption{Database Schema - \texttt{status\_history} Table}
+\label{tab:status_history}
 \begin{tabularx}{\textwidth}{p{3cm} p{3cm} c X}
 \toprule
 \textbf{Table} & \textbf{Column} & \textbf{Data Type} & \textbf{Constraint / Description} \\
@@ -882,7 +882,18 @@ The application utilizes PostgreSQL managed by Supabase. The following schema re
 & changed\_by & uuid & Admin who changed \\
 & changed\_at & timestamptz & Auto-generated \\
 & changed\_by\_name & text & Admin display name \\
-\addlinespace
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption{Database Schema - \texttt{notifications} Table}
+\label{tab:notifications}
+\begin{tabularx}{\textwidth}{p{3cm} p{3cm} c X}
+\toprule
+\textbf{Table} & \textbf{Column} & \textbf{Data Type} & \textbf{Constraint / Description} \\
+\midrule
 \textbf{notifications} & id & uuid & PRIMARY KEY \\
 & user\_id & uuid & FOREIGN KEY (profiles.id) \\
 & title & text & Notification title \\
@@ -892,7 +903,18 @@ The application utilizes PostgreSQL managed by Supabase. The following schema re
 & is\_read & boolean & DEFAULT false \\
 & created\_at & timestamptz & Auto-generated \\
 & deleted\_at & timestamptz & Soft delete \\
-\addlinespace
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption{Database Schema - \texttt{officers} Table}
+\label{tab:officers}
+\begin{tabularx}{\textwidth}{p{3cm} p{3cm} c X}
+\toprule
+\textbf{Table} & \textbf{Column} & \textbf{Data Type} & \textbf{Constraint / Description} \\
+\midrule
 \textbf{officers} & id & uuid & PRIMARY KEY \\
 & user\_id & uuid & FK (profiles.id) - nullable \\
 & name & text & Officer name \\
@@ -901,7 +923,18 @@ The application utilizes PostgreSQL managed by Supabase. The following schema re
 & contact & text & Contact number \\
 & is\_active & boolean & DEFAULT true \\
 & created\_at & timestamptz & Auto-generated \\
-\addlinespace
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption{Database Schema - \texttt{messages} Table}
+\label{tab:messages}
+\begin{tabularx}{\textwidth}{p{3cm} p{3cm} c X}
+\toprule
+\textbf{Table} & \textbf{Column} & \textbf{Data Type} & \textbf{Constraint / Description} \\
+\midrule
 \textbf{messages} & id & uuid & PRIMARY KEY \\
 & complaint\_id & uuid & FK (complaints.id) \\
 & sender\_id & uuid & FK (profiles.id) \\
@@ -910,25 +943,6 @@ The application utilizes PostgreSQL managed by Supabase. The following schema re
 & is\_read & boolean & DEFAULT false \\
 & sent\_at & timestamptz & Auto-generated \\
 & sender\_name & text & Display name \\
-\bottomrule
-\end{tabularx}
-\end{table}
-
-\begin{table}[ht]
-\centering
-\caption{Database Schema - \texttt{status\_history} Table}
-\label{tab:status_history}
-\begin{tabularx}{\textwidth}{p{3cm} p{3cm} c X}
-\toprule
-\textbf{Table} & \textbf{Column} & \textbf{Data Type} & \textbf{Constraint / Description} \\
-\midrule
-\textbf{status\_history} & id & uuid & PRIMARY KEY \\
-& complaint\_id & uuid & FK (complaints.id) \\
-& status & varchar(20) & Status value \\
-& note & text & Optional note \\
-& changed\_by & uuid & FK (profiles.id) \\
-& changed\_at & timestamptz & Auto-generated \\
-& changed\_by\_name & text & Display name \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -944,8 +958,8 @@ The Context Diagram defines the system boundaries and shows the high-level data 
 \centering
 \begin{tikzpicture}[scale=0.9, transform shape,
     every node/.style={font=\sffamily},
-    process/.style={circle, draw=black, thick, minimum size=3cm, text centered, fill=blue!5},
-    entity/.style={rectangle, draw=black, thick, minimum width=3cm, minimum height=1.5cm, text centered, fill=orange!5},
+    process/.style={circle, draw=black, thick, minimum size=3cm, align=center, fill=blue!5},
+    entity/.style={rectangle, draw=black, thick, minimum width=3cm, minimum height=1.5cm, fill=orange!5},
     arrow/.style={-{Stealth[scale=1.2]}, thick},
     lbl/.style={font=\scriptsize, align=center, fill=white, inner sep=2pt}
 ]
@@ -979,9 +993,9 @@ The Level 1 DFD decomposes the main system into its primary subsystems: Authenti
 \centering
 \begin{tikzpicture}[scale=0.85, transform shape,
     every node/.style={font=\sffamily},
-    process/.style={circle, draw=black, thick, minimum size=2.8cm, text centered, fill=blue!5},
-    entity/.style={rectangle, draw=black, thick, minimum width=3cm, minimum height=1.2cm, text centered, fill=orange!5},
-    store/.style={rectangle, draw=black, thick, minimum width=3cm, minimum height=1cm, text centered, fill=green!5},
+    process/.style={circle, draw=black, thick, minimum size=2.8cm, align=center, fill=blue!5},
+    entity/.style={rectangle, draw=black, thick, minimum width=3cm, minimum height=1.2cm, fill=orange!5},
+    store/.style={rectangle, draw=black, thick, minimum width=3cm, minimum height=1cm, fill=green!5},
     arrow/.style={-{Stealth[scale=1.2]}, thick, rounded corners},
     lbl/.style={font=\scriptsize, align=center, fill=white, inner sep=2pt}
 ]
@@ -1000,18 +1014,18 @@ The Level 1 DFD decomposes the main system into its primary subsystems: Authenti
 % Flows from Citizen
 \draw[arrow] (citizen.east) -- node[above, lbl] {Credentials} (p1.west);
 \draw[arrow] (citizen.south) -- node[left, lbl] {Complaint Data} (p2.north);
-\draw[arrow] (citizen.north) -- ++(0,1.5) -| node[above, lbl, near start] {SOS Trigger} (2, 0) -- (p3.west);
+\draw[arrow] (citizen.north) |- ++(0,1.5) -| node[above, lbl, near start] {SOS Trigger} (p3.north);
 % Flows from Admin
 \draw[arrow] (admin.west) -- node[above, lbl] {View Reports} (p4.east);
-\draw[arrow] (admin.east) -- ++(1.5, 0) |- node[right, lbl, near start] {Verify Users} (0, 6.5) -- (p1.north);
-\draw[arrow] (admin.south) -- ++(0,-1.5) -| node[below, lbl, near start] {Update Status} (-6, 0) -- (p2.west);
+\draw[arrow] (admin.east) -| ++(1.5, 3) |- node[right, lbl, near start] {Verify Users} (p1.east);
+\draw[arrow] (admin.south) |- ++(0,-1.5) -| node[below, lbl, near start] {Update Status} (p2.south);
 % Flows from Processes to Stores
-\draw[arrow] (p1.0) -- node[above, lbl] {Save} (d1.180);
-\draw[arrow] (p2.270) -- node[left, lbl] {Store} (d2.90);
-\draw[arrow] (p3.270) -- node[right, lbl] {Live Location} (d3.90);
+\draw[arrow] (p1.east) -- node[above, lbl] {Save} (d1.west);
+\draw[arrow] (p2.south) -- node[left, lbl] {Store} (d2.north);
+\draw[arrow] (p3.south) -- node[right, lbl] {Live Location} (d3.north);
 % Flows to P4 (Dashboard)
-\draw[arrow] (d2.0) -| node[above, lbl, near end] {Aggregated Data} (p4.135);
-\draw[arrow] (d3.180) -| node[above, lbl, near end] {Active Alerts} (p4.45);
+\draw[arrow] (d2.east) -| node[above, lbl, near end] {Aggregated Data} (p4.135);
+\draw[arrow] (d3.west) -| node[above, lbl, near end] {Active Alerts} (p4.45);
 \end{tikzpicture}
 \caption{DFD Level 1 - ShieldX Subsystems}
 \label{fig:dfd1}
@@ -1147,8 +1161,8 @@ lib/
 \section{Preliminaries}
 Before commencing development, the team conducted preliminary research and planning. We analyzed the project's feasibility, compared cross-platform tools with native app development, and aligned on Flutter for rapid prototyping and deployment. Initial wireframing was completed to map out user and admin screens, and the database schema was designed with Supabase PostgreSQL to ensure relational integrity.
 
-\section{How the work was done}
-The project was executed through iterative, agile phases, starting from initial design to active coding, quality checking, testing, and eventual deployment. The sections below details the actions performed during each phase.
+\section{How the Work Was Done}
+The project was executed through iterative, agile phases, starting from initial design to active coding, quality checking, testing, and eventual deployment. The sections below detail the actions performed during each phase.
 
 \subsection{Planning Phase}
 The project was initiated by defining the core objective: reducing friction in crime reporting. The team conducted a feasibility study on using cross-platform tools versus native development, ultimately selecting Flutter for its fast iteration speed and unified codebase.
@@ -1199,7 +1213,7 @@ The application was compiled into a release-ready Android APK. Backend database 
 \section{Features Implemented}
 \begin{itemize}[label={}, itemsep=1em]
     \item \textbf{Secure Authentication:} Email+password signup with NID uniqueness verification, OTP verification (email and phone), JWT session management via Supabase Auth with PKCE flow, auto-login via saved credentials, and real-time profile subscription for instant blocked-user detection.
-    \item \textbf{Media-rich Complaints:} Submission of complaint with first/last name, phone, NID, crime category (14 categories), description, map-picked location with reverse geocoding, incident date/time, and multiple image uploads to Supabase Storage.
+    \item \textbf{Media-rich Complaints:} Submission of a complaint with first/last name, phone, NID, crime category (14 categories), description, map-picked location with reverse geocoding, incident date/time, and multiple image uploads to Supabase Storage.
     \item \textbf{Live SOS:} Real-time latitude/longitude streaming with 3-second countdown, 4-step GPS fallback, and automatic admin notification insertion.
     \item \textbf{Admin Dashboard:} Comprehensive statistical overview with bar charts (complaint status counts, category distribution, monthly trends, location-based stats), live SOS emergency map tracking, thana-based complaint filtering, and station-level statistics.
     \item \textbf{Complaint Management:} Full lifecycle management with status timeline (\texttt{status\_history}), officer assignment, search/filter/date-range, user verification badges, and soft delete with recycle bin.
@@ -1370,7 +1384,7 @@ The system strictly enforces data privacy, restricting any external API access. 
     \item \textbf{OTP Limitations:} Phone OTP relies on Supabase's built-in SMS integration which has rate limits; a mock OTP fallback (\texttt{phone\_verifications} table) is used for development/demo purposes.
 \end{itemize}
 
-\section{Future work}
+\section{Future Work}
 Future iterations of ShieldX could include:
 \begin{itemize}[label={}, itemsep=1em]
     \item \textbf{AI Integration:} Implementation of machine learning models to automatically classify, triage, and prioritize incoming complaints.

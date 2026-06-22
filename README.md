@@ -119,9 +119,9 @@ The backend relies on a robust PostgreSQL database hosted on Supabase:
 
 ## 📚 Comprehensive Documentation
 
-ShieldX has a comprehensive 19-part documentation suite. You can explore all details regarding the project setup, architectural decisions, and use cases inside the `docs/` folder.
+ShieldX has a comprehensive 19-part documentation suite. You can explore all details regarding the project setup, architectural decisions, and use cases inside the `Project Documentation/` folder.
 
-👉 **[Start with the Documentation Index (docs/INDEX.md)](docs/INDEX.md)**
+👉 **[Start with the Documentation Index (Project Documentation/INDEX.md)](Project%20Documentation/INDEX.md)**
 
 ---
 

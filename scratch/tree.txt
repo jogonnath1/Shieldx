@@ -1,0 +1,118 @@
+lib/
++-- admin
+|   +-- data
+|   +-- presentation
+|   |   +-- admin_complaint_detail_screen.dart
+|   |   +-- admin_complaints_screen.dart
+|   |   +-- admin_dashboard_screen.dart
+|   |   +-- admin_officers_screen.dart
+|   |   +-- admin_profile_screen.dart
+|   |   +-- admin_shell.dart
+|   |   +-- admin_sos_alert_widget.dart
+|   |   +-- admin_stations_screen.dart
+|   |   +-- admin_users_screen.dart
+|   +-- providers
+|       +-- admin_sos_provider.dart
++-- app.dart
++-- common
+|   +-- core
+|   |   +-- constants
+|   |   |   +-- app_colors.dart
+|   |   |   +-- app_constants.dart
+|   |   +-- router
+|   |   |   +-- app_router.dart
+|   |   +-- services
+|   |   |   +-- preferences_service.dart
+|   |   +-- theme
+|   |   |   +-- app_theme.dart
+|   |   +-- utils
+|   |       +-- app_dialog.dart
+|   |       +-- app_snackbar.dart
+|   |       +-- app_validators.dart
+|   |       +-- complaint_classifier.dart
+|   |       +-- date_time_extensions.dart
+|   +-- data
+|   |   +-- models
+|   |   |   +-- complaint_model.dart
+|   |   |   +-- emergency_model.dart
+|   |   |   +-- message_model.dart
+|   |   |   +-- notification_model.dart
+|   |   |   +-- officer_model.dart
+|   |   |   +-- police_station_model.dart
+|   |   |   +-- profile_model.dart
+|   |   |   +-- status_history_model.dart
+|   |   +-- services
+|   |       +-- auth_service.dart
+|   |       +-- complaint_service.dart
+|   |       +-- emergency_service.dart
+|   |       +-- map_service.dart
+|   |       +-- message_service.dart
+|   |       +-- notification_service.dart
+|   |       +-- officer_service.dart
+|   |       +-- profile_service.dart
+|   |       +-- storage_service.dart
+|   |       +-- sync_service.dart
+|   +-- presentation
+|   |   +-- auth
+|   |   |   +-- blocked_screen.dart
+|   |   |   +-- forgot_password_screen.dart
+|   |   |   +-- login_screen.dart
+|   |   |   +-- register_screen.dart
+|   |   |   +-- splash_screen.dart
+|   |   +-- common
+|   |   |   +-- notifications_screen.dart
+|   |   +-- widgets
+|   |       +-- admin
+|   |       |   +-- station_switcher_widget.dart
+|   |       +-- common
+|   |       |   +-- evidence_item_widget.dart
+|   |       |   +-- global_offline_banner.dart
+|   |       |   +-- no_internet_screen.dart
+|   |       |   +-- sos_button_widget.dart
+|   |       |   +-- user_profile_dialog.dart
+|   |       |   +-- widgets.dart
+|   |       +-- user
+|   |           +-- deleted_complaint_card.dart
+|   |           +-- deleted_notification_card.dart
+|   |           +-- evidence_step.dart
+|   |           +-- filter_bottom_sheet_content.dart
+|   |           +-- filter_chip_widget.dart
+|   |           +-- gps_user_location_marker.dart
+|   |           +-- incident_step.dart
+|   |           +-- personal_info_step.dart
+|   |           +-- quick_action_card.dart
+|   |           +-- recent_complaint_card.dart
+|   |           +-- station_marker_widget.dart
+|   |           +-- user_location_highlight_marker.dart
+|   +-- providers
+|       +-- auth_provider.dart
+|       +-- chat_provider.dart
+|       +-- complaint_provider.dart
+|       +-- connectivity_provider.dart
+|       +-- gps_simulation_provider.dart
+|       +-- location_cache_provider.dart
+|       +-- navigation_trigger_provider.dart
+|       +-- notification_provider.dart
+|       +-- officer_provider.dart
+|       +-- selected_station_provider.dart
+|       +-- station_map_provider.dart
+|       +-- time_provider.dart
++-- main.dart
++-- user
+    +-- data
+    +-- presentation
+    |   +-- change_email_screen.dart
+    |   +-- change_password_screen.dart
+    |   +-- chat_screen.dart
+    |   +-- complaint_detail_screen.dart
+    |   +-- edit_complaint_screen.dart
+    |   +-- edit_profile_screen.dart
+    |   +-- home_screen.dart
+    |   +-- models
+    |   |   +-- police_stations_map_models.dart
+    |   +-- my_complaints_screen.dart
+    |   +-- police_stations_screen.dart
+    |   +-- profile_screen.dart
+    |   +-- submit_complaint_screen.dart
+    +-- providers
+        +-- sos_provider.dart

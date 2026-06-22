@@ -1,0 +1,44 @@
+\documentclass{article}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta}
+\begin{document}
+\begin{tikzpicture}[scale=0.85, transform shape,
+    every node/.style={font=\sffamily},
+    process/.style={circle, draw=black, thick, minimum size=2.8cm, align=center, fill=blue!5},
+    entity/.style={rectangle, draw=black, thick, minimum width=3cm, minimum height=1.2cm, fill=orange!5},
+    store/.style={rectangle, draw=black, thick, minimum width=3cm, minimum height=1cm, fill=green!5},
+    arrow/.style={-{Stealth[scale=1.2]}, thick, rounded corners},
+    lbl/.style={font=\scriptsize, align=center, fill=white, inner sep=2pt}
+]
+% Entities
+\node[entity] (citizen) at (-4, 5) {Citizen};
+\node[entity] (admin) at (4, -5) {Police Admin};
+% Processes
+\node[process] (p1) at (0, 5) {1.0 \\ Auth \& Users};
+\node[process] (p2) at (-4, 0) {2.0 \\ Complaints};
+\node[process] (p3) at (4, 0) {3.0 \\ SOS Dispatch};
+\node[process] (p4) at (0, -5) {4.0 \\ Dashboard};
+% Data Stores
+\node[store] (d1) at (4, 5) {D1: Profiles};
+\node[store] (d2) at (-4, -2.5) {D2: Complaints};
+\node[store] (d3) at (4, -2.5) {D3: Emergencies};
+
+% Flows from Citizen
+\draw[arrow] (citizen.east) -- node[above, lbl] {Credentials} (p1.west);
+\draw[arrow] (citizen.south) -- node[left, lbl] {Complaint Data} (p2.north);
+\draw[arrow] (citizen.north) -- ++(0,1.5) -| node[above, lbl, near start] {SOS Trigger} (2, 0) -- (p3.west);
+
+% Flows from Admin
+\draw[arrow] (admin.west) -- node[above, lbl] {View Reports} (p4.east);
+\draw[arrow] (admin.east) -- ++(1.5, 0) |- node[right, lbl, near start] {Verify Users} (0, 6.5) -- (p1.north);
+\draw[arrow] (admin.south) -- ++(0,-1.5) -| node[below, lbl, near start] {Update Status} (-6, 0) -- (p2.west);
+
+% Flows from Processes to Stores
+\draw[arrow] (p1.east) -- node[above, lbl] {Save} (d1.west);
+\draw[arrow] (p2.south) -- node[left, lbl] {Store} (d2.north);
+\draw[arrow] (p3.south) -- node[right, lbl] {Live Location} (d3.north);
+% Flows to P4 (Dashboard)
+\draw[arrow] (d2.east) -| node[above, lbl, near end] {Aggregated Data} (p4.135);
+\draw[arrow] (d3.west) -| node[above, lbl, near end] {Active Alerts} (p4.45);
+\end{tikzpicture}
+\end{document}

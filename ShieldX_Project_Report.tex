@@ -1,4 +1,4 @@
-% --- UNIVERSAL PREAMBLE BLOCK ---
+% - UNIVERSAL PREAMBLE BLOCK ---
 \documentclass[12pt, a4paper, twoside]{report}
 \usepackage[a4paper, top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm]{geometry}
 \usepackage[utf8]{inputenc}
@@ -6,8 +6,9 @@
 \usepackage{mathptmx} % Times New Roman font
 \usepackage[english]{babel}
 \usepackage{enumitem}
-\setlist[itemize]{label=-}
-% --- ADDITIONAL PACKAGES ---
+\setlist[itemize]{label=-, itemsep=0pt, parsep=0pt, topsep=4pt, partopsep=0pt}
+\raggedbottom
+% - ADDITIONAL PACKAGES ---
 \usepackage{booktabs}
 \usepackage{tabularx}
 \usepackage{array}
@@ -27,7 +28,7 @@
 \graphicspath{{./}{./diagrams/rendered/}{./diagrams/}}
 \usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds, calc, matrix, decorations.pathreplacing}
 \renewcommand{\bibname}{References}
-% --- CHAPTER / SECTION FORMATTING ---
+% - CHAPTER / SECTION FORMATTING ---
 \titleformat{\chapter}[display]
   {\normalfont\fontsize{20}{24}\bfseries\centering}
   {\chaptertitlename\ \thechapter}{10pt}{\fontsize{20}{24}\bfseries}
@@ -37,7 +38,7 @@
 \titleformat{\subsection}
   {\normalfont\fontsize{14}{18}\bfseries}
   {\thesubsection}{1em}{}
-% --- HEADER / FOOTER ---
+% - HEADER / FOOTER ---
 \pagestyle{fancy}
 \fancyhf{}
 \fancyhead[L]{\small\thepage}
@@ -81,7 +82,7 @@
 \pagenumbering{roman}
 \chapter*{Recommendation Letter from the Project Supervisor}
 \addcontentsline{toc}{chapter}{Recommendation Letter from the Project Supervisor}
-The project entitled ``ShieldX - Crime Reporting Portal Management System'' was submitted by the students,
+The project entitled ``ShieldX - Crime Reporting Portal Management System'' submitted by the students,
 
 \begin{enumerate}[label=\arabic*.]
     \item Mr. Jogonnath Das Talukder\\
@@ -92,7 +93,7 @@ The project entitled ``ShieldX - Crime Reporting Portal Management System'' was 
           ID : 0182320012101400
 \end{enumerate}
 
-is a record of research work carried out under my supervision and I, hereby, approve that the report be submitted in partial fulfillment of the requirements for the award of their Bachelor Degrees.
+is a record of research work carried out under my supervision and I, hereby, approve that the report be submitted in partial fulfillment of the requirements for the award of their Bachelor's Degrees.
 \vspace{2cm}
 
 \noindent\textbf{Signature of the Supervisor:}\\[1.5cm]
@@ -106,9 +107,9 @@ Date: 24\textsuperscript{th} June 2026
 
 \chapter*{Recommendation Letter from the Head of the Department}
 \addcontentsline{toc}{chapter}{Recommendation Letter from the Head of the Department}
-The project entitled ``ShieldX - Crime Reporting Portal Management System'' was submitted by the students,
+The project entitled ``ShieldX - Crime Reporting Portal Management System'' submitted by the students,
 
-\begin{enumerate}[label=\arabic*., start=4]
+\begin{enumerate}[label=\arabic*.]
     \item Name: Jogonnath Das Talukder\\
           ID : 0182320012101060
     \item Name: Shrestta Das\\
@@ -131,7 +132,7 @@ Leading University, Sylhet
 
 \chapter*{Certificate of Acceptance of the Project}
 \addcontentsline{toc}{chapter}{Certificate of Acceptance of the Project}
-The project entitled ``ShieldX - Crime Reporting Portal Management System'' was submitted by the students,
+The project entitled ``ShieldX - Crime Reporting Portal Management System'' submitted by the students,
 
 \begin{enumerate}[label=\arabic*.]
     \item Mr. Jogonnath Das Talukder\\
@@ -155,7 +156,7 @@ is, hereby, accepted as the partial fulfillment of the requirements for the awar
 \clearpage
 \chapter*{Acknowledgements}
 \addcontentsline{toc}{chapter}{Acknowledgements}
-It is common to thank the supervisors and others who have contributed.\\[0.5cm]
+The culmination of this project represents not only our dedication but also the exceptional academic guidance and visionary mentorship that shaped it.\\[0.5cm]
 First and foremost, we express our profound gratitude to the Almighty for giving us the strength and capability to complete this project successfully.
 We would like to express our deepest appreciation to our honorable supervisor, \textbf{Shahriar Arefin Zummon}, Lecturer, Department of Computer Science and Engineering, Leading University, for their continuous guidance, invaluable feedback, and unwavering support throughout the development of ShieldX. Their expertise and encouragement were instrumental in bringing this project to fruition.
 We extend our sincere thanks to the Department of Computer Science and Engineering, Leading University, Sylhet, for providing us with the necessary resources and an excellent academic environment. We are also grateful to our honorable Head of the Department and all faculty members whose foundational teachings prepared us for this endeavor.
@@ -167,9 +168,9 @@ We dedicate this project to our beloved parents, whose endless sacrifices, praye
 
 \chapter*{Abstract}
 \addcontentsline{toc}{chapter}{Abstract}
-The rapid advancement of technology has fundamentally reshaped how public services are delivered, yet traditional crime reporting mechanisms remain largely archaic, particularly in developing regions. ShieldX is a comprehensive mobile application developed to revolutionize crime reporting and emergency management across Bangladesh. Traditional manual reporting systems---such as physical station visits or generic phone calls---are often slow, inefficient, and lack transparency, leading to citizen frustration and delayed police responses. 
-ShieldX addresses this critical gap by providing citizens with a secure, real-time platform to submit complaints, upload photographic evidence, and seamlessly track the status of their reports. For law enforcement administrators and field officers, the system provides a robust, centralized dashboard to manage, assign, and respond to incoming complaints with actionable, data-driven insights. Built using a modern technology stack---incorporating Flutter for a responsive, cross-platform frontend and Supabase as a powerful backend-as-a-service (BaaS)---ShieldX ensures rapid response times and high availability. 
-A cornerstone of the application is its one-tap SOS emergency feature, which provides live GPS tracking and immediate distress signaling to the nearest police units. The application adheres to strict security protocols, utilizing National Identity (NID) uniqueness verification during registration and precise Row Level Security (RLS) to ensure data integrity and user privacy. Ultimately, this project demonstrates the successful integration of modern mobile application architectures to improve public safety, reduce emergency response latency, and foster greater transparency between citizens and law enforcement agencies.
+The rapid advancement of technology has fundamentally reshaped how public services are delivered, yet traditional crime reporting mechanisms remain largely archaic, particularly in developing regions. ShieldX is a comprehensive mobile application developed to revolutionize crime reporting and emergency management across Bangladesh~\cite{smp}. Traditional manual reporting systems, such as physical station visits or generic phone calls, are often slow, inefficient, and lack transparency, leading to citizen frustration and delayed police responses. 
+ShieldX addresses this critical gap by providing citizens with a secure, real-time platform to submit complaints, upload photographic evidence, and seamlessly track the status of their reports. For law enforcement administrators and field officers, the system provides a robust, centralized dashboard to manage, assign, and respond to incoming complaints with actionable, data-driven insights. Built using a modern technology stack, incorporating Flutter~\cite{flutter} for a responsive, cross-platform frontend~\cite{crossplat} and Supabase~\cite{supabase} as a powerful backend-as-a-service (BaaS)~\cite{baas}, ShieldX ensures rapid response times and high availability. 
+A cornerstone of the application is its one-tap SOS emergency feature~\cite{sos}, which provides live GPS tracking and immediate distress signaling to the nearest police units. The application adheres to strict security protocols, utilizing National Identity (NID) uniqueness verification during registration and precise Row Level Security (RLS)~\cite{rls} to ensure data integrity and user privacy. Ultimately, this project demonstrates the successful integration of modern mobile application architectures to improve public safety, reduce emergency response latency, and foster greater transparency between citizens and law enforcement agencies.
 \vspace{0.5cm}
 \noindent\textbf{Keywords:} Crime Reporting, Flutter, Supabase, Real-time tracking, Emergency Management, GPS Analytics, Mobile Application, Public Safety.
 \tableofcontents
@@ -252,17 +253,17 @@ This report is organized into six chapters. Chapter 1 introduces the background,
 \chapter{Problem Description}
 % ============================================================================
 \section{Problem Statement}
-The traditional methods of reporting crimes---such as making phone calls to generic emergency numbers or physically visiting a police station to file a First Information Report (FIR)---are time-consuming, geographically constraining, and lack operational transparency. Law enforcement agencies struggle to maintain fragmented, paper-based records, which prevents them from having access to real-time analytical dashboards or live tracking of life-threatening emergencies. ShieldX is proposed to resolve this by providing a unified digital platform.
+The traditional methods of reporting crimes, such as making phone calls to generic emergency numbers or physically visiting a police station to file a First Information Report (FIR), are time-consuming, geographically constraining, and lack operational transparency. Law enforcement agencies struggle to maintain fragmented, paper-based records, which prevents them from having access to real-time analytical dashboards or live tracking of life-threatening emergencies. ShieldX is proposed to resolve this by providing a unified digital platform.
 
 \subsection{Existing System Analysis}
 Currently, citizens rely on the national `999' emergency service or walk-in FIR submissions. 
-\begin{itemize}
+\begin{itemize}[label={}, itemsep=1em]
     \item \textbf{National Hotline (999):} Effective for dispatch, but relies heavily on verbal communication of location and situation. It does not support instant evidence upload (photos/videos) or ongoing case tracking.
     \item \textbf{Manual FIRs:} Require physical presence, involve heavy paperwork, and offer no digital tracking ID for the citizen to check updates without revisiting the station.
 \end{itemize}
 
 \subsection{Limitations of Existing System}
-\begin{itemize}
+\begin{itemize}[label={}, itemsep=1em]
     \item \textbf{Lack of Precise Location Data:} Verbal communication during emergencies often leads to inaccurate location tracking.
     \item \textbf{No Real-time Feedback:} Citizens have no digital means to track the progress of their filed reports.
     \item \textbf{Evidence Handling:} Physical handling of photographic evidence is slow and susceptible to loss or damage.
@@ -281,17 +282,17 @@ ShieldX is a specialized, multi-platform Crime Reporting Portal Management Syste
     \item Enhance administrative oversight via data visualization.
 \end{itemize}
 
-\section{Purposes}
+\section{Purpose}
 The purpose of ShieldX is to digitize and democratize public safety. By removing friction from the reporting process, it aims to encourage higher reporting rates, thereby generating better data for police to act upon. It seeks to modernize the Bangladesh Police's technological capabilities, fostering a safer community.
 
 \section{Methods}
-The project adopted an \textbf{Agile Software Development Methodology}. This allowed for iterative development, continuous integration, and regular testing.
+The project adopted an \textbf{Agile Software Development Methodology}~\cite{agile}. This allowed for iterative development, continuous integration, and regular testing.
 \begin{enumerate}
-    \item \textbf{Requirement Gathering:} Analyzing the needs of citizens and Bangladesh Police.
-    \item \textbf{Prototyping:} Designing wireframes for the user and admin interfaces.
-    \item \textbf{Development (Sprints):} Developing the app using Flutter (Dart) with state management via Riverpod. The backend was built concurrently using Supabase (PostgreSQL).
-    \item \textbf{Testing:} Iterative testing of authentication, location services, and real-time database triggers.
-    \item \textbf{Deployment:} Finalizing the build for Android/iOS environments.
+    \item[] \textbf{Requirement Gathering:} Analyzing the needs of citizens and Bangladesh Police.
+    \item[] \textbf{Prototyping:} Designing wireframes for the user and admin interfaces.
+    \item[] \textbf{Development (Sprints):} Developing the app using Flutter (Dart) with state management via Riverpod~\cite{riverpod}. The backend was built concurrently using Supabase (PostgreSQL).
+    \item[] \textbf{Testing:} Iterative testing of authentication, location services, and real-time database triggers.
+    \item[] \textbf{Deployment:} Finalizing the build for Android/iOS environments.
 \end{enumerate}
 
 \section{Related Work}
@@ -363,7 +364,7 @@ Testing & flutter\_test & SDK & Widget \& unit testing \\
 \end{tabularx}
 \end{table}
 \subsection{Functional Requirements}
-\begin{itemize}
+\begin{itemize}[label={}, itemsep=1em]
     \item \textbf{FR-1: User Registration \& Authentication}\\
     The system shall allow citizens to register using their Name, Phone Number, Email, NID, Profession, and Addresses. The system must verify the user via email or phone OTP. NID uniqueness is enforced during registration to prevent duplicate accounts. Authentication is managed through Supabase Auth with JWT tokens and PKCE flow.
     \item \textbf{FR-2: Complaint Submission}\\
@@ -387,7 +388,7 @@ Testing & flutter\_test & SDK & Widget \& unit testing \\
     \end{tabularx}
     \end{table}
     \item \textbf{FR-3: SOS Emergency Trigger}\\
-    The system shall provide a dedicated SOS button. Upon activation, there must be a 3-second cancellation countdown. If not canceled, the system must broadcast live GPS coordinates to the Admin Dashboard via Supabase Realtime. A 4-step GPS fallback chain ensures reliability:
+    The system shall provide a dedicated SOS button. Upon activation, there must be a 3-second cancellation countdown. If not canceled, the system must broadcast live GPS coordinates to the Admin Dashboard via Supabase Realtime~\cite{realtime, sockets}. A 4-step GPS fallback chain ensures reliability:
     \begin{enumerate}
         \item GPS Simulation mode (if demo active)
         \item Real device GPS via \texttt{Geolocator} (with 8-second timeout)
@@ -427,8 +428,8 @@ Testing & flutter\_test & SDK & Widget \& unit testing \\
     Admins shall be able to create, edit, and manage police officers with rank, station assignment, and active status tracking.
 \end{itemize}
 \section{Non-functional}
-\begin{itemize}
-    \item \textbf{Security:} High. Data must be protected using Supabase Row Level Security (RLS). Users can only view their own data; Admins have protected routes via GoRouter redirect logic. Blocked user detection operates both at login and via real-time profile subscription.
+\begin{itemize}[label={}, itemsep=1em]
+    \item \textbf{Security:} High. Data must be protected using Supabase Row Level Security (RLS). Users can only view their own data; Admins have protected routes via GoRouter~\cite{gorouter} redirect logic. Blocked user detection operates both at login and via real-time profile subscription.
     \item \textbf{Performance:} Real-time synchronization must occur with less than a 1-second delay under normal network conditions utilizing Supabase Realtime Change Events and \texttt{StreamProvider}.
     \item \textbf{Reliability:} The system must implement a 4-step GPS fallback chain to prevent crashing on location fetch failure.
     \item \textbf{Maintainability:} The codebase must adhere to strict linting rules (0 errors/warnings from \texttt{dart analyze}) using a layered architecture with 120-character line length formatting.
@@ -442,8 +443,7 @@ Testing & flutter\_test & SDK & Widget \& unit testing \\
 This diagram illustrates the process flow for a citizen submitting a complaint.
 \begin{figure}[H]
 \centering
-\scalebox{0.85}{
-\begin{tikzpicture}[
+\begin{tikzpicture}[scale=0.85, transform shape,
     node distance=0.8cm and 1.0cm,
     every node/.style={font=\small\sffamily},
     start/.style={circle, fill=black, minimum width=0.5cm, inner sep=0pt},
@@ -464,10 +464,8 @@ This diagram illustrates the process flow for a citizen submitting a complaint.
     \node (location) [process, below=of fill] {Pick Location on Map};
     \node (upload) [process, below=of location] {Upload Photo Evidence};
     \node (online) [decision, below=of upload] {Online?};
-    
     \node (offline) [process, left=of online, xshift=-0.5cm] {Save to Offline Outbox};
     \node (endoffline) [end, below=of offline] {};
-    
     \node (supabase) [process, below=of online, node distance=1.2cm] {Submit to Supabase};
     \node (realtime) [process, below=of supabase] {Fire Realtime\\Stream Provider};
     \node (admin_dash) [process, below=of realtime] {Update Admin\\Dashboard};
@@ -476,7 +474,6 @@ This diagram illustrates the process flow for a citizen submitting a complaint.
     \node (notify) [process, below=of status] {Notify Citizen};
     \node (receive) [process, below=of notify] {View Notification};
     \node (end) [end, below=of receive] {};
-
     \draw [arrow] (start) -- (merge1);
     \draw [arrow] (merge1) -- (login);
     \draw [arrow] (login) -- (auth);
@@ -501,8 +498,7 @@ This diagram illustrates the process flow for a citizen submitting a complaint.
     \draw [arrow] (notify) -- (receive);
     \draw [arrow] (receive) -- (end);
 \end{tikzpicture}
-}
-\caption{Activity Diagram --- Complaint Submission Process}
+\caption{Activity Diagram - Complaint Submission Process}
 \label{fig:activity-diagram}
 \end{figure}
 \subsection{UML Use Case Diagram}
@@ -581,15 +577,14 @@ This diagram outlines the interactions between the primary actors and the system
     % Include / Extend Relationships
     \draw [dashedarrow] (ua_manage) -- node[above, sloped, font=\footnotesize] {$\ll$include$\gg$} (uc_update);
     \draw [dashedarrow] (ua_manage) -- node[above, sloped, font=\footnotesize] {$\ll$include$\gg$} (uc_assign);
-    \draw [dashedarrow] (ua_monitor) -- node[above, sloped, font=\footnotesize] {$\ll$include$\gg$} (uc_filter);
+    \draw [dashedarrow] (uc_filter) -- node[above, sloped, font=\footnotesize] {$\ll$extend$\gg$} (ua_manage);
     \draw [dashedarrow] (uc_sos) to[bend right=40] node[right, font=\footnotesize] {$\ll$extend$\gg$} (uc_submit);
     
-\end{tikzpicture}
-}
-\caption{Use Case Diagram --- ShieldX System}
+\end{tikzpicture}}
+\caption{Use Case Diagram - ShieldX System}
 \label{fig:usecase-diagram}
 \end{figure}
-\subsection{UML Class Diagram (Optional)}
+\subsection{UML Class Diagram}
 This diagram defines the structural data models of the application, matching the actual Dart classes in \texttt{lib/data/models/}.
 \begin{figure}[H]
 \centering
@@ -741,119 +736,61 @@ This diagram defines the structural data models of the application, matching the
                                   node[near start, right, font=\footnotesize, fill=white, inner sep=1pt] {1} 
                                   node[near end, right, font=\footnotesize, fill=white, inner sep=1pt] {1..*} (messages);
 
-\end{tikzpicture}
-}
-\caption{Class Diagram --- ShieldX Data Models}
+\end{tikzpicture}}
+\caption{Class Diagram - ShieldX Data Models}
 \label{fig:class-diagram}
 \end{figure}
 \clearpage
-\subsection{UML Sequence Diagram}
-This diagram shows the sequential flow of messages during an SOS activation, matching the actual \texttt{SOSNotifier} implementation.
+\subsection{Database Design}
+
+\subsubsection{Entity Relationship (ER) Diagram}
+The following Entity Relationship (ER) diagram illustrates the core database schema of the ShieldX system. It highlights the primary relationships and foreign key constraints between the main entities: \texttt{profiles}, \texttt{complaints}, \texttt{emergencies}, \texttt{officers}, \texttt{notifications}, \texttt{messages}, and \texttt{status\_history}.
+
 \begin{figure}[H]
 \centering
-\resizebox{\textwidth}{!}{
-\begin{tikzpicture}[xscale=1.2, yscale=1.15,
-    every node/.style={font=\normalsize\sffamily},
-    actorbox/.style={draw, rectangle, minimum width=2.0cm, minimum height=0.6cm, align=center, fill=gray!10, font=\bfseries\sffamily, thick},
-    arrow/.style={-{Latex[scale=0.8]}, thick},
-    dashedarrow/.style={-{Latex[scale=0.8]}, dashed, thick},
-    asyncarrow/.style={->, thick},
-    selfarrow/.style={-{Latex[scale=0.8]}, thick},
-    loopbox/.style={draw, rectangle, fill=white, fill opacity=0.1, border shrink=1pt, thick}
+\begin{tikzpicture}[scale=0.85, transform shape,
+    every node/.style={font=\sffamily},
+    entity/.style={rectangle, draw=black, thick, fill=blue!5, text width=4cm, align=center, rounded corners, inner sep=5pt},
+    relation/.style={-{Stealth[scale=1.2]}, thick},
+    lbl/.style={font=\scriptsize, align=center, fill=white, inner sep=2pt}
 ]
-    % Lifeline Coordinate X
-    % User = -4.5, App = -1.5, Geo = 1.0, Supabase = 3.5, Admin = 5.5
-    
-    % Lifeline Boxes (Top)
-    \node (u_top) [actorbox] at (-4.5, 0.4) {User};
-    \node (app_top) [actorbox] at (-1.5, 0.4) {\begin{tabular}{@{}c@{}}Flutter App\\(SOSNotifier)\end{tabular}};
-    \node (geo_top) [actorbox] at (1.0, 0.4) {Geolocator};
-    \node (db_top) [actorbox] at (3.5, 0.4) {Supabase};
-    \node (admin_top) [actorbox] at (5.5, 0.4) {Admin};
-    
-    % Lifeline Lines (Dashed)
-    \draw[dashed, gray!80, thick] (-4.5, 0) -- (-4.5, -16.0);
-    \draw[dashed, gray!80, thick] (-1.5, 0) -- (-1.5, -16.0);
-    \draw[dashed, gray!80, thick] (1.0, 0) -- (1.0, -16.0);
-    \draw[dashed, gray!80, thick] (3.5, 0) -- (3.5, -16.0);
-    \draw[dashed, gray!80, thick] (5.5, 0) -- (5.5, -16.0);
-    
-    % Activation Blocks
-    \draw[thick, fill=white] (-1.6, -0.2) rectangle (-1.4, -15.5);
-    \draw[thick, fill=white] (0.9, -6.2) rectangle (1.1, -8.9);
-    \draw[thick, fill=white] (0.9, -11.1) rectangle (1.1, -12.6);
-    \draw[thick, fill=white] (3.4, -9.2) rectangle (3.6, -10.7);
-    \draw[thick, fill=white] (3.4, -12.9) rectangle (3.6, -13.8);
-    
-    % Messages
-    \draw[arrow] (-4.5, -0.5) -- node[above, font=\footnotesize, fill=white, inner sep=1pt] {1: Press SOS Button} (-1.6, -0.5);
-    \draw[selfarrow] (-1.4, -0.9) -- ++(0.5,0) -- ++(0,-0.3) -- node[right, font=\footnotesize, fill=white, inner sep=1pt, xshift=-0.1cm] {2: isVerified == true?} (-1.4, -1.2);
-    \draw[selfarrow] (-1.4, -1.5) -- ++(0.5,0) -- ++(0,-0.3) -- node[right, font=\footnotesize, fill=white, inner sep=1pt, xshift=-0.1cm] {3: Start 3-second countdown} (-1.4, -1.8);
-    \draw[arrow] (-1.6, -2.2) -- node[above, font=\footnotesize, fill=white, inner sep=1pt] {4: Display 3... 2... 1...} (-4.5, -2.2);
-    
-    % Alt 1: User cancels within 3s
-    \draw[thick, fill=gray!5, fill opacity=0.3] (-4.8, -2.5) rectangle (5.8, -4.5);
-    \node[anchor=north west, font=\footnotesize\bfseries, fill=white, inner sep=1pt] at (-4.8, -2.5) {alt [User cancels within 3s]};
-    \draw[arrow] (-4.5, -3.3) -- node[above, font=\footnotesize, fill=white, inner sep=1pt] {Tap Cancel} (-1.6, -3.3);
-    \draw[selfarrow] (-1.4, -3.7) -- ++(0.5,0) -- ++(0,-0.3) -- node[right, font=\footnotesize, fill=white, inner sep=1pt, xshift=-0.1cm] {state = idle} (-1.4, -4.0);
-    
-    % Else: Countdown expires
-    \draw[thick, fill=gray!2, fill opacity=0.2] (-4.8, -4.6) rectangle (5.8, -15.7);
-    \node[anchor=north west, font=\footnotesize\bfseries, fill=white, inner sep=1pt] at (-4.8, -4.6) {else [Countdown expires]};
-    
-    \draw[selfarrow] (-1.4, -5.1) -- ++(0.5,0) -- ++(0,-0.3) -- node[right, font=\footnotesize, fill=white, inner sep=1pt, xshift=-0.1cm] {5: \_triggerSOSAlert()} (-1.4, -5.4);
-    \draw[arrow] (-1.4, -5.9) -- node[above, font=\footnotesize, fill=white, inner sep=1pt] {6: getCurrentPosition(8s)} (0.9, -5.9);
-    
-    % Inner Alt: GPS Success vs Timeout
-    \draw[thick, fill=gray!5, fill opacity=0.3] (-1.8, -6.3) rectangle (1.3, -9.0);
-    \node[anchor=north west, font=\footnotesize\bfseries, fill=white, inner sep=1pt] at (-1.8, -6.3) {alt [GPS Success]};
-    \draw[dashedarrow] (0.9, -7.0) -- node[above, font=\footnotesize, fill=white, inner sep=1pt] {Position(lat, lng)} (-1.4, -7.0);
-    
-    \draw[dotted, thick] (-1.8, -7.5) -- (1.3, -7.5);
-    \node[anchor=north west, font=\footnotesize\bfseries, fill=white, inner sep=1pt] at (-1.8, -7.5) {[GPS Timeout]};
-    \draw[arrow] (-1.4, -8.1) -- node[above, font=\footnotesize, fill=white, inner sep=1pt] {getLastKnownPosition()} (0.9, -8.1);
-    \draw[dashedarrow] (0.9, -8.6) -- node[above, font=\footnotesize, fill=white, inner sep=1pt] {Position} (-1.4, -8.6);
-    
-    % 7: INSERT emergencies
-    \draw[arrow] (-1.4, -9.4) -- node[above, font=\footnotesize, fill=white, inner sep=1pt] {7: INSERT emergencies} (3.4, -9.4);
-    \draw[dashedarrow] (3.4, -9.9) -- node[above, font=\footnotesize, fill=white, inner sep=1pt] {8: EmergencyModel returned} (-1.4, -9.9);
-    
-    % 9: INSERT notifications
-    \draw[arrow] (-1.4, -10.5) -- node[above, font=\footnotesize, fill=white, inner sep=1pt] {9: INSERT notifications} (3.4, -10.5);
-    
-    % 10: getPositionStream
-    \draw[arrow] (-1.4, -11.3) -- node[above, font=\footnotesize, fill=white, inner sep=1pt] {10: getPositionStream} (0.9, -11.3);
-    
-    % Loop for continuous position updates
-    \draw[thick, fill=gray!5, fill opacity=0.3] (-1.8, -11.6) rectangle (1.3, -12.7);
-    \node[anchor=north west, font=\footnotesize\bfseries, fill=white, inner sep=1pt] at (-1.8, -11.6) {loop [Continuous Updates]};
-    \draw[dashedarrow] (0.9, -12.4) -- node[above, font=\footnotesize, fill=white, inner sep=1pt] {Position(lat, lng)} (-1.4, -12.4);
-    
-    % 11: UPDATE lat, lng (live)
-    \draw[arrow] (-1.4, -13.2) -- node[above, font=\footnotesize, fill=white, inner sep=1pt] {11: UPDATE lat, lng (live)} (3.4, -13.2);
-    \draw[asyncarrow] (3.4, -13.7) -- node[above, font=\footnotesize, fill=white, inner sep=1pt] {12: Realtime push} (5.5, -13.7);
-    
-    % 13: Map updates live
-    \draw[selfarrow] (5.5, -14.2) -- ++(0.5,0) -- ++(0,-0.3) -- node[right, font=\footnotesize, fill=white, inner sep=1pt, xshift=-0.1cm] {13: Map updates live} (5.5, -14.5);
-    
-    % Lifeline Boxes (Bottom)
-    \node (u_bot) [actorbox] at (-4.5, -16.4) {User};
-    \node (app_bot) [actorbox] at (-1.5, -16.4) {\begin{tabular}{@{}c@{}}Flutter App\\(SOSNotifier)\end{tabular}};
-    \node (geo_bot) [actorbox] at (1.0, -16.4) {Geolocator};
-    \node (db_bot) [actorbox] at (3.5, -16.4) {Supabase};
-    \node (admin_bot) [actorbox] at (5.5, -16.4) {Admin};
-    
+% Center Entities
+\node[entity] (prof) at (0, 4) {\textbf{profiles} \\ \hrule\vspace{2pt} id (PK) \\ role \\ is\_verified \\ fcm\_token};
+\node[entity] (comp) at (0, -2) {\textbf{complaints} \\ \hrule\vspace{2pt} id (PK) \\ user\_id (FK) \\ assigned\_officer\_id (FK) \\ status};
+% Top Orbit
+\node[entity] (emerg) at (-5, 8) {\textbf{emergencies} \\ \hrule\vspace{2pt} id (PK) \\ user\_id (FK) \\ resolved\_by (FK)};
+\node[entity] (notif) at (5, 8) {\textbf{notifications} \\ \hrule\vspace{2pt} id (PK) \\ user\_id (FK) \\ related\_id};
+% Middle Orbit
+\node[entity] (msg) at (-6, -2) {\textbf{messages} \\ \hrule\vspace{2pt} id (PK) \\ complaint\_id (FK) \\ sender\_id (FK)};
+\node[entity] (off) at (6, -2) {\textbf{officers} \\ \hrule\vspace{2pt} id (PK) \\ user\_id (FK) \\ station};
+% Bottom Orbit
+\node[entity] (hist) at (0, -8) {\textbf{status\_history} \\ \hrule\vspace{2pt} id (PK) \\ complaint\_id (FK) \\ changed\_by (FK)};
+% Primary Relationships from Profiles
+\draw[relation] (prof.north west) -- node[above, lbl, sloped] {user\_id (1:N)} (emerg.south east);
+\draw[relation] (prof.north east) -- node[above, lbl, sloped] {user\_id (1:N)} (notif.south west);
+\draw[relation] (prof.south) -- node[left, lbl] {user\_id (1:N)} (comp.north);
+% Primary Relationships from Complaints
+\draw[relation] (comp.west) -- node[above, lbl] {complaint\_id (1:N)} (msg.east);
+\draw[relation] (comp.east) -- node[above, lbl] {assigned\_officer\_id (N:1)} (off.west);
+\draw[relation] (comp.south) -- node[left, lbl] {complaint\_id (1:N)} (hist.north);
+% Secondary Relationships (Dashed to avoid clutter)
+\draw[relation, dashed] (prof.west) -| node[above, lbl, near start] {sender\_id (1:N)} (msg.north);
+\draw[relation, dashed] (prof.east) -| node[above, lbl, near start] {user\_id (1:1)} (off.north);
+% Complex Routing around officers to reach status_history
+\draw[relation, dashed] (prof.20) -- ++(6.5, 0) |- node[right, lbl, near start] {changed\_by (1:N)} (hist.340);
+% Complex Routing to reach emergencies resolved_by without crossing anything
+\draw[relation, dashed] (prof.160) -| node[left, lbl, near start] {resolved\_by (1:N)} (emerg.280);
 \end{tikzpicture}
-}
-\caption{Sequence Diagram --- SOS Activation Flow}
-\label{fig:sequence}
+\caption{Entity Relationship (ER) Diagram - ShieldX Database}
+\label{fig:er_diagram}
 \end{figure}
-\clearpage
-\subsection{Database Design}
+
+\subsubsection{Table Schemas}
+
 The application utilizes PostgreSQL managed by Supabase. The following schema reflects the actual table structures used in the codebase (as defined in \texttt{app\_constants.dart} and the Dart model classes).
 \begin{table}[ht]
 \centering
-\caption{Database Schema --- \texttt{profiles} Table}
+\caption{Database Schema - \texttt{profiles} Table}
 \label{tab:profiles}
 \begin{tabularx}{\textwidth}{p{3cm} p{3cm} c X}
 \toprule
@@ -863,7 +800,7 @@ The application utilizes PostgreSQL managed by Supabase. The following schema re
 & name & text & User's display name \\
 & phone & text & Phone number \\
 & email & text & Email address (from auth) \\
-& nid & varchar(20) & UNIQUE --- National ID \\
+& nid & varchar(20) & UNIQUE - National ID \\
 & profession & text & User's profession \\
 & present\_address & text & Current address \\
 & permanent\_address & text & Permanent address \\
@@ -879,7 +816,7 @@ The application utilizes PostgreSQL managed by Supabase. The following schema re
 \end{table}
 \begin{table}[ht]
 \centering
-\caption{Database Schema --- \texttt{complaints} Table}
+\caption{Database Schema - \texttt{complaints} Table}
 \label{tab:complaints}
 \begin{tabularx}{\textwidth}{p{3cm} p{3cm} c X}
 \toprule
@@ -901,7 +838,7 @@ The application utilizes PostgreSQL managed by Supabase. The following schema re
 & location\_address & text & Reverse-geocoded address string \\
 & incident\_datetime & timestamptz & Date/time of incident \\
 & status & varchar(20) & DEFAULT \texttt{'submitted'} \\
-& assigned\_officer\_id & uuid & FK (officers.id) --- nullable \\
+& assigned\_officer\_id & uuid & FK (officers.id) - nullable \\
 & evidence\_urls & jsonb & Array of image URLs \\
 & is\_anonymous & boolean & DEFAULT false \\
 & police\_station & text & Assigned police station \\
@@ -913,7 +850,7 @@ The application utilizes PostgreSQL managed by Supabase. The following schema re
 \end{table}
 \begin{table}[ht]
 \centering
-\caption{Database Schema --- \texttt{emergencies} Table}
+\caption{Database Schema - \texttt{emergencies} Table}
 \label{tab:emergencies}
 \begin{tabularx}{\textwidth}{p{3cm} p{3cm} c X}
 \toprule
@@ -922,8 +859,8 @@ The application utilizes PostgreSQL managed by Supabase. The following schema re
 \textbf{emergencies} & id & uuid & PRIMARY KEY \\
 & user\_id & uuid & FOREIGN KEY (profiles.id) \\
 & status & varchar(20) & DEFAULT \texttt{'active'} (values: \texttt{active}, \texttt{cancelled}, \texttt{resolved}) \\
-& latitude & float8 & NOT NULL --- live-updated \\
-& longitude & float8 & NOT NULL --- live-updated \\
+& latitude & float8 & NOT NULL - live-updated \\
+& longitude & float8 & NOT NULL - live-updated \\
 & created\_at & timestamptz & Auto-generated \\
 & resolved\_at & timestamptz & When resolved/cancelled \\
 & resolved\_by & uuid & Admin who resolved \\
@@ -932,8 +869,8 @@ The application utilizes PostgreSQL managed by Supabase. The following schema re
 \end{table}
 \begin{table}[ht]
 \centering
-\caption{Database Schema --- Supporting Tables}
-\label{tab:supporting}
+\caption{Database Schema - \texttt{status\_history} Table}
+\label{tab:status_history}
 \begin{tabularx}{\textwidth}{p{3cm} p{3cm} c X}
 \toprule
 \textbf{Table} & \textbf{Column} & \textbf{Data Type} & \textbf{Constraint / Description} \\
@@ -945,7 +882,18 @@ The application utilizes PostgreSQL managed by Supabase. The following schema re
 & changed\_by & uuid & Admin who changed \\
 & changed\_at & timestamptz & Auto-generated \\
 & changed\_by\_name & text & Admin display name \\
-\addlinespace
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption{Database Schema - \texttt{notifications} Table}
+\label{tab:notifications}
+\begin{tabularx}{\textwidth}{p{3cm} p{3cm} c X}
+\toprule
+\textbf{Table} & \textbf{Column} & \textbf{Data Type} & \textbf{Constraint / Description} \\
+\midrule
 \textbf{notifications} & id & uuid & PRIMARY KEY \\
 & user\_id & uuid & FOREIGN KEY (profiles.id) \\
 & title & text & Notification title \\
@@ -955,16 +903,38 @@ The application utilizes PostgreSQL managed by Supabase. The following schema re
 & is\_read & boolean & DEFAULT false \\
 & created\_at & timestamptz & Auto-generated \\
 & deleted\_at & timestamptz & Soft delete \\
-\addlinespace
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption{Database Schema - \texttt{officers} Table}
+\label{tab:officers}
+\begin{tabularx}{\textwidth}{p{3cm} p{3cm} c X}
+\toprule
+\textbf{Table} & \textbf{Column} & \textbf{Data Type} & \textbf{Constraint / Description} \\
+\midrule
 \textbf{officers} & id & uuid & PRIMARY KEY \\
-& user\_id & uuid & FK (profiles.id) --- nullable \\
+& user\_id & uuid & FK (profiles.id) - nullable \\
 & name & text & Officer name \\
 & rank & text & Officer rank \\
 & station & text & Assigned station \\
 & contact & text & Contact number \\
 & is\_active & boolean & DEFAULT true \\
 & created\_at & timestamptz & Auto-generated \\
-\addlinespace
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[ht]
+\centering
+\caption{Database Schema - \texttt{messages} Table}
+\label{tab:messages}
+\begin{tabularx}{\textwidth}{p{3cm} p{3cm} c X}
+\toprule
+\textbf{Table} & \textbf{Column} & \textbf{Data Type} & \textbf{Constraint / Description} \\
+\midrule
 \textbf{messages} & id & uuid & PRIMARY KEY \\
 & complaint\_id & uuid & FK (complaints.id) \\
 & sender\_id & uuid & FK (profiles.id) \\
@@ -976,306 +946,213 @@ The application utilizes PostgreSQL managed by Supabase. The following schema re
 \bottomrule
 \end{tabularx}
 \end{table}
-\subsection{UML Package Diagram (System Architecture)}
-ShieldX employs a decoupled, layered architecture optimized for mobile applications. The layer names match the actual project folder structure (\texttt{lib/presentation/}, \texttt{lib/providers/}, \texttt{lib/data/}, Supabase cloud backend).
-\begin{figure}[H]
-\centering
-\resizebox{\textwidth}{!}{
-\begin{tikzpicture}[
-    every node/.style={font=\small\sffamily},
-    compbox/.style={draw, rectangle, fill=white, thick, align=center, inner sep=5pt, font=\small\sffamily},
-    layerbox/.style={draw, rectangle, fill=white, thick, minimum width=17.5cm, minimum height=1.6cm},
-    packagetab/.style={draw, rectangle, fill=white, thick, anchor=south west, inner sep=4pt, font=\bfseries\sffamily\scriptsize},
-    arrow/.style={-{Latex[scale=0.8]}, dashed, thick}
-]
-    % Layer 1: Presentation Layer
-    \node[layerbox] (pres_layer) at (0, 4.4) {};
-    \node[packagetab] at (pres_layer.north west) {$\ll$package$\gg$ Presentation Layer};
-    \node (screens) [compbox] at (-3.5, 4.4) {\scriptsize $\ll$component$\gg$\\[2pt] Screens \& Widgets};
-    \node (router) [compbox] at (3.5, 4.4) {\scriptsize $\ll$component$\gg$\\[2pt] GoRouter};
 
-    % Layer 2: Provider Layer
-    \node[layerbox] (prov_layer) at (0, 2.2) {};
-    \node[packagetab] at (prov_layer.north west) {$\ll$package$\gg$ Provider Layer};
-    \node (auth_not) [compbox] at (-7.0, 2.2) {\scriptsize $\ll$component$\gg$\\[2pt] AuthNotifier};
-    \node (sos_not) [compbox] at (-3.5, 2.2) {\scriptsize $\ll$component$\gg$\\[2pt] SOSNotifier};
-    \node (comp_prov) [compbox] at (0.0, 2.2) {\scriptsize $\ll$component$\gg$\\[2pt] ComplaintProviders};
-    \node (notif_not) [compbox] at (3.8, 2.2) {\scriptsize $\ll$component$\gg$\\[2pt] NotificationNotifier};
-    \node (connect) [compbox] at (7.0, 2.2) {\scriptsize $\ll$component$\gg$\\[2pt] Connectivity};
 
-    % Layer 3: Data Layer
-    \node[layerbox] (data_layer) at (0, 0.0) {};
-    \node[packagetab] at (data_layer.north west) {$\ll$package$\gg$ Data Layer};
-    \node (models) [compbox] at (-3.5, 0.0) {\scriptsize $\ll$component$\gg$\\[2pt] Models};
-    \node (services) [compbox] at (3.5, 0.0) {\scriptsize $\ll$component$\gg$\\[2pt] Services};
 
-    % Layer 4: Backend Layer
-    \node[layerbox] (back_layer) at (0, -2.2) {};
-    \node[packagetab] at (back_layer.north west) {$\ll$package$\gg$ Backend Layer};
-    \node (pg_db) [compbox] at (-6.2, -2.2) {\scriptsize $\ll$component$\gg$\\[2pt] PostgreSQL};
-    \node (realtime) [compbox] at (-2.1, -2.2) {\scriptsize $\ll$component$\gg$\\[2pt] Realtime};
-    \node (storage) [compbox] at (2.1, -2.2) {\scriptsize $\ll$component$\gg$\\[2pt] Storage Buckets};
-    \node (supabase_auth) [compbox] at (6.2, -2.2) {\scriptsize $\ll$component$\gg$\\[2pt] Supabase Auth};
+\subsection{Data Flow Diagrams (DFD)}
 
-    % Arrows from Presentation to Provider
-    \draw [arrow] (screens) -- (auth_not);
-    \draw [arrow] (screens) -- (sos_not);
-    \draw [arrow] (screens) -- (comp_prov);
-    \draw [arrow] (screens) -- (notif_not);
-    \draw [arrow] (router) -- (auth_not);
-
-    % Arrows from Provider to Data
-    \draw [arrow] (auth_not) -- (services.north west);
-    \draw [arrow] (sos_not) -- (services.north west);
-    \draw [arrow] (comp_prov) -- (services.north);
-    \draw [arrow] (notif_not) -- (services.north);
-    \draw [arrow] (connect) -- (services.north east);
-
-    % Arrow inside Data Layer
-    \draw [arrow] (services) -- (models);
-
-    % Arrows from Data to Backend
-    \draw [arrow] (services) -- (pg_db);
-    \draw [arrow] (services) -- (realtime);
-    \draw [arrow] (services) -- (storage);
-    \draw [arrow] (services) -- (supabase_auth);
-
-\end{tikzpicture}
-}
-\caption{System Architecture --- Layered Architecture of ShieldX}
-\label{fig:architecture}
-\end{figure}
-
-\subsection{UML Architectural Diagrams}
-\subsubsection{UML Component Diagram (High-Level Architecture)}
-The Component Diagram provides a high-level view of the ShieldX system boundaries, showing how it interacts with external components like Citizens, Admins, and Emergency Services.
+\subsubsection{DFD Level 0 (Context Diagram)}
+The Context Diagram defines the system boundaries and shows the high-level data exchange between the ShieldX core system and external entities.
 
 \begin{figure}[H]
 \centering
-\scalebox{0.9}{
-\begin{tikzpicture}[xscale=1.5, yscale=1.4,
-    every node/.style={font=\small\sffamily},
-    compbox/.style={draw, rectangle, minimum width=2.5cm, minimum height=1.0cm, fill=white, thick, align=center, font=\small\sffamily},
-    arrow/.style={->, dashed, thick}
+\begin{tikzpicture}[scale=0.9, transform shape,
+    every node/.style={font=\sffamily},
+    process/.style={circle, draw=black, thick, minimum size=3cm, align=center, fill=blue!5},
+    entity/.style={rectangle, draw=black, thick, minimum width=3cm, minimum height=1.5cm, fill=orange!5},
+    arrow/.style={-{Stealth[scale=1.2]}, thick},
+    lbl/.style={font=\scriptsize, align=center, fill=white, inner sep=2pt}
 ]
-    % Central System
-    \node (system) [compbox] at (0, 0) {\textit{\scriptsize$\ll$component$\gg$}\\ShieldX Core};
-    
-    % Entities
-    \node (citizen) [compbox] at (-4.0, 0) {\textit{\scriptsize$\ll$component$\gg$}\\Citizen Client};
-    \node (admin) [compbox] at (4.0, 2.0) {\textit{\scriptsize$\ll$component$\gg$}\\Admin Portal};
-    \node (emergency) [compbox] at (4.0, -2.0) {\textit{\scriptsize$\ll$component$\gg$}\\Emergency Services};
-    
-    % Citizen Dependencies
-    \draw [arrow] (citizen) to[bend left=15] node[above, font=\scriptsize, sloped] {IAlertService} (system);
-    \draw [arrow] (citizen) -- node[above, font=\scriptsize, fill=white, inner sep=1pt] {ICrimeReporting} (system);
-    \draw [arrow] (system) to[bend left=15] node[below, font=\scriptsize, sloped] {INotificationAPI} (citizen);
-
-    % Admin Dependencies
-    \draw [arrow] (admin) to[bend right=15] node[above, font=\scriptsize, sloped] {ISystemMonitor} (system);
-    \draw [arrow] (admin) to[bend left=15] node[below, font=\scriptsize, sloped] {IAdminControl} (system);
-
-    % Emergency Services Dependencies
-    \draw [arrow] (emergency) to[bend left=15] node[above, font=\scriptsize, sloped] {IDispatchAPI} (system);
-    \draw [arrow] (system) to[bend left=15] node[below, font=\scriptsize, sloped] {IEmergencyStatus} (emergency);
-    
+% Level 0 Nodes
+\node[process] (system) at (0,0) {0.0 \\ ShieldX \\ System};
+\node[entity] (citizen) at (-6, 0) {Citizen};
+\node[entity] (admin) at (6, 2) {Police Admin};
+\node[entity] (gps) at (6, -2) {GPS \& Map Services};
+% Citizen -> System
+\draw[arrow] (citizen.40) -- node[above, lbl, sloped] {Complaints, SOS, Profile Data} (system.140);
+% System -> Citizen
+\draw[arrow] (system.220) -- node[below, lbl, sloped] {Complaint Status, App UI} (citizen.320);
+% Admin -> System
+\draw[arrow] (admin.190) -- node[above, lbl, sloped] {Verifications, Updates} (system.40);
+% System -> Admin
+\draw[arrow] (system.10) -- node[below, lbl, sloped] {Analytics, Live SOS} (admin.230);
+% System -> GPS
+\draw[arrow] (system.350) -- node[above, lbl, sloped] {Coordinate Requests} (gps.130);
+% GPS -> System
+\draw[arrow] (gps.170) -- node[below, lbl, sloped] {Real-time Location} (system.310);
 \end{tikzpicture}
-}
-\caption{UML Component Diagram (High-Level Architecture) of ShieldX}
-\label{fig:component-diagram}
+\caption{DFD Level 0 (Context Diagram) - ShieldX System}
+\label{fig:dfd0}
 \end{figure}
 
-\subsubsection{Detailed UML Activity Diagram (Object Flow)}
-This UML Activity Diagram illustrates the detailed object and action flows during an SOS emergency activation, from the citizen pressing the SOS button through to admin resolution.
+\clearpage
+\subsubsection{DFD Level 1}
+The Level 1 DFD decomposes the main system into its primary subsystems: Authentication, Complaint Processing, SOS Dispatch, and Analytics.
+
 \begin{figure}[H]
 \centering
-\resizebox{\textwidth}{!}{
-\begin{tikzpicture}[xscale=1.5, yscale=1.4,
-    every node/.style={font=\small\sffamily},
-    actbox/.style={draw, rectangle, rounded corners=8pt, minimum width=2.2cm, minimum height=0.8cm, fill=white, thick, align=center, font=\small\sffamily\bfseries},
-    dsbox/.style={draw, rectangle, fill=white, thick, align=center, inner sep=6pt, font=\small\sffamily},
-    decision/.style={draw, diamond, aspect=2, thick, fill=white, minimum width=1.5cm, minimum height=0.8cm},
-    arrow/.style={-{Latex[scale=0.8]}, thick},
-    dashedarrow/.style={-{Latex[scale=0.8]}, dashed, thick}
+\begin{tikzpicture}[scale=0.85, transform shape,
+    every node/.style={font=\sffamily},
+    process/.style={circle, draw=black, thick, minimum size=2.8cm, align=center, fill=blue!5},
+    entity/.style={rectangle, draw=black, thick, minimum width=3cm, minimum height=1.2cm, fill=orange!5},
+    store/.style={rectangle, draw=black, thick, minimum width=3cm, minimum height=1cm, fill=green!5},
+    arrow/.style={-{Stealth[scale=1.2]}, thick, rounded corners},
+    lbl/.style={font=\scriptsize, align=center, fill=white, inner sep=2pt}
 ]
-    % Swimlane Dividers
-    \draw[thick] (-2.0, 3.5) -- (-2.0, -2.1);
-    \draw[thick] (2.0, 3.5) -- (2.0, -2.1);
-    
-    % Swimlane Headers
-    \node[font=\bfseries, align=center] at (-4.0, 3.2) {Citizen};
-    \node[font=\bfseries, align=center] at (0, 3.2) {System / SOS Notifier};
-    \node[font=\bfseries, align=center] at (4.0, 3.2) {Admin / Emergency Services};
-    
-    % Horizontal line under headers
-    \draw[thick] (-6.0, 2.9) -- (6.0, 2.9);
-
-    % Start Node
-    \node (start) [circle, fill=black, minimum size=0.3cm, inner sep=0pt] at (-4.0, 2.5) {};
-    
-    % Citizen Action
-    \node (trigger) [actbox] at (-4.0, 1.5) {Trigger SOS};
-    
-    % System Actions & Decision
-    \node (decide) [decision] at (0, 1.5) {};
-    \node (stream) [actbox] at (0, 0.0) {Stream GPS\\Location};
-    
-    % Final Node
-    \node (end_outer) [circle, draw, thick, minimum size=0.4cm, inner sep=0pt] at (0, 2.5) {};
-    \node (end_inner) [circle, fill=black, minimum size=0.2cm, inner sep=0pt] at (0, 2.5) {};
-    
-    % Datastores
-    \node (emergencies) [dsbox] at (-1.0, -1.5) {\textit{\scriptsize$\ll$datastore$\gg$}\\emergencies};
-    \node (notifications) [dsbox] at (1.0, -1.8) {\textit{\scriptsize$\ll$datastore$\gg$}\\notifications};
-
-    % Admin Actions
-    \node (display) [actbox] at (4.0, 0.0) {Display Live\\Beacon};
-    \node (resolve) [actbox] at (4.0, -1.5) {Resolve\\Emergency};
-
-    % Flows
-    \draw [arrow] (start) -- (trigger);
-    \draw [arrow] (trigger) -- (decide);
-    
-    % Loop & Decision Flows
-    \draw [arrow] (decide) -- node[right, font=\scriptsize] {[Active]} (stream);
-    \draw [arrow] (decide) -- node[right, font=\scriptsize] {[Resolved]} (end_outer);
-    \draw [arrow] (stream.east) -- ++(0.6,0) |- (decide.east);
-    
-    % Object Flows (to datastores)
-    \draw [arrow] (stream) -- node[left, font=\scriptsize, pos=0.5, fill=white, inner sep=1pt] {INSERT} (emergencies);
-    \draw [arrow] (stream) -- node[right, font=\scriptsize, pos=0.85, fill=white, inner sep=1pt] {INSERT} (notifications);
-
-    % Realtime Push Flows
-    \draw [arrow] (emergencies) -- node[above, sloped, font=\scriptsize, pos=0.1, fill=white, inner sep=1pt] {Realtime push} (display);
-    \draw [arrow] (notifications) -- node[below, sloped, font=\scriptsize, pos=0.75, fill=white, inner sep=1pt] {Realtime push} (display);
-
-    % Admin Resolution Flow
-    \draw [arrow] (display) -- (resolve);
-    \draw [arrow] (resolve.south) -- ++(0,-0.5) -| node[below, font=\scriptsize, pos=0.15, fill=white, inner sep=1pt] {UPDATE status} (emergencies.south);
-
+% Entities
+\node[entity] (citizen) at (-4, 5) {Citizen};
+\node[entity] (admin) at (4, -5) {Police Admin};
+% Processes
+\node[process] (p1) at (0, 5) {1.0 \\ Auth \& Users};
+\node[process] (p2) at (-4, 0) {2.0 \\ Complaints};
+\node[process] (p3) at (4, 0) {3.0 \\ SOS Dispatch};
+\node[process] (p4) at (0, -5) {4.0 \\ Dashboard};
+% Data Stores
+\node[store] (d1) at (4, 5) {D1: Profiles};
+\node[store] (d2) at (-4, -2.5) {D2: Complaints};
+\node[store] (d3) at (4, -2.5) {D3: Emergencies};
+% Flows from Citizen
+\draw[arrow] (citizen.east) -- node[above, lbl] {Credentials} (p1.west);
+\draw[arrow] (citizen.south) -- node[left, lbl] {Complaint Data} (p2.north);
+\draw[arrow] (citizen.north) -- ++(0,1.5) -| node[above, lbl, near start] {SOS Trigger} (2, 0) -- (p3.west);
+% Flows from Admin
+\draw[arrow] (admin.west) -- node[above, lbl] {View Reports} (p4.east);
+\draw[arrow] (admin.east) -- ++(1.5, 0) |- node[right, lbl, near start] {Verify Users} (0, 6.5) -- (p1.north);
+\draw[arrow] (admin.south) -- ++(0,-1.5) -| node[below, lbl, near start] {Update Status} (-6, 0) -- (p2.west);
+% Flows from Processes to Stores
+\draw[arrow] (p1.east) -- node[above, lbl] {Save} (d1.west);
+\draw[arrow] (p2.south) -- node[left, lbl] {Store} (d2.north);
+\draw[arrow] (p3.south) -- node[right, lbl] {Live Location} (d3.north);
+% Flows to P4 (Dashboard)
+\draw[arrow] (d2.east) -| node[above, lbl, near end] {Aggregated Data} (p4.135);
+\draw[arrow] (d3.west) -| node[above, lbl, near end] {Active Alerts} (p4.45);
 \end{tikzpicture}
-}
-\caption{Detailed UML Activity Diagram --- SOS Emergency Object Flow}
-\label{fig:activity-sos}
+\caption{DFD Level 1 - ShieldX Subsystems}
+\label{fig:dfd1}
 \end{figure}
+\clearpage
 \subsection{Project Directory Structure}
-The following shows the actual folder layout of the ShieldX Flutter project inside \texttt{lib/}. The project contains \textbf{89 Dart source files} organized across \textbf{20 directories}.
+The following shows the actual folder layout of the ShieldX Flutter project inside \texttt{lib/}. The project contains \textbf{90 Dart source files} organized across \textbf{27 directories}.
 \begin{footnotesize}
 \begin{verbatim}
 lib/
-+-- main.dart                          # App entry point, Supabase init
-+-- app.dart                           # Root widget, theme, connectivity
-|
-+-- core/
-|   +-- constants/
-|   |   +-- app_constants.dart         # Supabase URL, table names, statuses
-|   |   +-- app_colors.dart            # Color definitions
-|   +-- router/
-|   |   +-- app_router.dart            # GoRouter with role-based redirects
-|   +-- services/
-|   |   +-- preferences_service.dart   # SharedPreferences wrapper
-|   +-- theme/
-|   |   +-- app_theme.dart             # Dark theme configuration
-|   +-- utils/
-|       +-- app_dialog.dart            # Reusable dialog builders
-|       +-- app_snackbar.dart          # Snackbar helpers
-|       +-- app_validators.dart        # Form field validators
-|       +-- complaint_classifier.dart  # Crime category classifier
-|       +-- date_time_extensions.dart  # Bangladesh timezone helpers
-|
-+-- data/
-|   +-- models/
-|   |   +-- profile_model.dart         # User profile (15 fields)
-|   |   +-- complaint_model.dart       # Complaint (27 fields)
-|   |   +-- emergency_model.dart       # SOS emergency (9 fields)
-|   |   +-- notification_model.dart    # Notification (9 fields)
-|   |   +-- status_history_model.dart  # Status timeline entry
-|   |   +-- officer_model.dart         # Police officer (8 fields)
-|   |   +-- message_model.dart         # Chat message (8 fields)
-|   |   +-- police_station_model.dart  # Station data (hardcoded)
-|   +-- services/
-|       +-- auth_service.dart          # Supabase Auth operations
-|       +-- complaint_service.dart     # Complaint CRUD + statistics
-|       +-- emergency_service.dart     # SOS trigger + live tracking
-|       +-- notification_service.dart  # Notification CRUD
-|       +-- profile_service.dart       # Admin user management
-|       +-- officer_service.dart       # Officer CRUD
-|       +-- message_service.dart       # Chat message operations
-|       +-- storage_service.dart       # Supabase Storage uploads
-|       +-- map_service.dart           # OpenStreetMap API calls
-|       +-- sync_service.dart          # Offline outbox + sync
-|
-+-- providers/
-|   +-- auth_provider.dart             # AuthNotifier (StateNotifier)
-|   +-- complaint_provider.dart        # Complaint streams + filters
-|   +-- sos_provider.dart              # SOSNotifier (StateNotifier)
-|   +-- notification_provider.dart     # NotificationNotifier
-|   +-- connectivity_provider.dart     # Online/offline detection
-|   +-- station_map_provider.dart      # Map state management
-|   +-- gps_simulation_provider.dart   # Demo GPS override
-|   +-- selected_station_provider.dart # Thana selection state
-|   +-- officer_provider.dart          # Officer data provider
-|   +-- chat_provider.dart             # Chat state
-|   +-- admin_sos_provider.dart        # Admin SOS stream
-|   +-- location_cache_provider.dart   # GPS cache
-|   +-- navigation_trigger_provider.dart # Route change listener
-|   +-- time_provider.dart             # Clock provider
-|
-+-- presentation/
-    +-- auth/
-    |   +-- splash_screen.dart         # Loading/init screen
-    |   +-- login_screen.dart          # Email + password login
-    |   +-- register_screen.dart       # Multi-step registration
-    |   +-- forgot_password_screen.dart # Password recovery
-    |   +-- blocked_screen.dart        # Blocked user screen
-    +-- user/
-    |   +-- home_screen.dart           # Main dashboard + SOS button
-    |   +-- submit_complaint_screen.dart # Complaint form
-    |   +-- my_complaints_screen.dart  # User's complaint list
-    |   +-- complaint_detail_screen.dart # Complaint detail + timeline
-    |   +-- edit_complaint_screen.dart  # Edit submitted complaint
-    |   +-- profile_screen.dart        # User profile view
-    |   +-- edit_profile_screen.dart   # Profile editing
-    |   +-- change_password_screen.dart # Password change
-    |   +-- change_email_screen.dart   # Email change
-    |   +-- police_stations_screen.dart # Station map + directory
-    |   +-- chat_screen.dart           # In-app messaging
-    |   +-- models/
-    |       +-- police_stations_map_models.dart # Map helper models
-    +-- admin/
-    |   +-- admin_shell.dart           # ShellRoute with bottom nav
-    |   +-- admin_dashboard_screen.dart # Statistics + charts
-    |   +-- admin_complaints_screen.dart # All complaints management
-    |   +-- admin_complaint_detail_screen.dart # Detail + status
-    |   +-- admin_users_screen.dart    # User verification/blocking
-    |   +-- admin_officers_screen.dart # Officer management
-    |   +-- admin_stations_screen.dart # Station management
-    |   +-- admin_profile_screen.dart  # Admin profile
-    |   +-- admin_sos_alert_widget.dart # Live SOS alert widget
-    +-- common/
-    |   +-- notifications_screen.dart  # Shared notification inbox
-    +-- widgets/
-        +-- admin/
-        |   +-- station_switcher_widget.dart # Thana switcher
-        +-- common/
-        |   +-- widgets.dart           # Shared UI components
-        |   +-- sos_button_widget.dart  # SOS button
-        |   +-- no_internet_screen.dart # Offline fallback
-        |   +-- global_offline_banner.dart # Offline banner
-        |   +-- user_profile_dialog.dart # Profile popup
-        +-- user/
-            +-- personal_info_step.dart # Complaint form step 1
-            +-- incident_step.dart      # Complaint form step 2
-            +-- evidence_step.dart      # Complaint form step 3
-            +-- filter_bottom_sheet_content.dart # Filters
-            +-- filter_chip_widget.dart  # Filter chips
-            +-- quick_action_card.dart   # Home quick actions
-            +-- recent_complaint_card.dart # Home complaint card
-            +-- deleted_complaint_card.dart # Recycle bin card
-            +-- deleted_notification_card.dart # Deleted notif
-            +-- station_marker_widget.dart # Map station pin
-            +-- gps_user_location_marker.dart # GPS marker
-            +-- user_location_highlight_marker.dart # GPS ring
++-- admin
+|   +-- data
+|   +-- presentation
+|   |   +-- admin_complaint_detail_screen.dart
+|   |   +-- admin_complaints_screen.dart
+|   |   +-- admin_dashboard_screen.dart
+|   |   +-- admin_officers_screen.dart
+|   |   +-- admin_profile_screen.dart
+|   |   +-- admin_shell.dart
+|   |   +-- admin_sos_alert_widget.dart
+|   |   +-- admin_stations_screen.dart
+|   |   +-- admin_users_screen.dart
+|   +-- providers
+|       +-- admin_sos_provider.dart
++-- app.dart
++-- common
+|   +-- core
+|   |   +-- constants
+|   |   |   +-- app_colors.dart
+|   |   |   +-- app_constants.dart
+|   |   +-- router
+|   |   |   +-- app_router.dart
+|   |   +-- services
+|   |   |   +-- preferences_service.dart
+|   |   +-- theme
+|   |   |   +-- app_theme.dart
+|   |   +-- utils
+|   |       +-- app_dialog.dart
+|   |       +-- app_snackbar.dart
+|   |       +-- app_validators.dart
+|   |       +-- complaint_classifier.dart
+|   |       +-- date_time_extensions.dart
+|   +-- data
+|   |   +-- models
+|   |   |   +-- complaint_model.dart
+|   |   |   +-- emergency_model.dart
+|   |   |   +-- message_model.dart
+|   |   |   +-- notification_model.dart
+|   |   |   +-- officer_model.dart
+|   |   |   +-- police_station_model.dart
+|   |   |   +-- profile_model.dart
+|   |   |   +-- status_history_model.dart
+|   |   +-- services
+|   |       +-- auth_service.dart
+|   |       +-- complaint_service.dart
+|   |       +-- emergency_service.dart
+|   |       +-- map_service.dart
+|   |       +-- message_service.dart
+|   |       +-- notification_service.dart
+|   |       +-- officer_service.dart
+|   |       +-- profile_service.dart
+|   |       +-- storage_service.dart
+|   |       +-- sync_service.dart
+|   +-- presentation
+|   |   +-- auth
+|   |   |   +-- blocked_screen.dart
+|   |   |   +-- forgot_password_screen.dart
+|   |   |   +-- login_screen.dart
+|   |   |   +-- register_screen.dart
+|   |   |   +-- splash_screen.dart
+|   |   +-- common
+|   |   |   +-- notifications_screen.dart
+|   |   +-- widgets
+|   |       +-- admin
+|   |       |   +-- station_switcher_widget.dart
+|   |       +-- common
+|   |       |   +-- evidence_item_widget.dart
+|   |       |   +-- global_offline_banner.dart
+|   |       |   +-- no_internet_screen.dart
+|   |       |   +-- sos_button_widget.dart
+|   |       |   +-- user_profile_dialog.dart
+|   |       |   +-- widgets.dart
+|   |       +-- user
+|   |           +-- deleted_complaint_card.dart
+|   |           +-- deleted_notification_card.dart
+|   |           +-- evidence_step.dart
+|   |           +-- filter_bottom_sheet_content.dart
+|   |           +-- filter_chip_widget.dart
+|   |           +-- gps_user_location_marker.dart
+|   |           +-- incident_step.dart
+|   |           +-- personal_info_step.dart
+|   |           +-- quick_action_card.dart
+|   |           +-- recent_complaint_card.dart
+|   |           +-- station_marker_widget.dart
+|   |           +-- user_location_highlight_marker.dart
+|   +-- providers
+|       +-- auth_provider.dart
+|       +-- chat_provider.dart
+|       +-- complaint_provider.dart
+|       +-- connectivity_provider.dart
+|       +-- gps_simulation_provider.dart
+|       +-- location_cache_provider.dart
+|       +-- navigation_trigger_provider.dart
+|       +-- notification_provider.dart
+|       +-- officer_provider.dart
+|       +-- selected_station_provider.dart
+|       +-- station_map_provider.dart
+|       +-- time_provider.dart
++-- main.dart
++-- user
+    +-- data
+    +-- presentation
+    |   +-- change_email_screen.dart
+    |   +-- change_password_screen.dart
+    |   +-- chat_screen.dart
+    |   +-- complaint_detail_screen.dart
+    |   +-- edit_complaint_screen.dart
+    |   +-- edit_profile_screen.dart
+    |   +-- home_screen.dart
+    |   +-- models
+    |   |   +-- police_stations_map_models.dart
+    |   +-- my_complaints_screen.dart
+    |   +-- police_stations_screen.dart
+    |   +-- profile_screen.dart
+    |   +-- submit_complaint_screen.dart
+    +-- providers
+        +-- sos_provider.dart
 \end{verbatim}
 \end{footnotesize}
 % ============================================================================
@@ -1284,8 +1161,8 @@ lib/
 \section{Preliminaries}
 Before commencing development, the team conducted preliminary research and planning. We analyzed the project's feasibility, compared cross-platform tools with native app development, and aligned on Flutter for rapid prototyping and deployment. Initial wireframing was completed to map out user and admin screens, and the database schema was designed with Supabase PostgreSQL to ensure relational integrity.
 
-\section{How the work was done}
-The project was executed through iterative, agile phases, starting from initial design to active coding, quality checking, testing, and eventual deployment. The sections below details the actions performed during each phase.
+\section{How the Work Was Done}
+The project was executed through iterative, agile phases, starting from initial design to active coding, quality checking, testing, and eventual deployment. The sections below detail the actions performed during each phase.
 
 \subsection{Planning Phase}
 The project was initiated by defining the core objective: reducing friction in crime reporting. The team conducted a feasibility study on using cross-platform tools versus native development, ultimately selecting Flutter for its fast iteration speed and unified codebase.
@@ -1299,17 +1176,17 @@ UI/UX wireframes were created using Figma. The database schema was heavily norma
 \subsection{Development Phase}
 The development followed a layered approach with clear separation of concerns:
 \begin{enumerate}
-    \item \textbf{Backend Setup:} Configured Supabase project, initialized PostgreSQL tables (\texttt{profiles}, \texttt{complaints}, \texttt{emergencies}, \texttt{status\_history}, \texttt{notifications}, \texttt{officers}, \texttt{messages}), set up RLS policies, and configured the Storage buckets (\texttt{evidence}, \texttt{avatars}).
-    \item \textbf{Core Mobile App:} Integrated Flutter SDK with Supabase initialization using PKCE auth flow (\texttt{main.dart}). Set up GoRouter (\texttt{app\_router.dart}) for protected routes with role-based redirect logic.
-    \item \textbf{State Management:} Implemented Riverpod with \texttt{StateNotifier} for complex state (Auth, SOS, Notifications) and \texttt{StreamProvider} for reactive data (complaints, emergencies).
-    \item \textbf{Feature Implementation:}
+    \item[] \textbf{Backend Setup:} Configured Supabase project, initialized PostgreSQL tables (\texttt{profiles}, \texttt{complaints}, \texttt{emergencies}, \texttt{status\_history}, \texttt{notifications}, \texttt{officers}, \texttt{messages}), set up RLS policies, and configured the Storage buckets (\texttt{evidence}, \texttt{avatars}).
+    \item[] \textbf{Core Mobile App:} Integrated Flutter SDK with Supabase initialization using PKCE auth flow (\texttt{main.dart}). Set up GoRouter (\texttt{app\_router.dart}) for protected routes with role-based redirect logic.
+    \item[] \textbf{State Management:} Implemented Riverpod with \texttt{StateNotifier} for complex state (Auth, SOS, Notifications) and \texttt{StreamProvider} for reactive data (complaints, emergencies).
+    \item[] \textbf{Feature Implementation:}
     \begin{itemize}
         \item Built the multi-step complaint submission form with \texttt{flutter\_map} location picker and \texttt{image\_picker} evidence upload.
         \item Implemented the SOS system (\texttt{SOSNotifier}) with a 3-second countdown timer, 4-step GPS fallback chain, and live location streaming via \texttt{Geolocator.getPositionStream()}.
         \item Developed the offline queueing system (\texttt{SyncService}) with local outbox via \texttt{SharedPreferences}.
         \item Created the in-app chat system (\texttt{MessageModel}, \texttt{ChatScreen}).
     \end{itemize}
-    \item \textbf{Admin Panel:} Created a \texttt{ShellRoute}-based admin shell with persistent bottom navigation. Built dashboard screens using \texttt{fl\_chart} for statistics and connected \texttt{StreamProviders} to listen to live backend changes. Implemented thana-based complaint filtering via keyword matching.
+    \item[] \textbf{Admin Panel:} Created a \texttt{ShellRoute}-based admin shell with persistent bottom navigation. Built dashboard screens using \texttt{fl\_chart} for statistics and connected \texttt{StreamProviders} to listen to live backend changes. Implemented thana-based complaint filtering via keyword matching.
 \end{enumerate}
 
 \subsection{Testing Phase}
@@ -1334,9 +1211,9 @@ The application was compiled into a release-ready Android APK. Backend database 
 \chapter{Results}
 % ============================================================================
 \section{Features Implemented}
-\begin{itemize}
+\begin{itemize}[label={}, itemsep=1em]
     \item \textbf{Secure Authentication:} Email+password signup with NID uniqueness verification, OTP verification (email and phone), JWT session management via Supabase Auth with PKCE flow, auto-login via saved credentials, and real-time profile subscription for instant blocked-user detection.
-    \item \textbf{Media-rich Complaints:} Submission of complaint with first/last name, phone, NID, crime category (14 categories), description, map-picked location with reverse geocoding, incident date/time, and multiple image uploads to Supabase Storage.
+    \item \textbf{Media-rich Complaints:} Submission of a complaint with first/last name, phone, NID, crime category (14 categories), description, map-picked location with reverse geocoding, incident date/time, and multiple image uploads to Supabase Storage.
     \item \textbf{Live SOS:} Real-time latitude/longitude streaming with 3-second countdown, 4-step GPS fallback, and automatic admin notification insertion.
     \item \textbf{Admin Dashboard:} Comprehensive statistical overview with bar charts (complaint status counts, category distribution, monthly trends, location-based stats), live SOS emergency map tracking, thana-based complaint filtering, and station-level statistics.
     \item \textbf{Complaint Management:} Full lifecycle management with status timeline (\texttt{status\_history}), officer assignment, search/filter/date-range, user verification badges, and soft delete with recycle bin.
@@ -1371,7 +1248,7 @@ Common & 1 & Notifications (shared inbox with filters) \\
 \end{table}
 
 \section{Module-wise Results}
-\begin{itemize}
+\begin{itemize}[label={}, itemsep=1em]
     \item \textbf{User Module:} Operated smoothly with zero rendering errors. Complaint submission took an average of 45 seconds to complete during manual testing.
     \item \textbf{Admin Module:} Supabase Realtime pushed new events to the Admin dashboard in less than 800ms, immediately updating statistical charts and SOS beacon positions.
     \item \textbf{Offline Module:} \texttt{SyncService} successfully queued and re-submitted complaints upon network restoration during field testing.
@@ -1460,7 +1337,7 @@ TC-14 & Real-time Block & Admin blocks user & User immediately signed out via Re
 \end{tabularx}
 \end{table}
 \section{Security Analysis}
-\begin{itemize}
+\begin{itemize}[label={}, itemsep=1em]
     \item \textbf{Authentication:} Managed entirely by Supabase Auth with JWT tokens and PKCE flow. User sessions are securely stored in \texttt{SharedPreferences} with the key \texttt{supabase.auth.token}. Auto-login credentials are encrypted locally.
     \item \textbf{Authorization (RLS):} Row Level Security policies are enforced at the PostgreSQL level. Users can only SELECT/INSERT/UPDATE their own rows. Admin-only operations are guarded by role checks. The GoRouter \texttt{redirect} function enforces route-level access control.
     \item \textbf{Blocked User Protection:} Three-layer defense: (1) \texttt{isEmailBlocked()} RPC check at login, (2) \texttt{profile.isBlocked} check after session load, (3) real-time Postgres subscription (\texttt{\_setupProfileSubscription()}) for instant sign-out if blocked while active.
@@ -1500,16 +1377,16 @@ The ShieldX project successfully met its core objectives by delivering a highly 
 The system strictly enforces data privacy, restricting any external API access. Administrative controls are restricted to pre-authorized accounts (role-based). Blocked users are immediately ejected via real-time detection. The real-time mapping and dispatch features are designed to scale nationwide, currently prototyped with 6 initial thanas (Kotwali Model, Moglabazar, South Surma, Shahporan, Jalalabad, Airport) to prevent irrelevant data noise during early testing.
 
 \section{Limitations}
-\begin{itemize}
+\begin{itemize}[label={}, itemsep=1em]
     \item \textbf{Media Constraints:} The current infrastructure only supports image evidence via \texttt{image\_picker}; large video files are restricted due to storage bandwidth costs.
     \item \textbf{Internet Dependency:} While offline queueing exists for complaints, the critical SOS feature relies entirely on active mobile data to transmit coordinates in real-time.
     \item \textbf{Hardware Reliance:} GPS accuracy is completely dependent on the quality of the citizen's mobile device hardware.
     \item \textbf{OTP Limitations:} Phone OTP relies on Supabase's built-in SMS integration which has rate limits; a mock OTP fallback (\texttt{phone\_verifications} table) is used for development/demo purposes.
 \end{itemize}
 
-\section{Future work}
+\section{Future Work}
 Future iterations of ShieldX could include:
-\begin{itemize}
+\begin{itemize}[label={}, itemsep=1em]
     \item \textbf{AI Integration:} Implementation of machine learning models to automatically classify, triage, and prioritize incoming complaints.
     \item \textbf{Video Evidence:} Creating an in-app compression algorithm to allow seamless video evidence uploads alongside photos.
     \item \textbf{Push Notifications:} Migrating from Supabase Realtime notifications to Firebase Cloud Messaging (FCM) for background push notifications (infrastructure is partially ready with \texttt{fcm\_token} in profiles).
@@ -1526,21 +1403,21 @@ ShieldX demonstrates the profound impact that modern software engineering can ha
 \addcontentsline{toc}{chapter}{References}
 \renewcommand{\bibname}{References}
 \begin{thebibliography}{99}
-\bibitem{flutter} Google, ``Flutter Documentation,'' Flutter.dev. [Online]. Available: \url{https://flutter.dev/docs}. [Accessed: May 2026].
-\bibitem{supabase} Supabase Inc., ``Supabase Architecture and PostgreSQL Documentation,'' Supabase.com. [Online]. Available: \url{https://supabase.com/docs}. [Accessed: May 2026].
-\bibitem{riverpod} R. Rousselet, ``Riverpod State Management,'' Riverpod.dev. [Online]. Available: \url{https://riverpod.dev/}. [Accessed: May 2026].
-\bibitem{realtime} J. Doe and A. Smith, ``Real-time tracking systems in emergency response,'' \textit{Journal of Public Safety}, vol. 12, no. 3, pp. 45--56, 2023.
-\bibitem{egov} K. Rahman, ``Digitization of Law Enforcement in Developing Nations,'' \textit{International Conference on E-Governance}, Dhaka, 2022.
-\bibitem{cleanarch} M. Fowler, ``Clean Architecture in Mobile Applications,'' \textit{IEEE Software}, vol. 35, no. 2, pp. 12--16, 2021.
-\bibitem{rls} PostgreSQL Global Development Group, ``Row Security Policies,'' Postgresql.org. [Online]. Available: \url{https://www.postgresql.org/docs/current/ddl-rowsecurity.html}. [Accessed: May 2026].
-\bibitem{crossplat} S. Ahmed, ``Evaluating Cross-Platform Frameworks: React Native vs. Flutter,'' \textit{IEEE Access}, vol. 9, pp. 1120--1135, 2021.
-\bibitem{agile} L. Chen, ``Applying Agile Methodologies in App Development,'' \textit{Agile Tech Journal}, vol. 5, no. 1, pp. 22--30, 2023.
-\bibitem{gorouter} Google Dev, ``GoRouter declarative routing for Flutter,'' Pub.dev. [Online]. Available: \url{https://pub.dev/packages/go_router}. [Accessed: May 2026].
-\bibitem{sos} N. Gupta, ``Impact of Mobile SOS Systems on Crime Rates,'' \textit{Global Security Review}, vol. 8, pp. 101--115, 2024.
-\bibitem{sockets} H. Lee, ``Websockets vs HTTP for Real-Time Mobile Apps,'' \textit{Journal of Network Computing}, vol. 14, pp. 88--94, 2022.
-\bibitem{maps} Flutter Community, ``flutter\_map documentation,'' Pub.dev. [Online]. Available: \url{https://pub.dev/packages/flutter_map}. [Accessed: May 2026].
-\bibitem{baas} A. Turing, ``Data Validation and Security in BaaS,'' \textit{Software Eng. Today}, vol. 11, no. 4, pp. 55--60, 2023.
-\bibitem{smp} Bangladesh Police, ``Annual Crime Statistics Report,'' Bangladesh Police Official Publications, 2024.
+\bibitem{flutter} Google, `Flutter Documentation,'' Flutter.dev. [Online]. Available: \url{https://flutter.dev/docs}. [Accessed: May 2026].
+\bibitem{supabase} Supabase Inc., `Supabase Architecture and PostgreSQL Documentation,'' Supabase.com. [Online]. Available: \url{https://supabase.com/docs}. [Accessed: May 2026].
+\bibitem{riverpod} R. Rousselet, `Riverpod State Management,'' Riverpod.dev. [Online]. Available: \url{https://riverpod.dev/}. [Accessed: May 2026].
+\bibitem{realtime} M. A. Ahad \textit{et al.}, `Internet of Things for Emergency Management: A Systematic Review,'' \textit{IEEE Sensors Journal}, vol. 21, no. 14, pp. 15712--15728, 2021.
+\bibitem{egov} R. Mishra and A. Sharma, `IoT-Driven Disaster Surveillance and Early Warning Mechanisms,'' \textit{IEEE Access}, vol. 9, pp. 48950--48962, 2021.
+\bibitem{cleanarch} R. C. Martin, \textit{Clean Architecture: A Craftsman's Guide to Software Structure and Design}. Boston, MA, USA: Prentice Hall, 2017.
+\bibitem{rls} PostgreSQL Global Development Group, `Row Security Policies,'' Postgresql.org. [Online]. Available: \url{https://www.postgresql.org/docs/current/ddl-rowsecurity.html}. [Accessed: May 2026].
+\bibitem{crossplat} A. Biørn-Hansen, T. A. Majchrzak, and T. M. Grønli, `Progressive Web Apps: The Possible Web-native Unifier for Mobile Development,'' \textit{Proceedings of the 14th International Conference on Web Information Systems and Technologies}, 2018.
+\bibitem{agile} K. Beck \textit{et al.}, `Manifesto for Agile Software Development,'' Agilealliance.org. [Online]. Available: \url{https://agilemanifesto.org/}. [Accessed: May 2026].
+\bibitem{gorouter} Google Dev, `GoRouter declarative routing for Flutter,'' Pub.dev. [Online]. Available: \url{https://pub.dev/packages/go_router}. [Accessed: May 2026].
+\bibitem{sos} N. Gupta \textit{et al.}, `Smartphone-Based Alert and Assistance Framework for Emergencies,'' \textit{Int. J. Innovative Technol. Exploring Eng.}, vol. 8, no. 6, pp. 1605--1609, 2019.
+\bibitem{sockets} I. Fette and A. Melnikov, `The WebSocket Protocol,'' \textit{IETF RFC 6455}, 2011.
+\bibitem{maps} Flutter Community, `flutter\_map documentation,'' Pub.dev. [Online]. Available: \url{https://pub.dev/packages/flutter_map}. [Accessed: May 2026].
+\bibitem{baas} Y. Zhang \textit{et al.}, `Disaster Response via Mobile Crowd Sensing: A Survey,'' \textit{IEEE Trans. Human-Mach. Syst.}, vol. 49, no. 4, pp. 337--348, 2019.
+\bibitem{smp} Bangladesh Police, `Annual Crime Statistics Report,'' Bangladesh Police Official Publications, 2024.
 \end{thebibliography}
 % -------------------------
 % APPENDICES
@@ -1566,7 +1443,7 @@ USING (
 \end{verbatim}
 \end{footnotesize}
 \vspace{1cm}
-\section*{Snippet 2: SOSNotifier --- SOS State Management (Dart)}
+\section*{Snippet 2: SOSNotifier - SOS State Management (Dart)}
 This snippet is taken directly from \texttt{lib/providers/sos\_provider.dart} and shows the actual \texttt{SOSNotifier} class that manages the SOS lifecycle.
 \begin{footnotesize}
 \begin{verbatim}
@@ -1665,7 +1542,7 @@ redirect: (context, state) {
 \end{footnotesize}
 \vspace{1cm}
 \section*{Snippet 4: Offline Sync Service (Dart)}
-From \texttt{lib/data/services/sync\_service.dart} --- outbox pattern for offline complaint queuing.
+From \texttt{lib/data/services/sync\_service.dart} - outbox pattern for offline complaint queuing.
 \begin{footnotesize}
 \begin{verbatim}
 Future<void> addToOutbox(Map<String, dynamic> complaintData) async {
@@ -1693,7 +1570,7 @@ Future<void> syncOfflineOutbox() async {
 \end{footnotesize}
 \vspace{1cm}
 \section*{Snippet 5: Real-time Notification Subscription (Dart)}
-From \texttt{lib/providers/notification\_provider.dart} --- Supabase Realtime Postgres change listener.
+From \texttt{lib/providers/notification\_provider.dart} - Supabase Realtime Postgres change listener.
 \begin{footnotesize}
 \begin{verbatim}
 class NotificationNotifier
@@ -1738,7 +1615,7 @@ class NotificationNotifier
 \end{footnotesize}
 \vspace{1cm}
 \section*{Snippet 6: Application Entry Point (Dart)}
-From \texttt{lib/main.dart} --- Supabase initialization with PKCE auth flow.
+From \texttt{lib/main.dart} - Supabase initialization with PKCE auth flow.
 \begin{footnotesize}
 \begin{verbatim}
 void main() async {
@@ -1773,16 +1650,16 @@ void main() async {
 \chapter{User\'s Guide}
 \section*{Installation and Setup}
 \begin{enumerate}
-    \item \textbf{Download:} Obtain the ShieldX \texttt{.apk} file from the official Bangladesh Police web portal.
-    \item \textbf{Install:} Tap the downloaded file. Allow installation from ``Unknown Sources'' if prompted.
-    \item \textbf{Permissions:} Upon first launch, grant the application permissions for Camera, Storage, and Precise Location.
+    \item[] \textbf{Download:} Obtain the ShieldX \texttt{.apk} file from the official Bangladesh Police web portal.
+    \item[] \textbf{Install:} Tap the downloaded file. Allow installation from ``Unknown Sources'' if prompted.
+    \item[] \textbf{Permissions:} Upon first launch, grant the application permissions for Camera, Storage, and Precise Location.
 \end{enumerate}
 \section*{Login and Registration}
 \begin{enumerate}
-    \item \textbf{Register:} Open the app and tap ``Create an Account.'' Enter your email and password. You will be signed in automatically.
-    \item \textbf{Complete Profile:} The app redirects to the registration form where you must enter your full name, phone number, NID number, profession, and addresses.
-    \item \textbf{Verification:} An OTP will be sent via email or SMS. Enter the 6-digit code to verify your account. Alternatively, the admin can verify your account from the admin panel.
-    \item \textbf{Login:} Enter your email and password to access the dashboard. The app supports auto-login via saved credentials.
+    \item[] \textbf{Register:} Open the app and tap ``Create an Account.'' Enter your email and password. You will be signed in automatically.
+    \item[] \textbf{Complete Profile:} The app redirects to the registration form where you must enter your full name, phone number, NID number, profession, and addresses.
+    \item[] \textbf{Verification:} An OTP will be sent via email or SMS. Enter the 6-digit code to verify your account. Alternatively, the admin can verify your account from the admin panel.
+    \item[] \textbf{Login:} Enter your email and password to access the dashboard. The app supports auto-login via saved credentials.
 \end{enumerate}
 \section*{Usage Instructions}
 \textbf{Filing a Complaint:}
@@ -1811,7 +1688,7 @@ void main() async {
     \item Filter complaints by status or category using the filter options.
 \end{itemize}
 \section*{Admin Guide}
-\begin{itemize}
+\begin{itemize}[label={}, itemsep=1em]
     \item \textbf{Dashboard:} View real-time statistics, charts, monthly trends, and active SOS emergencies on the map.
     \item \textbf{Complaints:} Browse, search, filter, and manage all complaints. Update status, assign officers, and add notes.
     \item \textbf{Users:} Verify new users, block malicious accounts, promote users to admin role.

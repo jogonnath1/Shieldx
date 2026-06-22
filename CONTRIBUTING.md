@@ -38,7 +38,7 @@ The process described here has several goals:
 
 ## 🛠️ Development Setup
 
-To set up your development environment, please follow the setup instructions provided in the `README.md` and `docs/PART_14_Setup_Guide.md` files.
+To set up your development environment, please follow the setup instructions provided in the `README.md` and `Project Documentation/PART_14_Setup_Guide.md` files.
 
 ## 📝 Commit Messages
 
