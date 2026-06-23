@@ -89,6 +89,14 @@ Barrel file exporting all common reusable widget components:
 
 ---
 
+### 10.1.6 `EvidenceItemWidget`
+
+**File**: `lib/common/presentation/widgets/common/evidence_item_widget.dart`
+
+A reusable widget to display a single piece of evidence (image or file) in grids. Includes remove functionality and upload progress indication.
+
+---
+
 ## 10.2 User Widgets
 
 Located in `lib/common/presentation/widgets/user/`.
@@ -130,6 +138,8 @@ Form step widget — Step 3.
 
 ### 10.2.4 `FilterBottomSheetContent`
 
+**File**: `lib/common/presentation/widgets/user/filter_bottom_sheet_content.dart`
+
 A draggable bottom sheet for filtering the MyComplaintsScreen:
 
 - Status filter chips (multiple-select)
@@ -141,11 +151,15 @@ A draggable bottom sheet for filtering the MyComplaintsScreen:
 
 ### 10.2.5 `FilterChipWidget`
 
+**File**: `lib/common/presentation/widgets/user/filter_chip_widget.dart`
+
 A simple `FilterChip` wrapper with `AppColors` styling — used in both the filter sheet and the admin complaints screen.
 
 ---
 
 ### 10.2.6 `StationMarkerWidget`
+
+**File**: `lib/common/presentation/widgets/user/station_marker_widget.dart`
 
 A custom `flutter_map` marker for police station pins.
 
@@ -155,6 +169,8 @@ Displays a shield icon with the station name below. When selected (nearest stati
 
 ### 10.2.7 `GpsUserLocationMarker`
 
+**File**: `lib/common/presentation/widgets/user/gps_user_location_marker.dart`
+
 A custom `flutter_map` marker for the user's current GPS position.
 
 Shows a pulsing blue dot (similar to Google Maps) with an accuracy radius circle.
@@ -163,11 +179,15 @@ Shows a pulsing blue dot (similar to Google Maps) with an accuracy radius circle
 
 ### 10.2.8 `UserLocationHighlightMarker`
 
+**File**: `lib/common/presentation/widgets/user/user_location_highlight_marker.dart`
+
 A special animated marker that places a pulsing ring around the closest station to the user, helping them identify which station to report to.
 
 ---
 
 ### 10.2.9 `QuickActionCard`
+
+**File**: `lib/common/presentation/widgets/user/quick_action_card.dart`
 
 A tappable card used in the HomeScreen quick actions grid.
 
@@ -177,6 +197,8 @@ Props: `icon`, `label`, `color`, `onTap`.
 
 ### 10.2.10 `RecentComplaintCard`
 
+**File**: `lib/common/presentation/widgets/user/recent_complaint_card.dart`
+
 A compact complaint summary card for the HomeScreen "Recent Complaints" section.
 
 Shows: case ID, category icon, status badge, and relative time.
@@ -185,6 +207,8 @@ Shows: case ID, category icon, status badge, and relative time.
 
 ### 10.2.11 `DeletedComplaintCard`
 
+**File**: `lib/common/presentation/widgets/user/deleted_complaint_card.dart`
+
 A complaint card variant for the "Deleted" tab in MyComplaintsScreen.
 
 Shows: deletion date, restore button, permanent-delete button.
@@ -192,6 +216,8 @@ Shows: deletion date, restore button, permanent-delete button.
 ---
 
 ### 10.2.12 `DeletedNotificationCard`
+
+**File**: `lib/common/presentation/widgets/user/deleted_notification_card.dart`
 
 A notification card variant for the trash view in NotificationsScreen.
 

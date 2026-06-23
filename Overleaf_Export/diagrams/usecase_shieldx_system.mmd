@@ -1,0 +1,74 @@
+%% UML 2.5 Use Case Diagram
+flowchart LR
+    %% Stereotype style for actors (UML standard text-based notation)
+    Citizen["«actor»\nCitizen"]
+    Admin["«actor»\nAdmin"]
+
+    subgraph System ["ShieldX System"]
+        direction TB
+        %% Use cases (represented as stadium/ellipse shapes)
+        UC_Reg(["Register"])
+        UC_Login(["Login"])
+        UC_Submit(["Submit Complaint"])
+        UC_Upload(["Upload Evidence"])
+        UC_Track(["Track Status"])
+        UC_SOS(["Trigger SOS"])
+        UC_Safe(["Mark Safe"])
+        UC_Stations(["View Stations"])
+        UC_Chat(["Chat"])
+        UC_Edit(["Edit Profile"])
+        UC_Notif(["View Notifications"])
+        
+        UA_Dash(["View Dashboard"])
+        UA_ManageC(["Manage Complaints"])
+        UA_Update(["Update Status"])
+        UA_Assign(["Assign Officer"])
+        UA_Filter(["Filter by Thana"])
+        UA_Monitor(["Monitor SOS"])
+        UA_Users(["Manage Users"])
+        UA_Officers(["Manage Officers"])
+        UA_Stations(["Manage Stations"])
+
+        %% Invisible links to force a 3-column layout (optimizes height-to-width ratio)
+        UC_Reg ~~~ UC_Login ~~~ UC_Submit
+        UC_Upload ~~~ UC_Track ~~~ UC_SOS
+        UC_Safe ~~~ UC_Stations ~~~ UC_Chat
+        UC_Edit ~~~ UC_Notif ~~~ UA_Dash
+        UA_ManageC ~~~ UA_Update ~~~ UA_Assign
+        UA_Filter ~~~ UA_Monitor ~~~ UA_Users
+        UA_Officers ~~~ UA_Stations
+    end
+
+    %% Actor associations (Solid lines without arrowheads)
+    Citizen --- UC_Reg
+    Citizen --- UC_Login
+    Citizen --- UC_Submit
+    Citizen --- UC_Track
+    Citizen --- UC_SOS
+    Citizen --- UC_Stations
+    Citizen --- UC_Chat
+    Citizen --- UC_Edit
+    Citizen --- UC_Notif
+    
+    Admin --- UC_Login
+    Admin --- UA_Dash
+    Admin --- UA_ManageC
+    Admin --- UA_Monitor
+    Admin --- UA_Users
+    Admin --- UA_Officers
+    Admin --- UA_Stations
+    Admin --- UC_Chat
+    Admin --- UC_Notif
+
+    %% UML relationships (Dashed arrows with stereotype labels)
+    UC_Submit -.->|"<<include>>"| UC_Upload
+    UC_Safe -.->|"<<extend>>"| UC_SOS
+    UA_ManageC -.->|"<<include>>"| UA_Update
+    UA_ManageC -.->|"<<include>>"| UA_Assign
+    UA_ManageC -.->|"<<include>>"| UA_Filter
+
+    %% Styling (Clean, print-ready black-and-white theme)
+    classDef default fill:#ffffff,stroke:#333333,stroke-width:1.5px,color:#000000;
+    classDef actor fill:#ffffff,stroke:#333333,stroke-width:2px,color:#000000;
+    class Citizen,Admin actor;
+    style System fill:#ffffff,stroke:#333333,stroke-width:2px,color:#000000;

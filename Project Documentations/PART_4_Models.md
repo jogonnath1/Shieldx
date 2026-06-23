@@ -228,4 +228,19 @@ This is a large static-data model containing data for all 6 SMP police stations.
 
 ---
 
+## 4.9 `Police Stations Map Models`
+
+Contains auxiliary models used for the interactive police station map and patrol routing.
+
+**File**: `lib/user/presentation/models/police_stations_map_models.dart`
+
+### Key Classes
+
+*   `CityLandmark`: Represents a notable location in the city with a `name`, `location` (LatLng), and `PlaceType` (e.g., hospital, education, transport).
+*   `HotspotCluster`: A clustering model used to aggregate nearby complaints into crime hotspots, calculating the geographic center and weight.
+*   `PatrolRoute`: Represents an automated or suggested patrol route for officers, including the starting `station`, `hotspotCenter`, threat context, and a list of `routePoints` for map rendering.
+*   `PlaceType`: An enum categorizing landmarks.
+
+---
+
 *Next: [Part 5 — Data Services](PART_5_Services.md)*

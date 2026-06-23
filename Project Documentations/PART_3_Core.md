@@ -233,4 +233,12 @@ Defines the `MaterialThemeData` for the app (dark mode):
 
 ---
 
+## 3.9 `common/core/utils/date_time_extensions.dart`
+
+**File**: `lib/common/core/utils/date_time_extensions.dart`
+
+Provides extensions on `DateTime` for easy formatting (e.g. `TimeAgo` string representations, formatted date strings) used in UI components.
+
+---
+
 *Next: [Part 4 — Data Models](PART_4_Models.md)*

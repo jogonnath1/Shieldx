@@ -439,148 +439,23 @@ Testing & flutter\_test & SDK & Widget \& unit testing \\
 \end{itemize}
 \section{UML Diagram}
 \textit{Note: The following diagrams are represented in Mermaid syntax, a standardized text-based diagramming tool. They accurately describe the architectural flow of ShieldX.}
-\subsection{UML Activity Diagram}
-This diagram illustrates the process flow for a citizen submitting a complaint.
+\subsection{UML Activity Diagrams}
+These diagrams illustrate the core process flows of the ShieldX application, including the citizen complaint submission, emergency SOS triggering, and the admin complaint lifecycle management.
 \begin{figure}[H]
-\centering
-\begin{tikzpicture}[scale=0.85, transform shape,
-    node distance=0.8cm and 1.0cm,
-    every node/.style={font=\small\sffamily},
-    start/.style={circle, fill=black, minimum width=0.5cm, inner sep=0pt},
-    end/.style={circle, draw, thick, minimum width=0.5cm, inner sep=0pt, path picture={\fill[black] (path picture bounding box.center) circle (0.15cm);}},
-    process/.style={draw, rounded corners=8pt, minimum width=3.2cm, minimum height=0.7cm, align=center, fill=white, thick},
-    decision/.style={draw, diamond, aspect=1.8, minimum width=2.5cm, minimum height=0.8cm, align=center, fill=white, thick},
-    arrow/.style={-{Latex[scale=1.0]}, thick}
-]
-    \node (start) [start] {};
-    \node (merge1) [decision, aspect=1, minimum width=0.6cm, minimum height=0.6cm, below=of start, node distance=0.5cm] {};
-    \node (login) [process, below=of merge1, node distance=0.5cm] {Log in via Email\\+ Password};
-    \node (auth) [decision, below=of login] {Auth?};
-    \node (showerr) [process, right=of auth, xshift=0.5cm] {Show Login Error};
-    \node (profile) [decision, below=of auth, node distance=1.2cm] {Profile\\Complete?};
-    \node (redirect) [process, right=of profile, xshift=0.5cm] {Redirect to /register};
-    \node (submit) [process, below=of profile, node distance=1.2cm] {Select ``Submit Complaint''};
-    \node (fill) [process, below=of submit] {Fill Form: Category,\\Description};
-    \node (location) [process, below=of fill] {Pick Location on Map};
-    \node (upload) [process, below=of location] {Upload Photo Evidence};
-    \node (online) [decision, below=of upload] {Online?};
-    \node (offline) [process, left=of online, xshift=-0.5cm] {Save to Offline Outbox};
-    \node (endoffline) [end, below=of offline] {};
-    \node (supabase) [process, below=of online, node distance=1.2cm] {Submit to Supabase};
-    \node (realtime) [process, below=of supabase] {Fire Realtime\\Stream Provider};
-    \node (admin_dash) [process, below=of realtime] {Update Admin\\Dashboard};
-    \node (assign) [process, below=of admin_dash] {Assign Officer};
-    \node (status) [process, below=of assign] {Insert Status History};
-    \node (notify) [process, below=of status] {Notify Citizen};
-    \node (receive) [process, below=of notify] {View Notification};
-    \node (end) [end, below=of receive] {};
-    \draw [arrow] (start) -- (merge1);
-    \draw [arrow] (merge1) -- (login);
-    \draw [arrow] (login) -- (auth);
-    \draw [arrow] (auth) -- node[anchor=south] {[No]} (showerr);
-    \draw [arrow] (showerr.east) -- ++(0.5,0) |- ($(merge1.east) + (0, -3pt)$);
-    \draw [arrow] (auth) -- node[anchor=east] {[Yes]} (profile);
-    \draw [arrow] (profile) -- node[anchor=south] {[No]} (redirect);
-    \draw [arrow] (redirect.east) -- ++(1.0,0) |- ($(merge1.east) + (0, 3pt)$);
-    \draw [arrow] (profile) -- node[anchor=east] {[Yes]} (submit);
-    \draw [arrow] (submit) -- (fill);
-    \draw [arrow] (fill) -- (location);
-    \draw [arrow] (location) -- (upload);
-    \draw [arrow] (upload) -- (online);
-    \draw [arrow] (online) -- node[anchor=south] {[No]} (offline);
-    \draw [arrow] (offline) -- (endoffline);
-    \draw [arrow] (online) -- node[anchor=east] {[Yes]} (supabase);
-    \draw [arrow] (supabase) -- (realtime);
-    \draw [arrow] (realtime) -- (admin_dash);
-    \draw [arrow] (admin_dash) -- (assign);
-    \draw [arrow] (assign) -- (status);
-    \draw [arrow] (status) -- (notify);
-    \draw [arrow] (notify) -- (receive);
-    \draw [arrow] (receive) -- (end);
-\end{tikzpicture}
-\caption{Activity Diagram - Complaint Submission Process}
-\label{fig:activity-diagram}
+    \centering
+    % IMPORTANT: Upload the image you provided to your Overleaf project
+    % and rename it to 'activity_diagrams.png', or change the filename below.
+    \includegraphics[width=\textwidth]{activity_diagrams.png} 
+    \caption{Activity Diagrams: (1) Submit Crime Complaint, (2) Trigger SOS Emergency, and (3) Manage Complaint Lifecycle Workflows}
+    \label{fig:activity-diagrams}
 \end{figure}
 \subsection{UML Use Case Diagram}
 This diagram outlines the interactions between the primary actors and the system.
 \begin{figure}[H]
 \centering
-\resizebox{\textwidth}{!}{
-\begin{tikzpicture}[
-    every node/.style={font=\normalsize\sffamily},
-    usecase/.style={draw, ellipse, minimum width=2.4cm, minimum height=1.2cm, align=center, fill=white, thick},
-    dashedcase/.style={draw, dashed, ellipse, minimum width=2.4cm, minimum height=1.2cm, align=center, fill=white, thick},
-    actor/.style={draw, rectangle, rounded corners=3pt, minimum width=1.8cm, minimum height=0.8cm, align=center, fill=gray!10, font=\bfseries\sffamily, thick},
-    arrow/.style={-{Latex[scale=1.0]}, thick},
-    dashedarrow/.style={-{Latex[scale=1.0]}, dashed, thick},
-    line/.style={thick}
-]
-    % Actors
-    \node (citizen) [actor] at (-6.5, 0) {\small$\ll$actor$\gg$\\[2pt]Citizen};
-    \node (admin) [actor] at (6.5, 0) {\small$\ll$actor$\gg$\\[2pt]Admin};
-    
-    % System boundary
-    \node[draw, thick, minimum width=10.5cm, minimum height=19.0cm] (system) at (0, -1.0) {};
-    \node[font=\Large\bfseries\sffamily] at (0, 8.0) {ShieldX System};
-    
-    % Shared Use Cases (Center)
-    \node (uc_login)   [usecase] at (0, 7.0) {Login};
-    \node (uc_chat)    [usecase] at (0, 5.2) {Chat};
-    \node (uc_notif)   [usecase] at (0, 3.4) {View \\ Notifications};
-    
-    \node (uc_update)  [usecase] at (0, -0.5) {Update \\ Status};
-    \node (uc_assign)  [usecase] at (0, -2.0) {Assign \\ Officer};
-    \node (uc_filter)  [usecase] at (0, -3.5) {Filter \\ by Thana};
-    
-    % Citizen Use Cases (Left Column)
-    \node (uc_reg)     [usecase] at (-3.6, 0.5) {Register};
-    \node (uc_submit)  [usecase] at (-3.6, -1.0) {Submit \\ Complaint};
-    \node (uc_sos)     [usecase] at (-3.6, -3.0) {Trigger \\ SOS};
-    \node (uc_track)   [usecase] at (-3.6, -4.5) {Track \\ Status};
-    \node (uc_stations)[usecase] at (-3.6, -6.0) {View \\ Stations};
-    \node (uc_edit)    [usecase] at (-3.6, -7.5) {Edit \\ Profile};
-    \node (uc_safe)    [usecase] at (-3.6, -9.0) {Mark \\ Safe};
-    
-    % Admin Use Cases (Right Column)
-    \node (ua_dash)    [usecase] at (3.6, 0.5) {View \\ Dashboard};
-    \node (ua_manage)  [usecase] at (3.6, -1.0) {Manage \\ Complaints};
-    \node (ua_monitor) [usecase] at (3.6, -3.0) {Monitor \\ SOS};
-    \node (ua_users)   [usecase] at (3.6, -4.5) {Manage \\ Users};
-    \node (ua_officers)[usecase] at (3.6, -6.0) {Manage \\ Officers};
-    \node (ua_stations)[usecase] at (3.6, -7.5) {Manage \\ Stations};
-    
-    % Connections - Shared
-    \draw [line] (citizen) -- (uc_login);
-    \draw [line] (admin) -- (uc_login);
-    \draw [line] (citizen) -- (uc_chat);
-    \draw [line] (admin) -- (uc_chat);
-    \draw [line] (citizen) -- (uc_notif);
-    \draw [line] (admin) -- (uc_notif);
-    
-    % Connections - Citizen
-    \draw [line] (citizen) -- (uc_reg);
-    \draw [line] (citizen) -- (uc_submit);
-    \draw [line] (citizen) -- (uc_sos);
-    \draw [line] (citizen) -- (uc_track);
-    \draw [line] (citizen) -- (uc_stations);
-    \draw [line] (citizen) -- (uc_edit);
-    \draw [line] (citizen) -- (uc_safe);
-    
-    % Connections - Admin
-    \draw [line] (admin) -- (ua_dash);
-    \draw [line] (admin) -- (ua_manage);
-    \draw [line] (admin) -- (ua_monitor);
-    \draw [line] (admin) -- (ua_users);
-    \draw [line] (admin) -- (ua_officers);
-    \draw [line] (admin) -- (ua_stations);
-    
-    % Include / Extend Relationships
-    \draw [dashedarrow] (ua_manage) -- node[above, sloped, font=\footnotesize] {$\ll$include$\gg$} (uc_update);
-    \draw [dashedarrow] (ua_manage) -- node[above, sloped, font=\footnotesize] {$\ll$include$\gg$} (uc_assign);
-    \draw [dashedarrow] (uc_filter) -- node[above, sloped, font=\footnotesize] {$\ll$extend$\gg$} (ua_manage);
-    \draw [dashedarrow] (uc_sos) to[bend right=40] node[right, font=\footnotesize] {$\ll$extend$\gg$} (uc_submit);
-    
-\end{tikzpicture}}
+    % IMPORTANT: Upload the use case image you provided to your Overleaf project
+    % and rename it to 'use_case_diagram.png', or change the filename below.
+    \includegraphics[width=0.95\textwidth]{use_case_diagram.png}
 \caption{Use Case Diagram - ShieldX System}
 \label{fig:usecase-diagram}
 \end{figure}
@@ -588,155 +463,7 @@ This diagram outlines the interactions between the primary actors and the system
 This diagram defines the structural data models of the application, matching the actual Dart classes in \texttt{lib/data/models/}.
 \begin{figure}[H]
 \centering
-\resizebox{\textwidth}{!}{
-\begin{tikzpicture}[xscale=1.75, yscale=1.4,
-    every node/.style={font=\small\sffamily},
-    classbox/.style={draw, rectangle, fill=white, thick, align=left, inner sep=0pt, font=\small\sffamily}
-]
-    % Entities (Row 1)
-    \node (profiles) [classbox] at (-5.0, 3.5) {
-        \begin{tabular}{l}
-        \multicolumn{1}{c}{\textbf{ProfileModel}} \\ \hline
-        - id: String \\
-        - name: String? \\
-        - phone: String? \\
-        - email: String? \\
-        - nid: String? \\
-        - role: String? \\
-        - isVerified: bool \\
-        - isBlocked: bool \\ \hline
-        + fromMap(Map) \\
-        + toMap(): Map \\
-        + copyWith()
-        \end{tabular}
-    };
-    
-    \node (complaints) [classbox] at (0.0, 3.5) {
-        \begin{tabular}{l}
-        \multicolumn{1}{c}{\textbf{ComplaintModel}} \\ \hline
-        - id: String \\
-        - userId: String? \\
-        - crimeCategory: String? \\
-        - description: String? \\
-        - latitude: double? \\
-        - longitude: double? \\
-        - status: String \\
-        - isAnonymous: bool \\
-        - policeStation: String? \\
-        - assignedOfficerId: String? \\
-        - evidenceUrls: List \\ \hline
-        + fromMap(Map) \\
-        + toInsertMap(): Map \\
-        + copyWith()
-        \end{tabular}
-    };
-    
-    \node (emergencies) [classbox] at (5.0, 3.5) {
-        \begin{tabular}{l}
-        \multicolumn{1}{c}{\textbf{EmergencyModel}} \\ \hline
-        - id: String \\
-        - userId: String \\
-        - latitude: double \\
-        - longitude: double \\
-        - status: String \\
-        - createdAt: DateTime \\
-        - resolvedAt: DateTime? \\
-        - resolvedBy: String? \\ \hline
-        + fromMap(Map) \\
-        + toMap(): Map \\
-        + copyWith()
-        \end{tabular}
-    };
-
-    % Entities (Row 2)
-    \node (notifications) [classbox] at (-5.0, -2.0) {
-        \begin{tabular}{l}
-        \multicolumn{1}{c}{\textbf{NotificationModel}} \\ \hline
-        - id: String \\
-        - userId: String \\
-        - title: String \\
-        - message: String \\
-        - type: String \\
-        - relatedId: String? \\
-        - isRead: bool \\
-        - createdAt: DateTime \\ \hline
-        + fromJson(Map) \\
-        + toJson(): Map
-        \end{tabular}
-    };
-
-    \node (status) [classbox] at (-1.5, -2.0) {
-        \begin{tabular}{l}
-        \multicolumn{1}{c}{\textbf{StatusHistoryModel}} \\ \hline
-        - id: String \\
-        - complaintId: String? \\
-        - status: String? \\
-        - note: String? \\
-        - changedBy: String? \\
-        - changedAt: DateTime? \\
-        - changedByName: String? \\ \hline
-        + fromMap(Map)
-        \end{tabular}
-    };
-
-    \node (messages) [classbox] at (1.5, -2.0) {
-        \begin{tabular}{l}
-        \multicolumn{1}{c}{\textbf{MessageModel}} \\ \hline
-        - id: String \\
-        - complaintId: String? \\
-        - senderId: String? \\
-        - senderRole: String? \\
-        - content: String \\
-        - isRead: bool \\
-        - sentAt: DateTime? \\
-        - senderName: String? \\ \hline
-        + fromMap(Map)
-        \end{tabular}
-    };
-
-    \node (officers) [classbox] at (5.0, -2.0) {
-        \begin{tabular}{l}
-        \multicolumn{1}{c}{\textbf{OfficerModel}} \\ \hline
-        - id: String \\
-        - userId: String? \\
-        - name: String? \\
-        - rank: String? \\
-        - station: String? \\
-        - contact: String? \\
-        - isActive: bool \\ \hline
-        + fromMap(Map) \\
-        + toMap(): Map
-        \end{tabular}
-    };
-
-    % Connections
-    \draw [thick] (profiles) -- node[above, font=\footnotesize, fill=white, inner sep=1pt] {submits} 
-                                 node[near start, above, font=\footnotesize, fill=white, inner sep=1pt] {1} 
-                                 node[near end, above, font=\footnotesize, fill=white, inner sep=1pt] {1..*} (complaints);
-                                 
-    \draw [thick] (complaints) -- node[above, font=\footnotesize, fill=white, inner sep=1pt, sloped] {assigned} 
-                                  node[near start, above, font=\footnotesize, fill=white, inner sep=1pt] {*} 
-                                  node[near end, above, font=\footnotesize, fill=white, inner sep=1pt] {0..1} (officers);
-                                 
-    \draw [thick] (profiles) -- node[left, font=\footnotesize, fill=white, inner sep=1pt] {receives} 
-                                 node[near start, left, font=\footnotesize, fill=white, inner sep=1pt] {1} 
-                                 node[near end, left, font=\footnotesize, fill=white, inner sep=1pt] {1..*} (notifications);
-                                 
-    \draw [thick] (profiles.north) -- ([yshift=1.0cm]profiles.north) 
-                  -- node[above, font=\footnotesize, fill=white, inner sep=1pt] {triggers} 
-                     node[near start, above, font=\footnotesize, fill=white, inner sep=1pt] {1}
-                     node[near end, above, font=\footnotesize, fill=white, inner sep=1pt] {1..*} ([yshift=1.0cm]emergencies.north) 
-                  -- (emergencies.north);
-                                 
-    \draw [thick] (complaints) -- node[left, font=\footnotesize, fill=white, inner sep=1pt] {tracks} 
-                                  node[near start, left, font=\footnotesize, fill=white, inner sep=1pt] {1} 
-                                  node[near end, left, font=\footnotesize, fill=white, inner sep=1pt] {1..*} (status);
-                                  
-    \draw [thick] (complaints) -- node[right, font=\footnotesize, fill=white, inner sep=1pt] {messages} 
-                                  node[near start, right, font=\footnotesize, fill=white, inner sep=1pt] {1} 
-                                  node[near end, right, font=\footnotesize, fill=white, inner sep=1pt] {1..*} (messages);
-
-\end{tikzpicture}}
+\includegraphics[width=\textwidth]{class_diagram.png}
 \caption{Class Diagram - ShieldX Data Models}
 \label{fig:class-diagram}
 \end{figure}
