@@ -505,82 +505,9 @@ This diagram illustrates the process flow for a citizen submitting a complaint.
 This diagram outlines the interactions between the primary actors and the system.
 \begin{figure}[H]
 \centering
-\resizebox{\textwidth}{!}{
-\begin{tikzpicture}[
-    every node/.style={font=\normalsize\sffamily},
-    usecase/.style={draw, ellipse, minimum width=2.4cm, minimum height=1.2cm, align=center, fill=white, thick},
-    dashedcase/.style={draw, dashed, ellipse, minimum width=2.4cm, minimum height=1.2cm, align=center, fill=white, thick},
-    actor/.style={draw, rectangle, rounded corners=3pt, minimum width=1.8cm, minimum height=0.8cm, align=center, fill=gray!10, font=\bfseries\sffamily, thick},
-    arrow/.style={-{Latex[scale=1.0]}, thick},
-    dashedarrow/.style={-{Latex[scale=1.0]}, dashed, thick},
-    line/.style={thick}
-]
-    % Actors
-    \node (citizen) [actor] at (-6.5, 0) {\small$\ll$actor$\gg$\\[2pt]Citizen};
-    \node (admin) [actor] at (6.5, 0) {\small$\ll$actor$\gg$\\[2pt]Admin};
-    
-    % System boundary
-    \node[draw, thick, minimum width=10.5cm, minimum height=19.0cm] (system) at (0, -1.0) {};
-    \node[font=\Large\bfseries\sffamily] at (0, 8.0) {ShieldX System};
-    
-    % Shared Use Cases (Center)
-    \node (uc_login)   [usecase] at (0, 7.0) {Login};
-    \node (uc_chat)    [usecase] at (0, 5.2) {Chat};
-    \node (uc_notif)   [usecase] at (0, 3.4) {View \\ Notifications};
-    
-    \node (uc_update)  [usecase] at (0, -0.5) {Update \\ Status};
-    \node (uc_assign)  [usecase] at (0, -2.0) {Assign \\ Officer};
-    \node (uc_filter)  [usecase] at (0, -3.5) {Filter \\ by Thana};
-    
-    % Citizen Use Cases (Left Column)
-    \node (uc_reg)     [usecase] at (-3.6, 0.5) {Register};
-    \node (uc_submit)  [usecase] at (-3.6, -1.0) {Submit \\ Complaint};
-    \node (uc_sos)     [usecase] at (-3.6, -3.0) {Trigger \\ SOS};
-    \node (uc_track)   [usecase] at (-3.6, -4.5) {Track \\ Status};
-    \node (uc_stations)[usecase] at (-3.6, -6.0) {View \\ Stations};
-    \node (uc_edit)    [usecase] at (-3.6, -7.5) {Edit \\ Profile};
-    \node (uc_safe)    [usecase] at (-3.6, -9.0) {Mark \\ Safe};
-    
-    % Admin Use Cases (Right Column)
-    \node (ua_dash)    [usecase] at (3.6, 0.5) {View \\ Dashboard};
-    \node (ua_manage)  [usecase] at (3.6, -1.0) {Manage \\ Complaints};
-    \node (ua_monitor) [usecase] at (3.6, -3.0) {Monitor \\ SOS};
-    \node (ua_users)   [usecase] at (3.6, -4.5) {Manage \\ Users};
-    \node (ua_officers)[usecase] at (3.6, -6.0) {Manage \\ Officers};
-    \node (ua_stations)[usecase] at (3.6, -7.5) {Manage \\ Stations};
-    
-    % Connections - Shared
-    \draw [line] (citizen) -- (uc_login);
-    \draw [line] (admin) -- (uc_login);
-    \draw [line] (citizen) -- (uc_chat);
-    \draw [line] (admin) -- (uc_chat);
-    \draw [line] (citizen) -- (uc_notif);
-    \draw [line] (admin) -- (uc_notif);
-    
-    % Connections - Citizen
-    \draw [line] (citizen) -- (uc_reg);
-    \draw [line] (citizen) -- (uc_submit);
-    \draw [line] (citizen) -- (uc_sos);
-    \draw [line] (citizen) -- (uc_track);
-    \draw [line] (citizen) -- (uc_stations);
-    \draw [line] (citizen) -- (uc_edit);
-    \draw [line] (citizen) -- (uc_safe);
-    
-    % Connections - Admin
-    \draw [line] (admin) -- (ua_dash);
-    \draw [line] (admin) -- (ua_manage);
-    \draw [line] (admin) -- (ua_monitor);
-    \draw [line] (admin) -- (ua_users);
-    \draw [line] (admin) -- (ua_officers);
-    \draw [line] (admin) -- (ua_stations);
-    
-    % Include / Extend Relationships
-    \draw [dashedarrow] (ua_manage) -- node[above, sloped, font=\footnotesize] {$\ll$include$\gg$} (uc_update);
-    \draw [dashedarrow] (ua_manage) -- node[above, sloped, font=\footnotesize] {$\ll$include$\gg$} (uc_assign);
-    \draw [dashedarrow] (uc_filter) -- node[above, sloped, font=\footnotesize] {$\ll$extend$\gg$} (ua_manage);
-    \draw [dashedarrow] (uc_sos) to[bend right=40] node[right, font=\footnotesize] {$\ll$extend$\gg$} (uc_submit);
-    
-\end{tikzpicture}}
+    % IMPORTANT: Upload the use case image you provided to your Overleaf project
+    % and rename it to 'use_case_diagram.png', or change the filename below.
+    \includegraphics[width=0.95\textwidth]{use_case_diagram.png}
 \caption{Use Case Diagram - ShieldX System}
 \label{fig:usecase-diagram}
 \end{figure}
@@ -1014,11 +941,11 @@ The Level 1 DFD decomposes the main system into its primary subsystems: Authenti
 % Flows from Citizen
 \draw[arrow] (citizen.east) -- node[above, lbl] {Credentials} (p1.west);
 \draw[arrow] (citizen.south) -- node[left, lbl] {Complaint Data} (p2.north);
-\draw[arrow] (citizen.north) |- ++(0,1.5) -| node[above, lbl, near start] {SOS Trigger} (p3.north);
+\draw[arrow] (citizen.north) -- ++(0,1.5) -| node[above, lbl, near start] {SOS Trigger} (2, 0) -- (p3.west);
 % Flows from Admin
 \draw[arrow] (admin.west) -- node[above, lbl] {View Reports} (p4.east);
-\draw[arrow] (admin.east) -| ++(1.5, 3) |- node[right, lbl, near start] {Verify Users} (p1.east);
-\draw[arrow] (admin.south) |- ++(0,-1.5) -| node[below, lbl, near start] {Update Status} (p2.south);
+\draw[arrow] (admin.east) -- ++(1.5, 0) |- node[right, lbl, near start] {Verify Users} (0, 6.5) -- (p1.north);
+\draw[arrow] (admin.south) -- ++(0,-1.5) -| node[below, lbl, near start] {Update Status} (-6, 0) -- (p2.west);
 % Flows from Processes to Stores
 \draw[arrow] (p1.east) -- node[above, lbl] {Save} (d1.west);
 \draw[arrow] (p2.south) -- node[left, lbl] {Store} (d2.north);

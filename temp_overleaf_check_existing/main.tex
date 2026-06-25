@@ -1,5 +1,5 @@
 % - UNIVERSAL PREAMBLE BLOCK ---
-\documentclass[12pt, a4paper, twoside]{report}
+\documentclass[12pt, a4paper, twoside, openany]{report}
 \usepackage[a4paper, top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm]{geometry}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
@@ -24,6 +24,7 @@
 \usepackage{tikz}
 \usepackage{float}
 \usepackage{setspace} % For line spacing
+\usepackage{lscape} % For landscape contents on vertical pages
 \usepackage{graphicx} % For logo image
 \graphicspath{{./}{./diagrams/rendered/}{./diagrams/}}
 \usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds, calc, matrix, decorations.pathreplacing}
@@ -52,27 +53,33 @@
 % -------------------------
 \begin{titlepage}
     \begin{center}
-        {\fontsize{22}{26}\bfseries\selectfont ShieldX - Crime Reporting Portal Management System}\\[1.5cm]
+        {\fontsize{22}{26}\bfseries\selectfont ShieldX - Crime Reporting Portal Management System}
+        \vfill
         
+        {\Large
+        \renewcommand{\arraystretch}{1.5}
         \begin{tabular}{ll}
             Name: Jogonnath Das Talukder & ID: 0182320012101060 \\
             Name: Shrestta Das & ID: 0182320012101273 \\
             Name: Khandoker Syed Shovon & ID: 0182320012101400
-        \end{tabular}\\[1.5cm]
+        \end{tabular}
+        }
+        \vfill
         
-        \includegraphics[width=3.5cm]{lu_logo.png}\\[0.1cm]
-        {\small\bfseries estd. 2001}\\[0.1cm]
-        {\small\scshape LEADING UNIVERSITY}\\[1.5cm]
+        \includegraphics[width=3.5cm]{lu_logo.png}
+        \vfill
         
-        {\large\selectfont B.Sc. Project in Computer Science and Engineering}\\[0.5cm]
-        {\large\selectfont Supervisor at CSE-LU: Shahriar Arefin Zummon}\\[1.5cm]
+        {\Large\selectfont B.Sc. Project in Computer Science and Engineering}\\[0.5cm]
+        {\Large\selectfont Supervisor at CSE-LU: Shahriar Arefin Zummon}
+        \vfill
         
-        {\large\selectfont Leading University}\\
-        {\large\selectfont Department of Computer Science and Engineering}\\
-        {\large\selectfont Ragibnagar, South Surma, Sylhet-3112}\\
-        {\large\selectfont BANGLADESH}\\[1cm]
+        {\Large\selectfont Leading University}\\
+        {\Large\selectfont Department of Computer Science and Engineering}\\
+        {\Large\selectfont Ragibnagar, South Surma, Sylhet-3112}\\
+        {\Large\selectfont BANGLADESH}
+        \vfill
         
-        {\large\selectfont 24\textsuperscript{th} June 2026}
+        {\Large\selectfont 24\textsuperscript{th} June 2026}
     \end{center}
 \end{titlepage}
 % -------------------------
@@ -102,8 +109,6 @@ Lecturer, Dept. of CSE\\
 Leading University, Sylhet\\
 Date: 24\textsuperscript{th} June 2026
 
-\clearpage
-
 \chapter*{Recommendation Letter from the Head of the Department}
 \addcontentsline{toc}{chapter}{Recommendation Letter from the Head of the Department}
 The project entitled ``ShieldX - Crime Reporting Portal Management System'' submitted by the students,
@@ -126,8 +131,6 @@ Kazi Md. Jahid Hasan\\
 Assistant Professor \& Head (Acting)\\
 Dept. of CSE\\
 Leading University, Sylhet
-
-\clearpage
 
 \chapter*{Certificate of Acceptance of the Project}
 \addcontentsline{toc}{chapter}{Certificate of Acceptance of the Project}
@@ -157,6 +160,7 @@ is, hereby, accepted as the partial fulfillment of the requirements for the awar
 The rapid advancement of technology has fundamentally reshaped how public services are delivered, yet traditional crime reporting mechanisms remain largely archaic, particularly in developing regions. ShieldX is a comprehensive mobile application developed to revolutionize crime reporting and emergency management across Bangladesh~\cite{smp}. Traditional manual reporting systems, such as physical station visits or generic phone calls, are often slow, inefficient, and lack transparency, leading to citizen frustration and delayed police responses. 
 ShieldX addresses this critical gap by providing citizens with a secure, real-time platform to submit complaints, upload photographic evidence, and seamlessly track the status of their reports. For law enforcement administrators and field officers, the system provides a robust, centralized dashboard to manage, assign, and respond to incoming complaints with actionable, data-driven insights. Built using a modern technology stack, incorporating Flutter~\cite{flutter} for a responsive, cross-platform frontend~\cite{crossplat} and Supabase~\cite{supabase} as a powerful backend-as-a-service (BaaS)~\cite{baas}, ShieldX ensures rapid response times and high availability. 
 A cornerstone of the application is its one-tap SOS emergency feature~\cite{sos}, which provides live GPS tracking and immediate distress signaling to the nearest police units. The application adheres to strict security protocols, utilizing National Identity (NID) uniqueness verification during registration and precise Row Level Security (RLS)~\cite{rls} to ensure data integrity and user privacy. Ultimately, this project demonstrates the successful integration of modern mobile application architectures to improve public safety, reduce emergency response latency, and foster greater transparency between citizens and law enforcement agencies.
+
 \vspace{0.5cm}
 \noindent\textbf{Keywords:} Crime Reporting, Flutter, Supabase, Real-time tracking, Emergency Management, GPS Analytics, Mobile Application, Public Safety.
 \tableofcontents
@@ -427,44 +431,56 @@ Testing & flutter\_test & SDK & Widget \& unit testing \\
 \textit{Note: The following diagrams are represented in Mermaid syntax, a standardized text-based diagramming tool. They accurately describe the architectural flow of ShieldX.}
 \subsection{UML Activity Diagrams}
 These diagrams illustrate the core process flows of the ShieldX application, including the citizen complaint submission, emergency SOS triggering, and the admin complaint lifecycle management.
+\begin{landscape}
 \begin{figure}[H]
     \centering
     % IMPORTANT: Upload the image you provided to your Overleaf project
     % and rename it to 'activity_diagrams.png', or change the filename below.
-    \includegraphics[width=\textwidth]{activity_diagrams.png} 
+    \vspace*{-1cm}
+    \makebox[\textheight][c]{\includegraphics[width=0.95\paperheight,height=0.85\paperwidth,keepaspectratio]{activity_diagrams.png}}
     \caption{Activity Diagrams: (1) Submit Crime Complaint, (2) Trigger SOS Emergency, and (3) Manage Complaint Lifecycle Workflows}
     \label{fig:activity-diagrams}
+    \vspace*{-3cm}
 \end{figure}
+\end{landscape}
 \subsection{UML Use Case Diagram}
 This diagram outlines the interactions between the primary actors and the system.
 \begin{figure}[H]
 \centering
     % IMPORTANT: Upload the use case image you provided to your Overleaf project
     % and rename it to 'use_case_diagram.png', or change the filename below.
-    \includegraphics[width=0.95\textwidth]{use_case_diagram.png}
+    \includegraphics[width=\textwidth]{use_case_diagram.png}
 \caption{Use Case Diagram - ShieldX System}
 \label{fig:usecase-diagram}
 \end{figure}
 \subsection{UML Class Diagram}
 This diagram defines the structural data models of the application, matching the actual Dart classes in \texttt{lib/data/models/}.
+\begin{landscape}
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{class_diagram.png}
+\vspace*{-1cm}
+\makebox[\textheight][c]{\includegraphics[width=0.95\paperheight,height=0.85\paperwidth,keepaspectratio]{class_diagram.png}}
 \caption{Class Diagram - ShieldX Data Models}
 \label{fig:class-diagram}
+\vspace*{-3cm}
 \end{figure}
+\end{landscape}
 \clearpage
 \subsection{Database Design}
 
 \subsubsection{Entity Relationship (ER) Diagram}
 The following Entity Relationship (ER) diagram illustrates the core database schema of the ShieldX system. It highlights the primary relationships and foreign key constraints between the main entities: \texttt{profiles}, \texttt{complaints}, \texttt{emergencies}, \texttt{officers}, \texttt{notifications}, \texttt{messages}, and \texttt{status\_history}.
 
+\begin{landscape}
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth,height=0.8\textheight,keepaspectratio]{er_diagram_database.png}
+\vspace*{-1cm}
+\makebox[\textheight][c]{\includegraphics[width=0.95\paperheight,height=0.85\paperwidth,keepaspectratio]{er_diagram_database.png}}
 \caption{Entity Relationship (ER) Diagram - ShieldX Database}
 \label{fig:er_diagram}
+\vspace*{-3cm}
 \end{figure}
+\end{landscape}
 
 \subsubsection{Table Schemas}
 
@@ -635,12 +651,16 @@ The application utilizes PostgreSQL managed by Supabase. The following schema re
 \subsubsection{DFD Level 0 (Context Diagram)}
 The Context Diagram defines the system boundaries and shows the high-level data exchange between the ShieldX core system and external entities.
 
+\begin{landscape}
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth,keepaspectratio]{dfd_level_0.png}
+\vspace*{-1cm}
+\makebox[\textheight][c]{\includegraphics[width=0.95\paperheight,height=0.85\paperwidth,keepaspectratio]{dfd_level_0.png}}
 \caption{DFD Level 0 (Context Diagram) - ShieldX System}
 \label{fig:dfd0}
+\vspace*{-3cm}
 \end{figure}
+\end{landscape}
 
 \clearpage
 \subsubsection{DFD Level 1}
@@ -1045,6 +1065,8 @@ ShieldX demonstrates the profound impact that modern software engineering can ha
 % APPENDICES
 % -------------------------
 \appendix
+\addtocontents{toc}{\protect\enlargethispage{3\baselineskip}}
+\addtocontents{toc}{\vspace{-1em}}
 \chapter{Source Code}
 \section*{Snippet 1: Supabase RLS Policy Example (PostgreSQL)}
 \begin{footnotesize}
@@ -1269,6 +1291,7 @@ void main() async {
 }
 \end{verbatim}
 \end{footnotesize}
+\addtocontents{toc}{\vspace{-1em}}
 \chapter{User Guide}
 \section*{Installation and Setup}
 \begin{enumerate}

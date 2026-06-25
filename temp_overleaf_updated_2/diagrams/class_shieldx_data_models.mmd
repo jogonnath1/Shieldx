@@ -1,0 +1,131 @@
+﻿%% UML 2.5 Class Diagram
+%% Note: Mermaid supports 3-compartment classes and visibility perfectly.
+%% Manual fixes needed in StarUML: Ensure Aggregation (hollow diamond) or Composition (solid diamond) render with correct shapes if Mermaid exporter alters them.
+classDiagram
+    class ProfileModel {
+        +String id
+        +String? name
+        +String? phone
+        +String? email
+        +String? nid
+        +String? profession
+        +String? presentAddress
+        +String? permanentAddress
+        +String? avatarUrl
+        +String role
+        +bool isVerified
+        +bool isBlocked
+        -bool _isMainAdmin
+        +String? fcmToken
+        +DateTime? createdAt
+        +ProfileModel()
+        +fromMap(Map map) ProfileModel$
+    }
+
+    class ComplaintModel {
+        +String id
+        +String? userId
+        +String? firstName
+        +String? lastName
+        +String? phone
+        +String? nid
+        +String? profession
+        +String? presentAddress
+        +String? permanentAddress
+        +String? crimeCategory
+        +String? description
+        +double? latitude
+        +double? longitude
+        +String? locationAddress
+        +DateTime? incidentDatetime
+        +String status
+        +String? assignedOfficerId
+        +List~String~ evidenceUrls
+        +DateTime? createdAt
+        +DateTime? updatedAt
+        +DateTime? deletedAt
+        +bool isAnonymous
+        +String? policeStation
+        +String? assignedOfficerName
+        +String? userEmail
+        +String? userName
+        +bool? userIsVerified
+        +ComplaintModel()
+        +fromMap(Map map) ComplaintModel$
+    }
+
+    class EmergencyModel {
+        +String id
+        +String userId
+        +double latitude
+        +double longitude
+        +String status
+        +DateTime createdAt
+        +DateTime? resolvedAt
+        +String? resolvedBy
+        +EmergencyModel()
+        +fromMap(Map map) EmergencyModel$
+    }
+
+    class MessageModel {
+        +String id
+        +String? complaintId
+        +String? senderId
+        +String? senderRole
+        +String? content
+        +bool isRead
+        +DateTime? sentAt
+        +String? senderName
+        +MessageModel()
+        +fromMap(Map map) MessageModel$
+    }
+
+    class NotificationModel {
+        +String id
+        +String userId
+        +String title
+        +String message
+        +String type
+        +String? relatedId
+        +bool isRead
+        +DateTime createdAt
+        +DateTime? deletedAt
+        +NotificationModel()
+        +fromJson(Map json) NotificationModel$
+    }
+
+    class OfficerModel {
+        +String id
+        +String? userId
+        +String? name
+        +String? rank
+        +String? station
+        +String? contact
+        +bool isActive
+        +DateTime? createdAt
+        +OfficerModel()
+        +fromMap(Map map) OfficerModel$
+    }
+
+    class StatusHistoryModel {
+        +String id
+        +String? complaintId
+        +String? status
+        +String? note
+        +String? changedBy
+        +DateTime? changedAt
+        +String? changedByName
+        +StatusHistoryModel()
+        +fromMap(Map map) StatusHistoryModel$
+    }
+
+    %% Aggregation o-- and Composition *--
+    ProfileModel "1" o-- "0..*" ComplaintModel : submits
+    ProfileModel "1" *-- "0..*" EmergencyModel : triggers
+    ProfileModel "1" o-- "0..*" NotificationModel : receives
+    ProfileModel "1" o-- "0..*" MessageModel : sends
+    
+    ComplaintModel "1" *-- "0..*" StatusHistoryModel : has
+    ComplaintModel "1" *-- "0..*" MessageModel : contains
+    
+    OfficerModel "0..1" o-- "0..*" ComplaintModel : handles

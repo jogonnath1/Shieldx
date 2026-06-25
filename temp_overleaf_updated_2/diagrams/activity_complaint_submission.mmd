@@ -1,0 +1,97 @@
+%% UML 2.5 Activity Diagram
+flowchart TD
+    %% Swimlane 1: Citizen Actions
+    subgraph Citizen ["Citizen"]
+        Start([●])
+        EnterCredentials["Enter Credentials"]
+        VerifyOTP["Verify OTP"]
+        CompleteProfile["Complete Profile"]
+        Dashboard["View Dashboard"]
+        SelectSubmitComplaint["Select Submit Complaint"]
+        FillForm["Fill Form"]
+        PickLocation["Pick Location"]
+        UploadPhoto["Upload Photo"]
+        SubmitAction["Submit Complaint"]
+        End(( ◉ ))
+    end
+
+    %% Swimlane 2: System & Admin Actions
+    subgraph System ["System & Admin"]
+        AuthCheck{{"Logged In?"}}
+        SendOTP["Send OTP"]
+        OTPBranch{{"OTP Channel"}}
+        EmailOTP["Email OTP Service"]
+        PhoneOTP["SMS OTP Service"]
+        LoginSuccess["Establish Session"]
+        
+        ProfileCheck{{"Profile\nComplete?"}}
+        ConnectivityCheck{{"Connection\nStatus"}}
+        
+        SaveToOfflineOutbox["Save to Offline Outbox"]
+        SyncDaemon["Background Sync Daemon"]
+        SubmitToSupabase["Submit to Supabase API"]
+        SaveToDatabase["Write to DB & Storage"]
+        
+        ForkSubmit["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]
+        AdminAssignsOfficer["Admin Assigns Officer"]
+        StatusHistoryUpdate["Insert Status History"]
+        JoinSubmit["&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;"]
+        
+        NotificationToCitizen["Push Notification to Citizen"]
+    end
+
+    %% Flows (Citizen to System and vice versa)
+    Start --> AuthCheck
+    
+    AuthCheck -->|No| EnterCredentials
+    EnterCredentials --> SendOTP
+    SendOTP --> VerifyOTP
+    
+    VerifyOTP --> OTPBranch
+    OTPBranch -->|Email| EmailOTP
+    OTPBranch -->|Phone| PhoneOTP
+    
+    EmailOTP --> LoginSuccess
+    PhoneOTP --> LoginSuccess
+    LoginSuccess --> ProfileCheck
+    
+    AuthCheck -->|Yes| ProfileCheck
+    
+    ProfileCheck -->|No| CompleteProfile
+    CompleteProfile --> Dashboard
+    ProfileCheck -->|Yes| Dashboard
+    
+    Dashboard --> SelectSubmitComplaint
+    SelectSubmitComplaint --> FillForm
+    FillForm --> PickLocation
+    PickLocation --> UploadPhoto
+    UploadPhoto --> SubmitAction
+    
+    SubmitAction --> ConnectivityCheck
+    
+    ConnectivityCheck -->|Offline| SaveToOfflineOutbox
+    SaveToOfflineOutbox --> SyncDaemon
+    SyncDaemon --> ForkSubmit
+    
+    ConnectivityCheck -->|Online| SubmitToSupabase
+    SubmitToSupabase --> SaveToDatabase
+    SaveToDatabase --> ForkSubmit
+    
+    ForkSubmit --> AdminAssignsOfficer
+    ForkSubmit --> StatusHistoryUpdate
+    
+    AdminAssignsOfficer --> JoinSubmit
+    StatusHistoryUpdate --> JoinSubmit
+    
+    JoinSubmit --> NotificationToCitizen
+    NotificationToCitizen --> End
+
+    %% Styling (Clean, print-ready black-and-white theme)
+    classDef default fill:#ffffff,stroke:#333333,stroke-width:1.5px,color:#000000;
+    classDef forkjoin fill:#000000,stroke:#000000,stroke-width:0px,color:#ffffff;
+    classDef startend fill:#ffffff,stroke:#333333,stroke-width:1.5px,color:#000000,font-size:16px;
+    class ForkSubmit,JoinSubmit forkjoin;
+    class Start,End startend;
+    
+    style Citizen fill:#ffffff,stroke:#333333,stroke-width:2px,color:#000000;
+    style System fill:#ffffff,stroke:#333333,stroke-width:2px,color:#000000;

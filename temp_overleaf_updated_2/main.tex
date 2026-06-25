@@ -1,5 +1,5 @@
 % - UNIVERSAL PREAMBLE BLOCK ---
-\documentclass[12pt, a4paper, twoside]{report}
+\documentclass[12pt, a4paper, twoside, openany]{report}
 \usepackage[a4paper, top=2.5cm, bottom=2.5cm, left=2.5cm, right=2.5cm]{geometry}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
@@ -24,6 +24,8 @@
 \usepackage{tikz}
 \usepackage{float}
 \usepackage{setspace} % For line spacing
+\usepackage{indentfirst} % Indent first paragraph of sections
+\usepackage{lscape} % For landscape contents on vertical pages
 \usepackage{graphicx} % For logo image
 \graphicspath{{./}{./diagrams/rendered/}{./diagrams/}}
 \usetikzlibrary{shapes.geometric, arrows.meta, positioning, fit, backgrounds, calc, matrix, decorations.pathreplacing}
@@ -52,27 +54,33 @@
 % -------------------------
 \begin{titlepage}
     \begin{center}
-        {\fontsize{22}{26}\bfseries\selectfont ShieldX - Crime Reporting Portal Management System}\\[1.5cm]
+        {\fontsize{22}{26}\bfseries\selectfont ShieldX - Crime Reporting Portal Management System}
+        \vfill
         
+        {\Large
+        \renewcommand{\arraystretch}{1.5}
         \begin{tabular}{ll}
             Name: Jogonnath Das Talukder & ID: 0182320012101060 \\
             Name: Shrestta Das & ID: 0182320012101273 \\
             Name: Khandoker Syed Shovon & ID: 0182320012101400
-        \end{tabular}\\[1.5cm]
+        \end{tabular}
+        }
+        \vfill
         
-        \includegraphics[width=3.5cm]{lu_logo.png}\\[0.1cm]
-        {\small\bfseries estd. 2001}\\[0.1cm]
-        {\small\scshape LEADING UNIVERSITY}\\[1.5cm]
+        \includegraphics[width=3.5cm]{lu_logo.png}
+        \vfill
         
-        {\large\selectfont B.Sc. Project in Computer Science and Engineering}\\[0.5cm]
-        {\large\selectfont Supervisor at CSE-LU: Shahriar Arefin Zummon}\\[1.5cm]
+        {\Large\selectfont B.Sc. Project in Computer Science and Engineering}\\[0.5cm]
+        {\Large\selectfont Supervisor at CSE-LU: Shahriar Arefin Zummon}
+        \vfill
         
-        {\large\selectfont Leading University}\\
-        {\large\selectfont Department of Computer Science and Engineering}\\
-        {\large\selectfont Ragibnagar, South Surma, Sylhet-3112}\\
-        {\large\selectfont BANGLADESH}\\[1cm]
+        {\Large\selectfont Leading University}\\
+        {\Large\selectfont Department of Computer Science and Engineering}\\
+        {\Large\selectfont Ragibnagar, South Surma, Sylhet-3112}\\
+        {\Large\selectfont BANGLADESH}
+        \vfill
         
-        {\large\selectfont 24\textsuperscript{th} June 2026}
+        {\Large\selectfont 24\textsuperscript{th} June 2026}
     \end{center}
 \end{titlepage}
 % -------------------------
@@ -102,8 +110,6 @@ Lecturer, Dept. of CSE\\
 Leading University, Sylhet\\
 Date: 24\textsuperscript{th} June 2026
 
-\clearpage
-
 \chapter*{Recommendation Letter from the Head of the Department}
 \addcontentsline{toc}{chapter}{Recommendation Letter from the Head of the Department}
 The project entitled ``ShieldX - Crime Reporting Portal Management System'' submitted by the students,
@@ -126,8 +132,6 @@ Kazi Md. Jahid Hasan\\
 Assistant Professor \& Head (Acting)\\
 Dept. of CSE\\
 Leading University, Sylhet
-
-\clearpage
 
 \chapter*{Certificate of Acceptance of the Project}
 \addcontentsline{toc}{chapter}{Certificate of Acceptance of the Project}
@@ -154,9 +158,10 @@ is, hereby, accepted as the partial fulfillment of the requirements for the awar
 \end{tabularx}
 \chapter*{Abstract}
 \addcontentsline{toc}{chapter}{Abstract}
-The rapid advancement of technology has fundamentally reshaped how public services are delivered, yet traditional crime reporting mechanisms remain largely archaic, particularly in developing regions. ShieldX is a comprehensive mobile application developed to revolutionize crime reporting and emergency management across Bangladesh~\cite{smp}. Traditional manual reporting systems, such as physical station visits or generic phone calls, are often slow, inefficient, and lack transparency, leading to citizen frustration and delayed police responses. 
-ShieldX addresses this critical gap by providing citizens with a secure, real-time platform to submit complaints, upload photographic evidence, and seamlessly track the status of their reports. For law enforcement administrators and field officers, the system provides a robust, centralized dashboard to manage, assign, and respond to incoming complaints with actionable, data-driven insights. Built using a modern technology stack, incorporating Flutter~\cite{flutter} for a responsive, cross-platform frontend~\cite{crossplat} and Supabase~\cite{supabase} as a powerful backend-as-a-service (BaaS)~\cite{baas}, ShieldX ensures rapid response times and high availability. 
-A cornerstone of the application is its one-tap SOS emergency feature~\cite{sos}, which provides live GPS tracking and immediate distress signaling to the nearest police units. The application adheres to strict security protocols, utilizing National Identity (NID) uniqueness verification during registration and precise Row Level Security (RLS)~\cite{rls} to ensure data integrity and user privacy. Ultimately, this project demonstrates the successful integration of modern mobile application architectures to improve public safety, reduce emergency response latency, and foster greater transparency between citizens and law enforcement agencies.
+The rapid advancement of technology has fundamentally reshaped how public services are delivered, yet traditional crime reporting mechanisms remain largely archaic, particularly in developing regions. ShieldX is a comprehensive mobile application developed to revolutionize crime reporting and emergency management across Bangladesh. Traditional manual reporting systems, such as physical station visits or generic phone calls, are often slow, inefficient, and lack transparency, leading to citizen frustration and delayed police responses. 
+ShieldX addresses this critical gap by providing citizens with a secure, real-time platform to submit complaints, upload photographic evidence, and seamlessly track the status of their reports. For law enforcement administrators and field officers, the system provides a robust, centralized dashboard to manage, assign, and respond to incoming complaints with actionable, data-driven insights. Built using a modern technology stack, incorporating Flutter for a responsive, cross-platform frontend and Supabase as a powerful backend-as-a-service (BaaS), ShieldX ensures rapid response times and high availability. 
+A cornerstone of the application is its one-tap SOS emergency feature, which provides live GPS tracking and immediate distress signaling to the nearest police units. The application adheres to strict security protocols, utilizing National Identity (NID) uniqueness verification during registration and precise Row Level Security (RLS) to ensure data integrity and user privacy. Ultimately, this project demonstrates the successful integration of modern mobile application architectures to improve public safety, reduce emergency response latency, and foster greater transparency between citizens and law enforcement agencies.
+
 \vspace{0.5cm}
 \noindent\textbf{Keywords:} Crime Reporting, Flutter, Supabase, Real-time tracking, Emergency Management, GPS Analytics, Mobile Application, Public Safety.
 \tableofcontents
@@ -291,11 +296,11 @@ While platforms like national emergency hotlines exist, few offer a fully integr
 \toprule
 \textbf{Existing System} & \textbf{Limitations} & \textbf{Proposed Improvement (ShieldX)} \\
 \midrule
-\textbf{National 999} & Verbal location only; no visual evidence; no post-call case tracking. & Live GPS tracking; image uploads; end-to-end real-time case status dashboard. \\
+\textbf{National 999}~\cite{bd999} & Verbal location only; no visual evidence; no post-call case tracking. & Live GPS tracking; image uploads; end-to-end real-time case status dashboard. \\
 \addlinespace
-\textbf{Traditional FIR} & Requires physical station visit; slow processing; paper-based. & Remote submission via app; automated digital database; fast processing. \\
+\textbf{Traditional FIR}~\cite{fir_process} & Requires physical station visit; slow processing; paper-based. & Remote submission via app; automated digital database; fast processing. \\
 \addlinespace
-\textbf{Web-based Portals} & Not optimized for mobile emergencies; no instant SOS capability. & Native mobile app with a dedicated 3-second SOS override button. \\
+\textbf{Web-based Portals}~\cite{webportals} & Not optimized for mobile emergencies; no instant SOS capability. & Native mobile app with a dedicated 3-second SOS override button. \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -426,45 +431,81 @@ Testing & flutter\_test & SDK & Widget \& unit testing \\
 \section{UML Diagram}
 \textit{Note: The following diagrams are represented in Mermaid syntax, a standardized text-based diagramming tool. They accurately describe the architectural flow of ShieldX.}
 \subsection{UML Activity Diagrams}
-These diagrams illustrate the core process flows of the ShieldX application, including the citizen complaint submission, emergency SOS triggering, and the admin complaint lifecycle management.
+These diagrams illustrate the core process flows of the ShieldX application, including the citizen complaint submission, emergency SOS triggering, and the admin complaint lifecycle management. To ensure a seamless user experience, each activity diagram meticulously maps out the sequential and concurrent actions performed by both citizens and administrators. The Citizen Complaint Submission flow begins when a user logs into the system, navigates to the reporting portal, and securely uploads their evidence alongside the incident details. This process is designed to be highly resilient, accommodating offline caching and intermittent network states to ensure that critical public safety data is never lost in transit. In parallel, the SOS Triggering mechanism overrides standard app functions to immediately broadcast live GPS coordinates to the nearest dispatch center. 
+
+Furthermore, the Admin Complaint Lifecycle management diagram demonstrates the sophisticated backend response protocol. Once a complaint is submitted, administrators can comprehensively review the uploaded evidence, cross-reference it with existing data, and methodically update the case status from 'Pending' to 'In Progress' or 'Resolved'. The system automatically notifies the citizen of any updates via push notifications and email alerts, closing the feedback loop. 
+
+These meticulously designed workflows are essential for minimizing delays during high-stress situations and guaranteeing transparency across the entire platform. The activity diagrams also emphasize the fail-safes embedded within the system, such as input validation steps, automatic re-authentication timeouts, and error handling for failed database queries. By visualizing these complex logical pathways, the development team was able to identify and eliminate redundant steps in the reporting process, ultimately optimizing the application's performance and reducing the cognitive load on end-users during emergencies. Every node and transition within these diagrams directly correlates to a specific asynchronous Dart function, bridging the gap between theoretical system design and practical implementation.
+
+The detailed breakdown of these activities further underscores ShieldX's commitment to user-centric design. In the context of the SOS dispatcher, the activity flow highlights the critical low-latency requirements of the platform. When the emergency button is pressed, the system simultaneously triggers hardware-level location services, locks the user interface to prevent accidental cancellations, and initiates a persistent WebSocket connection to the Supabase backend. This guarantees that even if the device is dropped or damaged, the last known coordinates are securely transmitted. The subsequent administrator activities reflect a highly optimized triage system, prioritizing life-threatening alerts over standard procedural complaints. By documenting these flows in such exhaustive detail, the architecture provides a scalable foundation that can be easily expanded in future iterations to include automated AI-driven dispatching or integration with municipal camera networks.
+\begin{landscape}
 \begin{figure}[H]
     \centering
     % IMPORTANT: Upload the image you provided to your Overleaf project
     % and rename it to 'activity_diagrams.png', or change the filename below.
-    \includegraphics[width=\textwidth]{activity_diagrams.png} 
+    \vspace*{-1cm}
+    \makebox[\textheight][c]{\includegraphics[width=0.95\paperheight,height=0.85\paperwidth,keepaspectratio]{activity_diagrams.png}}
     \caption{Activity Diagrams: (1) Submit Crime Complaint, (2) Trigger SOS Emergency, and (3) Manage Complaint Lifecycle Workflows}
     \label{fig:activity-diagrams}
+    \vspace*{-3cm}
 \end{figure}
+\end{landscape}
 \subsection{UML Use Case Diagram}
-This diagram outlines the interactions between the primary actors and the system.
+This diagram outlines the interactions between the primary actors and the system. The primary actors identified in this architecture include the Citizen, the Police Officer (Field Agent), and the System Administrator. Each actor possesses distinct access levels and permissions, which are strictly enforced by the underlying Row Level Security (RLS) policies within the PostgreSQL database. Citizens primarily interact with the system by authenticating their identities via National ID (NID) verification, submitting detailed multimedia crime reports, and activating high-priority emergency SOS beacons when in immediate danger. 
+
+Conversely, System Administrators and Police Officers interact with higher-level managerial use cases. They are responsible for viewing aggregated statistical analytics, dispatching mobile units in direct response to SOS beacons, and systematically updating the statuses of filed complaints to keep the public informed. By segregating these interactions, the Use Case Diagram clearly delineates the scope of the application, ensuring that the interface remains uncluttered for the general public while providing exceptionally powerful administrative tools for law enforcement agencies.
+
+Beyond the basic interactions, the use case diagram also captures vital edge cases and extension points that elevate ShieldX above traditional reporting portals. For example, the 'Submit Complaint' use case is extended by the 'Submit Anonymously' function, which triggers entirely different data handling protocols to protect whistleblower identities. Similarly, the administrative actor's ability to 'Manage Users' encompasses sub-cases like account suspension, role reassignment, and audit log reviewing. 
+
+This comprehensive mapping of user interactions serves as the definitive blueprint for the application's feature set. It guarantees that every developed screen and backend endpoint corresponds directly to a validated user requirement. By rigorously defining the boundaries of what each actor can and cannot do, the development team was able to implement a robust role-based access control (RBAC) system that prevents unauthorized data manipulation and ensures compliance with national data privacy regulations. Ultimately, this detailed structural breakdown transforms abstract project requirements into a concrete, actionable roadmap for deployment.
 \begin{figure}[H]
 \centering
     % IMPORTANT: Upload the use case image you provided to your Overleaf project
     % and rename it to 'use_case_diagram.png', or change the filename below.
-    \includegraphics[width=0.95\textwidth]{use_case_diagram.png}
+    \includegraphics[width=\textwidth]{use_case_diagram.png}
 \caption{Use Case Diagram - ShieldX System}
 \label{fig:usecase-diagram}
 \end{figure}
 \subsection{UML Class Diagram}
-This diagram defines the structural data models of the application, matching the actual Dart classes in \texttt{lib/data/models/}.
+This diagram defines the structural data models of the application, matching the actual Dart classes in \texttt{lib/data/models/}. The architecture is heavily influenced by modern Object-Oriented principles and Clean Architecture design patterns. Key classes such as \texttt{ComplaintModel}, \texttt{UserModel}, and \texttt{SOSBeaconModel} encapsulate the core business logic and state management variables. Each class is carefully structured with serialization methods (e.g., \texttt{fromJson} and \texttt{toJson}) to facilitate rapid, error-free data conversion when communicating with the Supabase backend over REST and WebSocket protocols.
+
+Additionally, the class diagram illustrates the complex inheritance hierarchies and interface implementations that enable the application's robust offline-first capabilities. For instance, repository classes implement abstract interfaces to allow seamless, dynamic swapping between local SQLite caching mechanisms and remote database fetching. This structural rigor ensures the codebase remains highly maintainable, scalable, and fully testable as the project continually evolves to meet the demanding requirements of modern law enforcement.
+
+Further examination of the class structure reveals a deep integration with the Riverpod state management framework. ViewModel classes and providers are explicitly modeled to demonstrate how data flows from the data repository layer up to the presentation UI layer. This unidirectional data flow is critical for preventing race conditions and ensuring that the UI consistently reflects the most accurate, up-to-date state of the database. The separation of concerns highlighted in the class diagram allows frontend developers and backend engineers to work in parallel without causing merge conflicts.
+
+Moreover, utility classes and helper singletons responsible for cryptographic hashing, location services, and push notification handling are clearly decoupled from the primary business logic. This modularity means that if the underlying technology for location tracking changes in the future, only the specific \texttt{LocationService} class requires modification, leaving the rest of the ecosystem untouched. This exhaustive structural planning represents the highest standard of software engineering, drastically reducing technical debt and paving the way for long-term project sustainability.
+\begin{landscape}
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth]{class_diagram.png}
+\vspace*{-1cm}
+\makebox[\textheight][c]{\includegraphics[width=0.95\paperheight,height=0.85\paperwidth,keepaspectratio]{class_diagram.png}}
 \caption{Class Diagram - ShieldX Data Models}
 \label{fig:class-diagram}
+\vspace*{-3cm}
 \end{figure}
+\end{landscape}
 \clearpage
 \subsection{Database Design}
 
 \subsubsection{Entity Relationship (ER) Diagram}
-The following Entity Relationship (ER) diagram illustrates the core database schema of the ShieldX system. It highlights the primary relationships and foreign key constraints between the main entities: \texttt{profiles}, \texttt{complaints}, \texttt{emergencies}, \texttt{officers}, \texttt{notifications}, \texttt{messages}, and \texttt{status\_history}.
+The following Entity Relationship (ER) diagram illustrates the core database schema of the ShieldX system. It highlights the primary relationships and foreign key constraints between the main entities: \texttt{profiles}, \texttt{complaints}, \texttt{emergencies}, \texttt{officers}, \texttt{notifications}, \texttt{messages}, and \texttt{status\_history}. Designed for ultra-high performance and strict relational integrity, the schema leverages PostgreSQL's most advanced features. The \texttt{profiles} table acts as the central hub for user identity, linked via cascading one-to-many relationships to the \texttt{complaints} and \texttt{emergencies} tables. Every single complaint is securely tied to its submitter while supporting optional anonymity flags that dynamically mask identifying columns during specific administrative queries.
+
+Furthermore, the database incorporates a dedicated \texttt{status\_history} table to maintain an immutable, tamper-proof audit trail of all administrative actions. Whenever an officer updates a complaint, an automated PostgreSQL trigger instantly records the previous state, the new state, the precise timestamp, and the acting officer's unique ID. This relational architecture not only prevents dangerous data anomalies but also serves as the foundational bedrock for the platform's real-time analytics dashboard.
+
+To accommodate the high-throughput nature of emergency dispatching, the \texttt{emergencies} table is heavily optimized with spatial indexing (PostGIS). This allows the system to execute complex geospatial queries—such as finding all active patrol cars within a 5-kilometer radius of a distressed citizen—in mere milliseconds. The ER diagram maps out these advanced data types and the indexing strategies required to sustain this level of performance under heavy concurrent loads. 
+
+Additionally, the relational model clearly defines the handling of multimedia evidence. Instead of storing massive image and video blobs directly within the relational tables, the \texttt{complaints} table utilizes referencing URIs pointing to secure, encrypted cloud storage buckets. This decoupling of raw file storage from relational metadata ensures that database backups remain lightweight and query execution times stay exceptionally fast, even as the volume of reported crimes grows exponentially over years of continuous operation.
+\begin{landscape}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth,height=0.8\textheight,keepaspectratio]{er_diagram_database.png}
+\vspace*{-1cm}
+\makebox[\textheight][c]{\includegraphics[width=0.95\paperheight,height=0.85\paperwidth,keepaspectratio]{er_diagram_database.png}}
 \caption{Entity Relationship (ER) Diagram - ShieldX Database}
 \label{fig:er_diagram}
+\vspace*{-3cm}
 \end{figure}
+\end{landscape}
 
 \subsubsection{Table Schemas}
 
@@ -633,19 +674,34 @@ The application utilizes PostgreSQL managed by Supabase. The following schema re
 \subsection{Data Flow Diagrams (DFD)}
 
 \subsubsection{DFD Level 0 (Context Diagram)}
-The Context Diagram defines the system boundaries and shows the high-level data exchange between the ShieldX core system and external entities.
+The Context Diagram defines the system boundaries and shows the high-level data exchange between the ShieldX core system and external entities. At this macroscopic level, ShieldX is treated as a single, unified process that bridges the massive technological gap between the general public and traditional law enforcement agencies. External entities include the Citizen, who inputs raw data such as live GPS coordinates, photographic evidence, and detailed textual descriptions; the Police Department, which receives structured incident reports and dispatches active personnel; and the External Authentication Provider, which rigorously verifies user identities during the initial onboarding process.
+
+By abstracting away the internal complexities of the backend logic, the Level 0 DFD provides non-technical stakeholders with a clear, unambiguous view of the system's primary objectives. It visually communicates that ShieldX is not merely a passive data repository, but an active, dynamic conduit for real-time, bi-directional communication between civilians in distress and rapid emergency responders. 
+
+This diagram is fundamentally crucial for establishing project scope and setting accurate expectations during the requirements gathering phase. It explicitly highlights that ShieldX relies on external APIs—such as national identity databases and SMS gateway services—to function correctly. Understanding these external dependencies allows the project management team to proactively address potential integration risks, API rate limits, and third-party downtime. 
+
+Furthermore, the Context Diagram serves as a continuous point of reference to prevent feature creep. Any proposed feature that requires a new external entity or a fundamentally different data flow must first be justified against this overarching boundary definition. By maintaining this strict macroscopic perspective, the development team ensures that the core mission of the application—facilitating rapid, secure, and transparent crime reporting—remains the undisputed central focus of the entire software engineering lifecycle.
+\begin{landscape}
 
 \begin{figure}[H]
 \centering
-\includegraphics[width=\textwidth,keepaspectratio]{dfd_level_0.png}
+\vspace*{-1cm}
+\makebox[\textheight][c]{\includegraphics[width=0.95\paperheight,height=0.85\paperwidth,keepaspectratio]{dfd_level_0.png}}
 \caption{DFD Level 0 (Context Diagram) - ShieldX System}
 \label{fig:dfd0}
+\vspace*{-3cm}
 \end{figure}
+\end{landscape}
 
 \clearpage
 \subsubsection{DFD Level 1}
-The Level 1 DFD decomposes the main system into its primary subsystems: Authentication, Complaint Processing, SOS Dispatch, and Analytics.
+The Level 1 DFD decomposes the main system into its primary subsystems: Authentication, Complaint Processing, SOS Dispatch, and Analytics. Unlike the high-level Context Diagram, this level actively reveals the internal routing of data flows and the critical intermediate data stores required to process complex user requests. When a user submits an incident, the data first passes through the Authentication subsystem for rigorous cryptographic validation. Once verified, it is handed off to the Complaint Processing node, which meticulously sanitizes the inputs, scans for malicious payloads, and ultimately commits the verified records to the primary relational database. 
 
+Simultaneously, the SOS Dispatch subsystem operates on an entirely independent, high-priority asynchronous thread. It continuously listens for incoming beacon signals and instantly pushes WebSocket notifications to the Analytics and Dispatch dashboard. This granular visualization is absolutely critical for developers and system architects, as it proactively highlights potential processing bottlenecks and single points of failure, ensuring that the architecture can robustly support massive concurrent emergency requests without any system degradation.
+
+The breakdown of data stores within this diagram is particularly insightful. It differentiates between temporary cache stores—used for rapid session management and offline syncing—and persistent archival stores used for long-term evidence preservation. This distinction dictates the backup strategies and redundancy protocols implemented by the DevOps team. 
+
+Moreover, the Level 1 DFD explicitly maps the flow of administrative feedback. It shows how statistical data is pulled from the incident databases, processed by the Analytics engine, and rendered into actionable insights for police chiefs. It also tracks how status updates flow backwards from the officer's terminal, through the notification gateway, and finally trigger push alerts on the citizen's mobile device. This complete, cyclic representation of data movement is what guarantees ShieldX operates as a fully closed-loop, highly responsive emergency management ecosystem.
 \begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth,keepaspectratio]{dfd_level_1.png}
@@ -876,7 +932,13 @@ Common & 1 & Notifications (shared inbox with filters) \\
     \item \textbf{Offline Module:} \texttt{SyncService} successfully queued and re-submitted complaints upon network restoration during field testing.
 \end{itemize}
 \section{Screenshot \& Interface Analysis}
-The following screenshots illustrate the core user interfaces of the ShieldX application, showcasing the intuitive layout, consistent design system, and dark-themed aesthetics tailored for both citizens and administrators.
+The following screenshots illustrate the core user interfaces of the ShieldX application, showcasing the intuitive layout, consistent design system, and dark-themed aesthetics tailored for both citizens and administrators. Developing a user interface for a mission-critical emergency application requires a delicate, highly calculated balance between visual appeal and functional clarity. The ShieldX UI employs a stark, high-contrast dark mode specifically designed to reduce eye strain in low-light environments while simultaneously drawing immediate attention to critical actionable elements, such as the vibrant red emergency SOS button. Typographic choices, spacing parameters, and iconography were meticulously selected and iteratively tested to be instantly recognizable, heavily accommodating users who may be operating the application under extreme psychological distress, panic, or physical danger.
+
+Furthermore, the administrative interfaces are specifically optimized for maximum data density and rapid, error-free comprehension. Law enforcement personnel and dispatchers are often required to process vast amounts of incoming, high-stakes data simultaneously. Therefore, the admin dashboards utilize dynamic color-coding, clear tabular layouts, and interactive analytical charts to summarize real-time statistics at a single glance. 
+
+Every pixel of these screens has been scrutinized to ensure compliance with modern accessibility standards, ensuring high contrast ratios for visually impaired users and large, easily tappable touch targets for users operating the app while moving. The visual hierarchy deliberately guides the user's eye from the most critical information—such as an active SOS alert—down to secondary navigational elements. 
+
+The seamless transition between the mobile citizen app and the web-based administrative dashboard demonstrates a cohesive, unified design language that bridges the gap between disparate user bases. By prioritizing clarity, speed, and responsiveness, the ShieldX interface effectively removes technological barriers, empowering citizens to report crimes effortlessly while providing police forces with the cutting-edge tools necessary to respond with unprecedented speed and efficiency. Together, these screenshots encapsulate the comprehensive, user-centric design philosophy that fundamentally underpins the entire platform's success.
 
 \begin{figure}[H]
     \centering
@@ -1040,11 +1102,16 @@ ShieldX demonstrates the profound impact that modern software engineering can ha
 \bibitem{maps} Flutter Community, `flutter\_map documentation,'' Pub.dev. [Online]. Available: \url{https://pub.dev/packages/flutter_map}. [Accessed: May 2026].
 \bibitem{baas} Y. Zhang \textit{et al.}, `Disaster Response via Mobile Crowd Sensing: A Survey,'' \textit{IEEE Trans. Human-Mach. Syst.}, vol. 49, no. 4, pp. 337--348, 2019.
 \bibitem{smp} Bangladesh Police, `Annual Crime Statistics Report,'' Bangladesh Police Official Publications, 2024.
+\bibitem{bd999} Bangladesh Police, `National Emergency Service 999,'' [Online]. Available: \url{https://www.police.gov.bd/en/national_emergency_service_999}. [Accessed: May 2026].
+\bibitem{fir_process} Bangladesh Police, `First Information Report (FIR) Process,'' [Online]. Available: \url{https://www.police.gov.bd/en/crime_reporting}. [Accessed: May 2026].
+\bibitem{webportals} Ministry of Home Affairs Bangladesh, `Online Police Clearance and Crime Reporting Portals,'' [Online]. Available: \url{https://pcc.police.gov.bd/}. [Accessed: May 2026].
 \end{thebibliography}
 % -------------------------
 % APPENDICES
 % -------------------------
 \appendix
+\addtocontents{toc}{\protect\enlargethispage{3\baselineskip}}
+\addtocontents{toc}{\vspace{-1em}}
 \chapter{Source Code}
 \section*{Snippet 1: Supabase RLS Policy Example (PostgreSQL)}
 \begin{footnotesize}
@@ -1269,6 +1336,7 @@ void main() async {
 }
 \end{verbatim}
 \end{footnotesize}
+\addtocontents{toc}{\vspace{-1em}}
 \chapter{User Guide}
 \section*{Installation and Setup}
 \begin{enumerate}

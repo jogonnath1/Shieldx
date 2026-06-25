@@ -1,96 +1,3 @@
-# ShieldX Complete Documentation (Parts 1 to 13)
-
-# ShieldX — Full Project Documentation Index
-
-**Project**: ShieldX — Crime Reporting Portal Management System  
-**Framework**: Flutter (Dart)  
-**Backend**: Supabase (PostgreSQL + Realtime)  
-**Jurisdiction**: Sylhet Metropolitan Police (SMP), Bangladesh  
-**Version**: 1.0.0  
-
----
-
-## Table of Contents
-
-| Part | Title | Key Topics |
-|------|-------|-----------|
-| [Part 1](PART_1_Overview.md) | **Project Overview** | Features, tech stack, database tables, security design |
-| [Part 2](PART_2_Architecture.md) | **Architecture** | Layered architecture, directory map, data flow, navigation, design decisions |
-| [Part 3](PART_3_Core.md) | **Core Module** | Constants, colors, router, validators, complaint classifier, theme |
-| [Part 4](PART_4_Models.md) | **Data Models** | ComplaintModel, ProfileModel, EmergencyModel, NotificationModel, and all others |
-| [Part 5](PART_5_Services.md) | **Data Services** | AuthService, ComplaintService, EmergencyService, SyncService, and all others |
-| [Part 6](PART_6_Providers.md) | **Providers (State)** | AuthNotifier, SOSNotifier, ComplaintNotifier, ConnectivityProvider, and all others |
-| [Part 7](PART_7_Auth_Screens.md) | **Auth Screens** | Splash, Login, Register (3-step), ForgotPassword, Blocked |
-| [Part 8](PART_8_User_Screens.md) | **User Screens** | Home, SubmitComplaint, MyComplaints, PoliceStations, Profile, Chat |
-| [Part 9](PART_9_Admin_Screens.md) | **Admin Screens** | Dashboard, Complaints, Users, Officers, Stations, SOS Panel, AdminShell |
-| [Part 10](PART_10_Widgets.md) | **Widgets** | SOSButton, OfflineBanner, form steps, map markers, common UI components |
-| [Part 11](PART_11_Startup.md) | **Startup & Dependencies** | main.dart, app.dart, pubspec.yaml, Supabase RPCs, environment config |
-| [Part 12](PART_12_Database.md) | **Database & Security** | All 8 table schemas, RLS policies, Realtime config, security layers |
-| [Part 13](PART_13_Testing.md) | **Testing & Deployment** | Unit tests, manual checklist, build commands, production considerations |
-
----
-
-## Quick Reference
-
-### Key Files
-
-| File | Purpose |
-|------|---------|
-| [lib/main.dart](file:///f:/Shieldx/lib/main.dart) | App entry point |
-| [lib/app.dart](file:///f:/Shieldx/lib/app.dart) | Root MaterialApp.router |
-| [lib/core/router/app_router.dart](file:///f:/Shieldx/lib/core/router/app_router.dart) | All routes + redirect logic |
-| [lib/core/constants/app_constants.dart](file:///f:/Shieldx/lib/core/constants/app_constants.dart) | Supabase URL, table names |
-| [lib/core/constants/app_colors.dart](file:///f:/Shieldx/lib/core/constants/app_colors.dart) | Full color palette |
-| [lib/providers/auth_provider.dart](file:///f:/Shieldx/lib/providers/auth_provider.dart) | Auth state + AuthNotifier |
-| [lib/providers/sos_provider.dart](file:///f:/Shieldx/lib/providers/sos_provider.dart) | SOS lifecycle |
-| [lib/providers/complaint_provider.dart](file:///f:/Shieldx/lib/providers/complaint_provider.dart) | Complaint state + offline |
-| [lib/data/services/auth_service.dart](file:///f:/Shieldx/lib/data/services/auth_service.dart) | Supabase Auth calls |
-| [lib/data/services/complaint_service.dart](file:///f:/Shieldx/lib/data/services/complaint_service.dart) | Complaint CRUD + stats |
-| [lib/data/services/emergency_service.dart](file:///f:/Shieldx/lib/data/services/emergency_service.dart) | SOS CRUD + admin notify |
-| [lib/data/services/sync_service.dart](file:///f:/Shieldx/lib/data/services/sync_service.dart) | Offline queue + sync |
-| [lib/core/utils/complaint_classifier.dart](file:///f:/Shieldx/lib/core/utils/complaint_classifier.dart) | Keyword-based auto-classify |
-| [lib/core/utils/app_validators.dart](file:///f:/Shieldx/lib/core/utils/app_validators.dart) | Form validation rules |
-| [lib/core/services/preferences_service.dart](file:///f:/Shieldx/lib/core/services/preferences_service.dart) | SharedPreferences wrapper |
-
-### Key Providers
-
-| Provider | File | State Type |
-|----------|------|-----------|
-| `authNotifierProvider` | auth_provider.dart | `AsyncValue<ProfileModel?>` |
-| `routerProvider` | app_router.dart | `GoRouter` |
-| `complaintProvider` | complaint_provider.dart | `AsyncValue<List<ComplaintModel>>` |
-| `allComplaintsStreamProvider` | complaint_provider.dart | `AsyncValue<List<ComplaintModel>>` |
-| `sosNotifierProvider` | sos_provider.dart | `SOSState` |
-| `notificationProvider` | notification_provider.dart | `AsyncValue<List<NotificationModel>>` |
-| `connectivityProvider` | connectivity_provider.dart | `bool` |
-| `selectedStationProvider` | selected_station_provider.dart | `String?` |
-| `gpsSimulationProvider` | gps_simulation_provider.dart | `GpsSimulationState` |
-
-### Complaint Status Flow
-
-```
-submitted → in_progress → under_investigation → resolved
-                                              → closed
-                                              → rejected
-```
-
-### GPS Fallback Chain
-
-```
-1. GPS Simulation (if demo mode active)
-2. Device GPS with timeout (6–8s)
-3. Last known position
-4. Default: Sylhet city centre (24.89996, 91.87030)
-```
-
----
-
-*Documentation generated: 2026-06-01*  
-*All 13 parts cover the complete ShieldX codebase.*
-
-
----
-
 # ShieldX — Full Project Documentation
 ## Part 1: Project Overview
 
@@ -224,10 +131,6 @@ The app is designed for **Sylhet Metropolitan Police** with 6 supported thanas:
 ---
 
 *Next: [Part 2 — Project Structure & Architecture](PART_2_Architecture.md)*
-
-
----
-
 # ShieldX — Full Project Documentation
 ## Part 2: Project Structure & Architecture
 
@@ -265,120 +168,87 @@ ShieldX follows a strict **4-layer architecture** with clear separation of conce
 
 ## 2.2 Directory Map
 
-```
+```text
 f:/Shieldx/
 ├── lib/
 │   ├── main.dart                   ← App entry point (Supabase init, Riverpod scope)
 │   ├── app.dart                    ← MaterialApp.router setup, theme injection
 │   │
-│   ├── core/                       ← App-wide cross-cutting concerns
-│   │   ├── constants/
-│   │   │   ├── app_constants.dart  ← Supabase URL, table names, status values
-│   │   │   └── app_colors.dart     ← Full color palette + status colors
-│   │   ├── router/
-│   │   │   └── app_router.dart     ← GoRouter config + redirect logic
-│   │   ├── services/
-│   │   │   └── preferences_service.dart  ← SharedPreferences wrapper
-│   │   ├── theme/
-│   │   │   └── app_theme.dart      ← MaterialThemeData configuration
-│   │   └── utils/
-│   │       ├── app_validators.dart      ← Centralized form validators
-│   │       ├── app_dialog.dart          ← Reusable dialog helpers
-│   │       ├── app_snackbar.dart        ← Reusable snackbar helpers
-│   │       ├── complaint_classifier.dart ← Keyword-based crime classifier
-│   │       └── date_time_extensions.dart ← DateTime formatting extensions
+│   ├── admin/                      ← Admin module
+│   │   ├── presentation/           ← Admin-only screens
+│   │   │   ├── admin_complaints_screen.dart
+│   │   │   ├── admin_complaint_detail_screen.dart
+│   │   │   ├── admin_dashboard_screen.dart
+│   │   │   ├── admin_officers_screen.dart
+│   │   │   ├── admin_profile_screen.dart
+│   │   │   ├── admin_shell.dart
+│   │   │   ├── admin_sos_alert_widget.dart
+│   │   │   ├── admin_stations_screen.dart
+│   │   │   └── admin_users_screen.dart
+│   │   └── providers/              ← Admin-specific state
+│   │       └── admin_sos_provider.dart
 │   │
-│   ├── data/                        ← Data access layer
-│   │   ├── models/                  ← Plain Dart data classes (immutable)
-│   │   │   ├── complaint_model.dart
-│   │   │   ├── profile_model.dart
-│   │   │   ├── emergency_model.dart
-│   │   │   ├── notification_model.dart
-│   │   │   ├── officer_model.dart
-│   │   │   ├── police_station_model.dart
-│   │   │   ├── status_history_model.dart
-│   │   │   └── message_model.dart
-│   │   └── services/                ← All Supabase communication
-│   │       ├── auth_service.dart
-│   │       ├── complaint_service.dart
-│   │       ├── emergency_service.dart
-│   │       ├── notification_service.dart
-│   │       ├── profile_service.dart
-│   │       ├── storage_service.dart
-│   │       ├── map_service.dart
-│   │       ├── message_service.dart
-│   │       ├── officer_service.dart
-│   │       └── sync_service.dart
+│   ├── common/                     ← Shared core, data, UI, and state
+│   │   ├── core/                   ← Cross-cutting concerns
+│   │   │   ├── constants/          ← app_constants.dart, app_colors.dart
+│   │   │   ├── router/             ← app_router.dart
+│   │   │   ├── services/           ← preferences_service.dart
+│   │   │   ├── theme/              ← app_theme.dart
+│   │   │   └── utils/              ← validators, dialogs, classifiers
+│   │   ├── data/                   ← Data access layer
+│   │   │   ├── models/             ← Data classes
+│   │   │   │   ├── complaint_model.dart
+│   │   │   │   ├── emergency_model.dart
+│   │   │   │   ├── message_model.dart
+│   │   │   │   ├── notification_model.dart
+│   │   │   │   ├── officer_model.dart
+│   │   │   │   ├── police_station_model.dart
+│   │   │   │   ├── profile_model.dart
+│   │   │   │   └── status_history_model.dart
+│   │   │   └── services/           ← All Supabase communication
+│   │   │       ├── auth_service.dart
+│   │   │       ├── complaint_service.dart
+│   │   │       ├── emergency_service.dart
+│   │   │       ├── map_service.dart
+│   │   │       ├── message_service.dart
+│   │   │       ├── notification_service.dart
+│   │   │       ├── officer_service.dart
+│   │   │       ├── profile_service.dart
+│   │   │       ├── storage_service.dart
+│   │   │       └── sync_service.dart
+│   │   ├── presentation/           ← Shared UI
+│   │   │   ├── auth/               ← splash, login, register, blocked
+│   │   │   ├── common/             ← notifications_screen.dart
+│   │   │   └── widgets/            ← admin, user, and common components
+│   │   └── providers/              ← Global/Shared Riverpod state
+│   │       ├── auth_provider.dart
+│   │       ├── chat_provider.dart
+│   │       ├── complaint_provider.dart
+│   │       ├── connectivity_provider.dart
+│   │       ├── gps_simulation_provider.dart
+│   │       ├── location_cache_provider.dart
+│   │       ├── navigation_trigger_provider.dart
+│   │       ├── notification_provider.dart
+│   │       ├── officer_provider.dart
+│   │       ├── selected_station_provider.dart
+│   │       ├── station_map_provider.dart
+│   │       └── time_provider.dart
 │   │
-│   ├── providers/                   ← Riverpod state management
-│   │   ├── auth_provider.dart
-│   │   ├── complaint_provider.dart
-│   │   ├── sos_provider.dart
-│   │   ├── station_map_provider.dart
-│   │   ├── notification_provider.dart
-│   │   ├── connectivity_provider.dart
-│   │   ├── gps_simulation_provider.dart
-│   │   ├── location_cache_provider.dart
-│   │   ├── admin_sos_provider.dart
-│   │   ├── officer_provider.dart
-│   │   ├── selected_station_provider.dart
-│   │   ├── navigation_trigger_provider.dart
-│   │   ├── time_provider.dart
-│   │   └── chat_provider.dart
-│   │
-│   └── presentation/                ← UI layer
-│       ├── admin/                   ← Admin-only screens
-│       │   ├── admin_dashboard_screen.dart
-│       │   ├── admin_complaints_screen.dart
-│       │   ├── admin_complaint_detail_screen.dart
-│       │   ├── admin_users_screen.dart
-│       │   ├── admin_officers_screen.dart
-│       │   ├── admin_stations_screen.dart
-│       │   ├── admin_profile_screen.dart
-│       │   ├── admin_shell.dart
-│       │   └── admin_sos_alert_widget.dart
-│       ├── auth/                    ← Authentication screens
-│       │   ├── splash_screen.dart
-│       │   ├── login_screen.dart
-│       │   ├── register_screen.dart
-│       │   ├── forgot_password_screen.dart
-│       │   └── blocked_screen.dart
-│       ├── common/                  ← Screens shared by both roles
-│       │   └── notifications_screen.dart
-│       ├── user/                    ← Citizen-only screens
-│       │   ├── home_screen.dart
-│       │   ├── submit_complaint_screen.dart
-│       │   ├── my_complaints_screen.dart
+│   └── user/                       ← Citizen module
+│       ├── presentation/           ← Citizen-only screens
+│       │   ├── change_email_screen.dart
+│       │   ├── change_password_screen.dart
+│       │   ├── chat_screen.dart
 │       │   ├── complaint_detail_screen.dart
 │       │   ├── edit_complaint_screen.dart
+│       │   ├── edit_profile_screen.dart
+│       │   ├── home_screen.dart
+│       │   ├── my_complaints_screen.dart
 │       │   ├── police_stations_screen.dart
 │       │   ├── profile_screen.dart
-│       │   ├── edit_profile_screen.dart
-│       │   ├── change_password_screen.dart
-│       │   ├── change_email_screen.dart
-│       │   └── chat_screen.dart
-│       └── widgets/                 ← Reusable UI components
-│           ├── admin/
-│           │   └── station_switcher_widget.dart
-│           ├── common/
-│           │   ├── sos_button_widget.dart
-│           │   ├── global_offline_banner.dart
-│           │   ├── no_internet_screen.dart
-│           │   ├── user_profile_dialog.dart
-│           │   └── widgets.dart
-│           └── user/
-│               ├── evidence_step.dart
-│               ├── incident_step.dart
-│               ├── personal_info_step.dart
-│               ├── filter_bottom_sheet_content.dart
-│               ├── filter_chip_widget.dart
-│               ├── gps_user_location_marker.dart
-│               ├── station_marker_widget.dart
-│               ├── user_location_highlight_marker.dart
-│               ├── quick_action_card.dart
-│               ├── recent_complaint_card.dart
-│               ├── deleted_complaint_card.dart
-│               └── deleted_notification_card.dart
+│       │   └── submit_complaint_screen.dart
+│       └── providers/              ← Citizen-specific state
+│           └── sos_provider.dart
 │
 ├── assets/
 │   ├── images/
@@ -510,18 +380,14 @@ When an admin blocks or verifies a citizen, `_setupProfileSubscription()` in `Au
 ---
 
 *Next: [Part 3 — Core Module](PART_3_Core.md)*
-
-
----
-
 # ShieldX — Full Project Documentation
 ## Part 3: Core Module
 
-The `lib/core/` directory contains app-wide, framework-agnostic utilities that do not belong to any single feature. It is subdivided into five sub-packages.
+The `lib/common/core/` directory contains app-wide, framework-agnostic utilities that do not belong to any single feature. It is subdivided into five sub-packages.
 
 ---
 
-## 3.1 `core/constants/app_constants.dart`
+## 3.1 `common/core/constants/app_constants.dart`
 
 **Class**: `AppConstants` (private constructor — all members `static`)
 
@@ -547,7 +413,7 @@ Central registry of all magic strings used across the app. Changing a table name
 
 ---
 
-## 3.2 `core/constants/app_colors.dart`
+## 3.2 `common/core/constants/app_colors.dart`
 
 **Class**: `AppColors` (private constructor — all members `static const`)
 
@@ -610,7 +476,7 @@ static Color statusColor(String status)
 
 ---
 
-## 3.3 `core/router/app_router.dart`
+## 3.3 `common/core/router/app_router.dart`
 
 Defines the full GoRouter navigation tree and redirect logic.
 
@@ -641,7 +507,7 @@ After each navigation, the delegate listener saves the new route via `prefsServi
 
 ---
 
-## 3.4 `core/services/preferences_service.dart`
+## 3.4 `common/core/services/preferences_service.dart`
 
 **Class**: `PreferencesService`
 
@@ -671,7 +537,7 @@ Wraps `SharedPreferences` to provide typed access to all locally-persisted data.
 
 ---
 
-## 3.5 `core/utils/app_validators.dart`
+## 3.5 `common/core/utils/app_validators.dart`
 
 **Class**: `AppValidators` (private constructor — all members `static`)
 
@@ -690,7 +556,7 @@ Centralized form validators used across all form screens.
 
 ---
 
-## 3.6 `core/utils/complaint_classifier.dart`
+## 3.6 `common/core/utils/complaint_classifier.dart`
 
 **Class**: `ComplaintClassifier` (private constructor — all members `static`)
 
@@ -722,7 +588,7 @@ Returns `null` if the description is shorter than 10 characters or no keywords m
 
 ---
 
-## 3.7 `core/utils/app_dialog.dart` and `app_snackbar.dart`
+## 3.7 `common/core/utils/app_dialog.dart` and `app_snackbar.dart`
 
 Reusable static helpers for consistent dialogs and snackbars throughout the app.
 
@@ -738,7 +604,7 @@ Reusable static helpers for consistent dialogs and snackbars throughout the app.
 
 ---
 
-## 3.8 `core/theme/app_theme.dart`
+## 3.8 `common/core/theme/app_theme.dart`
 
 Defines the `MaterialThemeData` for the app (dark mode):
 
@@ -749,15 +615,19 @@ Defines the `MaterialThemeData` for the app (dark mode):
 
 ---
 
-*Next: [Part 4 — Data Models](PART_4_Models.md)*
+## 3.9 `common/core/utils/date_time_extensions.dart`
 
+**File**: `lib/common/core/utils/date_time_extensions.dart`
+
+Provides extensions on `DateTime` for easy formatting (e.g. `TimeAgo` string representations, formatted date strings) used in UI components.
 
 ---
 
+*Next: [Part 4 — Data Models](PART_4_Models.md)*
 # ShieldX — Full Project Documentation
 ## Part 4: Data Models
 
-All models live in `lib/data/models/`. They are **plain Dart classes** (no code generation). Each model follows the same pattern:
+All models live in `lib/common/data/models/`. They are **plain Dart classes** (no code generation). Each model follows the same pattern:
 - `const` constructor with named parameters
 - `factory ModelName.fromMap(Map<String, dynamic>)` — deserializes from Supabase response
 - `Map<String, dynamic> toMap()` (or `toInsertMap()`) — serializes for Supabase insert/update
@@ -769,7 +639,7 @@ All models live in `lib/data/models/`. They are **plain Dart classes** (no code 
 
 Represents a single crime report submitted by a citizen.
 
-**File**: `lib/data/models/complaint_model.dart`
+**File**: `lib/common/data/models/complaint_model.dart`
 
 ### Fields
 
@@ -820,7 +690,7 @@ Represents a single crime report submitted by a citizen.
 
 Represents a registered user's extended profile (stored in `profiles` table, which mirrors Supabase Auth).
 
-**File**: `lib/data/models/profile_model.dart`
+**File**: `lib/common/data/models/profile_model.dart`
 
 ### Fields
 
@@ -857,7 +727,7 @@ Represents a registered user's extended profile (stored in `profiles` table, whi
 
 Represents an active SOS emergency alert.
 
-**File**: `lib/data/models/emergency_model.dart`
+**File**: `lib/common/data/models/emergency_model.dart`
 
 ### Fields
 
@@ -883,7 +753,7 @@ Represents an active SOS emergency alert.
 
 Represents a single in-app notification for a user.
 
-**File**: `lib/data/models/notification_model.dart`
+**File**: `lib/common/data/models/notification_model.dart`
 
 ### Fields
 
@@ -912,7 +782,7 @@ Represents a single in-app notification for a user.
 
 Represents a field officer assigned to a police station.
 
-**File**: `lib/data/models/officer_model.dart`
+**File**: `lib/common/data/models/officer_model.dart`
 
 ### Fields
 
@@ -933,7 +803,7 @@ Represents a field officer assigned to a police station.
 
 Represents a single audit entry in the complaint status timeline.
 
-**File**: `lib/data/models/status_history_model.dart`
+**File**: `lib/common/data/models/status_history_model.dart`
 
 ### Fields
 
@@ -952,7 +822,7 @@ Represents a single audit entry in the complaint status timeline.
 
 Represents a single chat message in a complaint thread.
 
-**File**: `lib/data/models/message_model.dart`
+**File**: `lib/common/data/models/message_model.dart`
 
 ### Fields
 
@@ -971,7 +841,7 @@ Represents a single chat message in a complaint thread.
 
 Represents a police station with full geographic and contact details.
 
-**File**: `lib/data/models/police_station_model.dart`
+**File**: `lib/common/data/models/police_station_model.dart`
 
 This is a large static-data model containing data for all 6 SMP police stations. It includes:
 
@@ -984,21 +854,32 @@ This is a large static-data model containing data for all 6 SMP police stations.
 
 ---
 
-*Next: [Part 5 — Data Services](PART_5_Services.md)*
+## 4.9 `Police Stations Map Models`
 
+Contains auxiliary models used for the interactive police station map and patrol routing.
+
+**File**: `lib/user/presentation/models/police_stations_map_models.dart`
+
+### Key Classes
+
+*   `CityLandmark`: Represents a notable location in the city with a `name`, `location` (LatLng), and `PlaceType` (e.g., hospital, education, transport).
+*   `HotspotCluster`: A clustering model used to aggregate nearby complaints into crime hotspots, calculating the geographic center and weight.
+*   `PatrolRoute`: Represents an automated or suggested patrol route for officers, including the starting `station`, `hotspotCenter`, threat context, and a list of `routePoints` for map rendering.
+*   `PlaceType`: An enum categorizing landmarks.
 
 ---
 
+*Next: [Part 5 — Data Services](PART_5_Services.md)*
 # ShieldX — Full Project Documentation
 ## Part 5: Data Services
 
-All Supabase communication is isolated in `lib/data/services/`. No widget or provider ever imports `supabase_flutter` directly — they always go through a service class. This keeps the data layer easily mockable and testable.
+All Supabase communication is isolated in `lib/common/data/services/`. No widget or provider ever imports `supabase_flutter` directly — they always go through a service class. This keeps the data layer easily mockable and testable.
 
 ---
 
 ## 5.1 `AuthService`
 
-**File**: `lib/data/services/auth_service.dart`
+**File**: `lib/common/data/services/auth_service.dart`
 
 Handles all Supabase Auth operations and profile CRUD.
 
@@ -1054,7 +935,7 @@ _client
 
 ## 5.2 `ComplaintService`
 
-**File**: `lib/data/services/complaint_service.dart`
+**File**: `lib/common/data/services/complaint_service.dart`
 
 Handles all CRUD, streaming, statistics, and soft-delete operations for the `complaints` table.
 
@@ -1114,7 +995,7 @@ Handles all CRUD, streaming, statistics, and soft-delete operations for the `com
 
 ## 5.3 `EmergencyService`
 
-**File**: `lib/data/services/emergency_service.dart`
+**File**: `lib/common/data/services/emergency_service.dart`
 
 Handles SOS alert lifecycle and admin notifications.
 
@@ -1138,7 +1019,7 @@ Handles SOS alert lifecycle and admin notifications.
 
 ## 5.4 `NotificationService`
 
-**File**: `lib/data/services/notification_service.dart`
+**File**: `lib/common/data/services/notification_service.dart`
 
 | Method | Returns | Description |
 |--------|---------|-------------|
@@ -1154,7 +1035,7 @@ Handles SOS alert lifecycle and admin notifications.
 
 ## 5.5 `ProfileService`
 
-**File**: `lib/data/services/profile_service.dart`
+**File**: `lib/common/data/services/profile_service.dart`
 
 Admin-only user management operations.
 
@@ -1172,7 +1053,7 @@ Admin-only user management operations.
 
 ## 5.6 `StorageService`
 
-**File**: `lib/data/services/storage_service.dart`
+**File**: `lib/common/data/services/storage_service.dart`
 
 Manages file uploads to Supabase Storage.
 
@@ -1186,7 +1067,7 @@ Manages file uploads to Supabase Storage.
 
 ## 5.7 `MapService`
 
-**File**: `lib/data/services/map_service.dart`
+**File**: `lib/common/data/services/map_service.dart`
 
 Handles external HTTP calls to the OpenStreetMap Nominatim API.
 
@@ -1199,7 +1080,7 @@ Handles external HTTP calls to the OpenStreetMap Nominatim API.
 
 ## 5.8 `OfficerService`
 
-**File**: `lib/data/services/officer_service.dart`
+**File**: `lib/common/data/services/officer_service.dart`
 
 | Method | Returns | Description |
 |--------|---------|-------------|
@@ -1211,7 +1092,7 @@ Handles external HTTP calls to the OpenStreetMap Nominatim API.
 
 ## 5.9 `MessageService`
 
-**File**: `lib/data/services/message_service.dart`
+**File**: `lib/common/data/services/message_service.dart`
 
 Per-complaint chat between citizen and admin.
 
@@ -1224,7 +1105,7 @@ Per-complaint chat between citizen and admin.
 
 ## 5.10 `SyncService`
 
-**File**: `lib/data/services/sync_service.dart`
+**File**: `lib/common/data/services/sync_service.dart`
 
 Singleton service for offline complaint queuing and cache management.
 
@@ -1272,14 +1153,10 @@ SyncService.syncOfflineOutbox() is called
 ---
 
 *Next: [Part 6 — Providers (State Management)](PART_6_Providers.md)*
-
-
----
-
 # ShieldX — Full Project Documentation
 ## Part 6: Providers (State Management)
 
-All Riverpod providers live in `lib/providers/`. Every provider has a single responsibility and communicates only downward (never laterally between providers except via `ref.read/watch`).
+Most Riverpod providers live in `lib/common/providers/`. Feature-specific providers are placed in `lib/admin/providers/` or `lib/user/providers/`. Every provider has a single responsibility and communicates only downward (never laterally between providers except via `ref.read/watch`).
 
 ---
 
@@ -1513,20 +1390,16 @@ When `isSimulationActive = true`, all GPS-consuming providers (`SOSNotifier`, `S
 ---
 
 *Next: [Part 7 — Presentation: Auth Screens](PART_7_Auth_Screens.md)*
-
-
----
-
 # ShieldX — Full Project Documentation
 ## Part 7: Presentation — Authentication Screens
 
-Authentication screens live in `lib/presentation/auth/`. They handle the complete user onboarding flow from app launch to dashboard.
+Authentication screens live in `lib/common/presentation/auth/`. They handle the complete user onboarding flow from app launch to dashboard.
 
 ---
 
 ## 7.1 `SplashScreen`
 
-**File**: `lib/presentation/auth/splash_screen.dart`  
+**File**: `lib/common/presentation/auth/splash_screen.dart`  
 **Route**: `/splash`
 
 The first screen the app shows. It displays the ShieldX logo with an animated entrance while `AuthNotifier._init()` runs in the background. GoRouter's `redirect()` will automatically navigate away once the auth state is resolved.
@@ -1540,7 +1413,7 @@ The first screen the app shows. It displays the ShieldX logo with an animated en
 
 ## 7.2 `LoginScreen`
 
-**File**: `lib/presentation/auth/login_screen.dart`  
+**File**: `lib/common/presentation/auth/login_screen.dart`  
 **Route**: `/login`
 
 Email and password login form.
@@ -1570,7 +1443,7 @@ User taps Sign In
 
 ## 7.3 `RegisterScreen`
 
-**File**: `lib/presentation/auth/register_screen.dart`  
+**File**: `lib/common/presentation/auth/register_screen.dart`  
 **Route**: `/register`
 
 Multi-step registration wizard. This is the most complex auth screen, split into logical sections.
@@ -1615,7 +1488,7 @@ Step 3:
 
 ## 7.4 `ForgotPasswordScreen`
 
-**File**: `lib/presentation/auth/forgot_password_screen.dart`  
+**File**: `lib/common/presentation/auth/forgot_password_screen.dart`  
 **Route**: `/forgot-password`
 
 Two-step password reset flow.
@@ -1635,7 +1508,7 @@ Two-step password reset flow.
 
 ## 7.5 `BlockedScreen`
 
-**File**: `lib/presentation/auth/blocked_screen.dart`  
+**File**: `lib/common/presentation/auth/blocked_screen.dart`  
 **Route**: `/blocked`
 
 Shown when a user's account has been blocked by an admin.
@@ -1682,20 +1555,16 @@ Future<void> _submit() async {
 ---
 
 *Next: [Part 8 — Presentation: User Screens](PART_8_User_Screens.md)*
-
-
----
-
 # ShieldX — Full Project Documentation
 ## Part 8: Presentation — Citizen (User) Screens
 
-Citizen screens live in `lib/presentation/user/`. They are only accessible to authenticated users with `role == 'user'`.
+Citizen screens live in `lib/user/presentation/`. They are only accessible to authenticated users with `role == 'user'`.
 
 ---
 
 ## 8.1 `HomeScreen`
 
-**File**: `lib/presentation/user/home_screen.dart`  
+**File**: `lib/user/presentation/home_screen.dart`  
 **Route**: `/home`
 
 The main citizen dashboard. The most feature-rich user screen.
@@ -1723,7 +1592,7 @@ The main citizen dashboard. The most feature-rich user screen.
 
 ## 8.2 `SubmitComplaintScreen`
 
-**File**: `lib/presentation/user/submit_complaint_screen.dart`  
+**File**: `lib/user/presentation/submit_complaint_screen.dart`  
 **Route**: `/submit-complaint?anonymous=<bool>&station=<name>`
 
 3-step complaint submission wizard.
@@ -1734,7 +1603,7 @@ The main citizen dashboard. The most feature-rich user screen.
 
 ### Step 1: Personal Info (Personal Info Step)
 
-Widget: `PersonalInfoStep` (`lib/presentation/widgets/user/personal_info_step.dart`)
+Widget: `PersonalInfoStep` (`lib/common/presentation/widgets/user/personal_info_step.dart`)
 
 | Field | Validation | Default |
 |-------|-----------|---------|
@@ -1749,7 +1618,7 @@ Widget: `PersonalInfoStep` (`lib/presentation/widgets/user/personal_info_step.da
 
 ### Step 2: Incident Details (Incident Step)
 
-Widget: `IncidentStep` (`lib/presentation/widgets/user/incident_step.dart`)
+Widget: `IncidentStep` (`lib/common/presentation/widgets/user/incident_step.dart`)
 
 | Field | UI | Notes |
 |-------|-----|-------|
@@ -1763,7 +1632,7 @@ Widget: `IncidentStep` (`lib/presentation/widgets/user/incident_step.dart`)
 
 ### Step 3: Evidence Upload (Evidence Step)
 
-Widget: `EvidenceStep` (`lib/presentation/widgets/user/evidence_step.dart`)
+Widget: `EvidenceStep` (`lib/common/presentation/widgets/user/evidence_step.dart`)
 
 - Photo picker (camera or gallery) via `image_picker`
 - Up to 5 images
@@ -1794,7 +1663,7 @@ User taps "Submit Report" on Step 3
 
 ## 8.3 `MyComplaintsScreen`
 
-**File**: `lib/presentation/user/my_complaints_screen.dart`  
+**File**: `lib/user/presentation/my_complaints_screen.dart`  
 **Route**: `/my-complaints`
 
 Paginated list of the citizen's own complaints.
@@ -1812,7 +1681,7 @@ Paginated list of the citizen's own complaints.
 
 ## 8.4 `ComplaintDetailScreen`
 
-**File**: `lib/presentation/user/complaint_detail_screen.dart`  
+**File**: `lib/user/presentation/complaint_detail_screen.dart`  
 **Route**: `/complaint/:id`
 
 Shows full details of a single complaint.
@@ -1829,7 +1698,7 @@ Shows full details of a single complaint.
 
 ## 8.5 `EditComplaintScreen`
 
-**File**: `lib/presentation/user/edit_complaint_screen.dart`  
+**File**: `lib/user/presentation/edit_complaint_screen.dart`  
 **Route**: `/complaint/:id/edit`
 
 Allows editing a complaint **only if** its status is still `'submitted'`. Pre-fills all fields from the existing `ComplaintModel`.
@@ -1842,7 +1711,7 @@ Allows editing a complaint **only if** its status is still `'submitted'`. Pre-fi
 
 ## 8.6 `PoliceStationsScreen`
 
-**File**: `lib/presentation/user/police_stations_screen.dart`  
+**File**: `lib/user/presentation/police_stations_screen.dart`  
 **Route**: `/police-stations`
 
 Full-screen interactive map of Sylhet police stations.
@@ -1866,7 +1735,7 @@ Full-screen interactive map of Sylhet police stations.
 
 ## 8.7 `ProfileScreen`
 
-**File**: `lib/presentation/user/profile_screen.dart`  
+**File**: `lib/user/presentation/profile_screen.dart`  
 **Route**: `/profile`
 
 Displays the citizen's full profile and account management options.
@@ -1885,7 +1754,7 @@ Displays the citizen's full profile and account management options.
 
 ## 8.8 `EditProfileScreen`
 
-**File**: `lib/presentation/user/edit_profile_screen.dart`  
+**File**: `lib/user/presentation/edit_profile_screen.dart`  
 **Route**: `/edit-profile`
 
 Allows editing all profile fields except email (which has its own dedicated screen).
@@ -1904,7 +1773,7 @@ Allows editing all profile fields except email (which has its own dedicated scre
 
 ## 8.9 `ChangePasswordScreen`
 
-**File**: `lib/presentation/user/change_password_screen.dart`  
+**File**: `lib/user/presentation/change_password_screen.dart`  
 **Route**: `/change-password`
 
 Simple form: Current password (for re-authentication), new password, confirm new password.
@@ -1915,7 +1784,7 @@ Calls `AuthService.updatePassword(newPassword)` and shows a success snackbar.
 
 ## 8.10 `ChangeEmailScreen`
 
-**File**: `lib/presentation/user/change_email_screen.dart`  
+**File**: `lib/user/presentation/change_email_screen.dart`  
 **Route**: `/change-email`
 
 Two-step email change with OTP verification:
@@ -1927,7 +1796,7 @@ Two-step email change with OTP verification:
 
 ## 8.11 `ChatScreen`
 
-**File**: `lib/presentation/user/chat_screen.dart`  
+**File**: `lib/user/presentation/chat_screen.dart`  
 **Route**: `/chat/:complaintId`
 
 Per-complaint real-time chat between citizen and admin.
@@ -1942,20 +1811,16 @@ Per-complaint real-time chat between citizen and admin.
 ---
 
 *Next: [Part 9 — Presentation: Admin Screens](PART_9_Admin_Screens.md)*
-
-
----
-
 # ShieldX — Full Project Documentation
 ## Part 9: Presentation — Admin Screens
 
-Admin screens live in `lib/presentation/admin/`. They are protected by both the GoRouter redirect (role check) and Supabase Row Level Security policies.
+Admin screens live in `lib/admin/presentation/`. They are protected by both the GoRouter redirect (role check) and Supabase Row Level Security policies.
 
 ---
 
 ## 9.1 `AdminShell`
 
-**File**: `lib/presentation/admin/admin_shell.dart`
+**File**: `lib/admin/presentation/admin_shell.dart`
 
 The `ShellRoute` wrapper that provides the persistent bottom navigation bar for all admin tab screens.
 
@@ -1975,7 +1840,7 @@ The shell also embeds `AdminSOSAlertWidget` as a persistent floating overlay on 
 
 ## 9.2 `AdminDashboardScreen`
 
-**File**: `lib/presentation/admin/admin_dashboard_screen.dart`  
+**File**: `lib/admin/presentation/admin_dashboard_screen.dart`  
 **Route**: `/admin/dashboard`
 
 The most data-rich screen in the app.
@@ -2018,7 +1883,7 @@ Count of live SOS alerts with a link to the SOS panel.
 
 ## 9.3 `AdminComplaintsScreen`
 
-**File**: `lib/presentation/admin/admin_complaints_screen.dart`  
+**File**: `lib/admin/presentation/admin_complaints_screen.dart`  
 **Route**: `/admin/complaints`
 
 Full complaint management list for admins.
@@ -2047,7 +1912,7 @@ Full complaint management list for admins.
 
 ## 9.4 `AdminComplaintDetailScreen`
 
-**File**: `lib/presentation/admin/admin_complaint_detail_screen.dart`  
+**File**: `lib/admin/presentation/admin_complaint_detail_screen.dart`  
 **Route**: `/admin/complaints/:id`
 
 Full complaint detail and management panel for admins.
@@ -2069,7 +1934,7 @@ Full complaint detail and management panel for admins.
 
 ## 9.5 `AdminUsersScreen`
 
-**File**: `lib/presentation/admin/admin_users_screen.dart`  
+**File**: `lib/admin/presentation/admin_users_screen.dart`  
 **Route**: `/admin/users`
 
 Full citizen account management.
@@ -2097,7 +1962,7 @@ Full citizen account management.
 
 ## 9.6 `AdminOfficersScreen`
 
-**File**: `lib/presentation/admin/admin_officers_screen.dart`  
+**File**: `lib/admin/presentation/admin_officers_screen.dart`  
 **Route**: `/admin/officers`
 
 Manage the field officer roster.
@@ -2114,7 +1979,7 @@ Manage the field officer roster.
 
 ## 9.7 `AdminStationsScreen`
 
-**File**: `lib/presentation/admin/admin_stations_screen.dart`  
+**File**: `lib/admin/presentation/admin_stations_screen.dart`  
 **Route**: `/admin/stations`
 
 Per-station statistics and overview.
@@ -2129,7 +1994,7 @@ Per-station statistics and overview.
 
 ## 9.8 `AdminProfileScreen`
 
-**File**: `lib/presentation/admin/admin_profile_screen.dart`  
+**File**: `lib/admin/presentation/admin_profile_screen.dart`  
 **Route**: `/admin/profile`
 
 Admin's own profile and settings.
@@ -2146,7 +2011,7 @@ Admin's own profile and settings.
 
 ## 9.9 `AdminSOSAlertWidget`
 
-**File**: `lib/presentation/admin/admin_sos_alert_widget.dart`
+**File**: `lib/admin/presentation/admin_sos_alert_widget.dart`
 
 A floating widget that appears over all admin screens when one or more SOS alerts are active. It is part of `AdminShell` and always visible.
 
@@ -2169,7 +2034,7 @@ A floating widget that appears over all admin screens when one or more SOS alert
 
 ## 9.10 `StationSwitcherWidget`
 
-**File**: `lib/presentation/widgets/admin/station_switcher_widget.dart`
+**File**: `lib/common/presentation/widgets/admin/station_switcher_widget.dart`
 
 A reusable dropdown widget embedded in the dashboard and complaints screens. Allows switching the data view between:
 - **All Stations** (global stats)
@@ -2180,10 +2045,6 @@ Updates `selectedStationProvider` which is watched by stats-computing providers.
 ---
 
 *Next: [Part 10 — Widgets & Shared Components](PART_10_Widgets.md)*
-
-
----
-
 # ShieldX — Full Project Documentation
 ## Part 10: Shared Widgets & Common Screens
 
@@ -2191,13 +2052,13 @@ Updates `selectedStationProvider` which is watched by stats-computing providers.
 
 ## 10.1 Common Widgets
 
-Located in `lib/presentation/widgets/common/`.
+Located in `lib/common/presentation/widgets/common/`.
 
 ---
 
 ### 10.1.1 `SOSButtonWidget`
 
-**File**: `lib/presentation/widgets/common/sos_button_widget.dart`
+**File**: `lib/common/presentation/widgets/common/sos_button_widget.dart`
 
 The most critical widget in the app. A stateful, animated emergency button.
 
@@ -2222,7 +2083,7 @@ The most critical widget in the app. A stateful, animated emergency button.
 
 ### 10.1.2 `GlobalOfflineBanner`
 
-**File**: `lib/presentation/widgets/common/global_offline_banner.dart`
+**File**: `lib/common/presentation/widgets/common/global_offline_banner.dart`
 
 An `AnimatedSlide` banner that appears at the top of the screen when `connectivityProvider` returns `false`.
 
@@ -2234,7 +2095,7 @@ An `AnimatedSlide` banner that appears at the top of the screen when `connectivi
 
 ### 10.1.3 `NoInternetScreen`
 
-**File**: `lib/presentation/widgets/common/no_internet_screen.dart`
+**File**: `lib/common/presentation/widgets/common/no_internet_screen.dart`
 
 A full-screen placeholder shown when a feature requires internet and none is available.
 
@@ -2245,7 +2106,7 @@ A full-screen placeholder shown when a feature requires internet and none is ava
 
 ### 10.1.4 `UserProfileDialog`
 
-**File**: `lib/presentation/widgets/common/user_profile_dialog.dart`
+**File**: `lib/common/presentation/widgets/common/user_profile_dialog.dart`
 
 A modal bottom sheet that shows a complete citizen profile for admin review.
 
@@ -2260,7 +2121,7 @@ A modal bottom sheet that shows a complete citizen profile for admin review.
 
 ### 10.1.5 `widgets.dart`
 
-**File**: `lib/presentation/widgets/common/widgets.dart`
+**File**: `lib/common/presentation/widgets/common/widgets.dart`
 
 Barrel file exporting all common reusable widget components:
 - `CustomTextField` — Styled text input with consistent border/color
@@ -2275,9 +2136,17 @@ Barrel file exporting all common reusable widget components:
 
 ---
 
+### 10.1.6 `EvidenceItemWidget`
+
+**File**: `lib/common/presentation/widgets/common/evidence_item_widget.dart`
+
+A reusable widget to display a single piece of evidence (image or file) in grids. Includes remove functionality and upload progress indication.
+
+---
+
 ## 10.2 User Widgets
 
-Located in `lib/presentation/widgets/user/`.
+Located in `lib/common/presentation/widgets/user/`.
 
 ---
 
@@ -2316,6 +2185,8 @@ Form step widget — Step 3.
 
 ### 10.2.4 `FilterBottomSheetContent`
 
+**File**: `lib/common/presentation/widgets/user/filter_bottom_sheet_content.dart`
+
 A draggable bottom sheet for filtering the MyComplaintsScreen:
 
 - Status filter chips (multiple-select)
@@ -2327,11 +2198,15 @@ A draggable bottom sheet for filtering the MyComplaintsScreen:
 
 ### 10.2.5 `FilterChipWidget`
 
+**File**: `lib/common/presentation/widgets/user/filter_chip_widget.dart`
+
 A simple `FilterChip` wrapper with `AppColors` styling — used in both the filter sheet and the admin complaints screen.
 
 ---
 
 ### 10.2.6 `StationMarkerWidget`
+
+**File**: `lib/common/presentation/widgets/user/station_marker_widget.dart`
 
 A custom `flutter_map` marker for police station pins.
 
@@ -2341,6 +2216,8 @@ Displays a shield icon with the station name below. When selected (nearest stati
 
 ### 10.2.7 `GpsUserLocationMarker`
 
+**File**: `lib/common/presentation/widgets/user/gps_user_location_marker.dart`
+
 A custom `flutter_map` marker for the user's current GPS position.
 
 Shows a pulsing blue dot (similar to Google Maps) with an accuracy radius circle.
@@ -2349,11 +2226,15 @@ Shows a pulsing blue dot (similar to Google Maps) with an accuracy radius circle
 
 ### 10.2.8 `UserLocationHighlightMarker`
 
+**File**: `lib/common/presentation/widgets/user/user_location_highlight_marker.dart`
+
 A special animated marker that places a pulsing ring around the closest station to the user, helping them identify which station to report to.
 
 ---
 
 ### 10.2.9 `QuickActionCard`
+
+**File**: `lib/common/presentation/widgets/user/quick_action_card.dart`
 
 A tappable card used in the HomeScreen quick actions grid.
 
@@ -2363,6 +2244,8 @@ Props: `icon`, `label`, `color`, `onTap`.
 
 ### 10.2.10 `RecentComplaintCard`
 
+**File**: `lib/common/presentation/widgets/user/recent_complaint_card.dart`
+
 A compact complaint summary card for the HomeScreen "Recent Complaints" section.
 
 Shows: case ID, category icon, status badge, and relative time.
@@ -2370,6 +2253,8 @@ Shows: case ID, category icon, status badge, and relative time.
 ---
 
 ### 10.2.11 `DeletedComplaintCard`
+
+**File**: `lib/common/presentation/widgets/user/deleted_complaint_card.dart`
 
 A complaint card variant for the "Deleted" tab in MyComplaintsScreen.
 
@@ -2379,6 +2264,8 @@ Shows: deletion date, restore button, permanent-delete button.
 
 ### 10.2.12 `DeletedNotificationCard`
 
+**File**: `lib/common/presentation/widgets/user/deleted_notification_card.dart`
+
 A notification card variant for the trash view in NotificationsScreen.
 
 Shows: notification content, deletion date, restore and permanent-delete buttons.
@@ -2387,7 +2274,7 @@ Shows: notification content, deletion date, restore and permanent-delete buttons
 
 ## 10.3 Common Screen — `NotificationsScreen`
 
-**File**: `lib/presentation/common/notifications_screen.dart`  
+**File**: `lib/common/presentation/common/notifications_screen.dart`  
 **Route**: `/notifications`  
 **Access**: Both citizens and admins
 
@@ -2410,10 +2297,6 @@ Full notification inbox with tabs and management features.
 ---
 
 *Next: [Part 11 — App Entry Point & Startup](PART_11_Startup.md)*
-
-
----
-
 # ShieldX — Full Project Documentation
 ## Part 11: App Entry Point, Startup & Dependencies
 
@@ -2630,7 +2513,7 @@ flutter test                          # Run unit + widget tests
 The only environment-specific values are in `AppConstants`:
 
 ```dart
-// lib/core/constants/app_constants.dart
+// lib/common/core/constants/app_constants.dart
 static const String supabaseUrl = 'https://thucigugoxevxwrqpxjm.supabase.co';
 static const String supabaseAnonKey = '<anon_jwt_here>';
 ```
@@ -2640,10 +2523,6 @@ For a production deployment, these should be moved to environment variables or a
 ---
 
 *Next: [Part 12 — Database Schema & Security](PART_12_Database.md)*
-
-
----
-
 # ShieldX — Full Project Documentation
 ## Part 12: Database Schema & Security
 
@@ -2886,10 +2765,6 @@ The following tables have Realtime publication enabled:
 ---
 
 *Next: [Part 13 — Testing & Quality](PART_13_Testing.md)*
-
-
----
-
 # ShieldX — Full Project Documentation
 ## Part 13: Testing, Quality & Deployment
 
@@ -3121,7 +2996,515 @@ The Android manifest requires the following permissions:
 ---
 
 *Next: [Index — Table of Contents](INDEX.md)*
-
+# ShieldX — Full Project Documentation
+## Part 14: Local Setup & Installation Guide
 
 ---
 
+## 14.1 Prerequisites
+
+Before setting up ShieldX locally, ensure you have the following installed:
+
+1. **Flutter SDK**: Version 3.19.0 or higher
+2. **Dart SDK**: Version 3.3.0 or higher
+3. **IDE**: VS Code (recommended) or Android Studio
+4. **Git**: For version control
+5. **Supabase Account**: A free project on Supabase.com
+6. **Android Emulator / Physical Device**: For testing
+
+---
+
+## 14.2 Supabase Backend Setup
+
+ShieldX relies on Supabase for Auth, Database, and Storage.
+
+1. **Create Project**: Create a new project on [Supabase](https://supabase.com).
+2. **Execute SQL Setup**:
+   - Go to the **SQL Editor** in your Supabase dashboard.
+   - Run the provided schema files (which define `profiles`, `complaints`, `status_history`, `emergencies`, `notifications`, `phone_verifications`, and `officers`).
+   - Enable **Row Level Security (RLS)** and apply the necessary policies.
+3. **Storage Buckets**:
+   - Go to **Storage** and create two public buckets:
+     - `evidence` (for complaint photos)
+     - `avatars` (for user profiles)
+4. **Realtime**:
+   - Go to **Database > Replication** and enable Realtime for the `complaints`, `profiles`, `emergencies`, and `messages` tables.
+
+---
+
+## 14.3 Environment Configuration
+
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/yourusername/ShieldX.git
+   cd ShieldX
+   ```
+
+2. Open `lib/common/core/constants/app_constants.dart`.
+
+3. Update the Supabase credentials with your project's keys:
+   ```dart
+   static const String supabaseUrl = 'YOUR_SUPABASE_PROJECT_URL';
+   static const String supabaseAnonKey = 'YOUR_SUPABASE_ANON_KEY';
+   ```
+
+---
+
+## 14.4 Running the Application
+
+1. Install Flutter dependencies:
+   ```bash
+   flutter pub get
+   ```
+
+2. Run the code generator for Riverpod (if necessary/applicable in the future):
+   ```bash
+   dart run build_runner build -d
+   ```
+
+3. Run the app on an attached device or emulator:
+   ```bash
+   flutter run
+   ```
+
+---
+
+## 14.5 Generating Release Builds
+
+**For Android (APK):**
+```bash
+flutter build apk --release
+```
+*Output: `build/app/outputs/flutter-apk/app-release.apk`*
+
+**For Android (App Bundle for Play Store):**
+```bash
+flutter build appbundle --release
+```
+
+**For Web:**
+```bash
+flutter build web --release
+```
+
+---
+
+*Next: [Part 15 — User Manual](PART_15_User_Manual.md)*
+# ShieldX — Full Project Documentation
+## Part 15: User Manual & Interaction Guide
+
+This manual serves as a non-technical guide on how to interact with the ShieldX application, both as a Citizen and as an Administrator.
+
+---
+
+## 15.1 Citizen (User) Guide
+
+### 1. Registration & Authentication
+- **Sign Up**: Open the app and tap "Register". Complete the 3-step registration form (Basic Info -> NID -> Password).
+- **Verification**: You will be automatically logged in, but some features (like SOS) may require admin verification.
+- **Login**: Use your email and password to log in. The app will remember your session for future visits.
+
+### 2. Submitting a Crime Report
+1. Tap **"Submit Report"** on the Home screen.
+2. **Step 1 (Personal Info)**: Your details are pre-filled. You can choose to "Submit Anonymously".
+3. **Step 2 (Incident Details)**: Select the crime category (or let the AI suggest one based on your description), pick the date/time, and set the location on the map.
+4. **Step 3 (Evidence)**: Upload up to 5 photos from your camera or gallery.
+5. Tap **Submit**. You will receive a notification when the police review it.
+
+### 3. Tracking Your Complaints
+- Go to **"My Complaints"** to view a list of all your reports.
+- Tap a complaint to view its full details, status timeline, assigned officer, and to access the **Chat** feature to speak directly with an investigating officer.
+
+### 4. Triggering an SOS Emergency
+- In an emergency, tap the large red **SOS Button** on the Home Screen.
+- A 3-second countdown will begin (allowing you to cancel if triggered accidentally).
+- Once active, your live GPS location is broadcasted to the nearest police stations.
+- Tap **"I'm Safe"** to cancel the SOS once the emergency is resolved.
+
+### 5. Finding Police Stations
+- Tap **"Police Map"** to view all Sylhet Metropolitan Police stations.
+- Tap the "Locate Nearest" button to highlight the station closest to your current GPS position.
+
+---
+
+## 15.2 Administrator (Police) Guide
+
+*Admins have a different interface focused on monitoring and management.*
+
+### 1. Dashboard Overview
+- The **Admin Dashboard** provides live statistics, a pie chart of complaint statuses, and a bar chart of crime categories.
+- Use the **Station Switcher** at the top to filter statistics for a specific police station.
+
+### 2. Managing Complaints
+- Navigate to the **Complaints Tab**.
+- Tap any complaint to view evidence, citizen details, and the exact map location.
+- **Update Status**: Change the status from `Submitted` -> `In Progress` -> `Under Investigation` -> `Resolved`.
+- **Assign Officer**: Select an on-duty field officer from the dropdown to assign them to the case.
+- **Communicate**: Use the Chat interface to ask the citizen for more details.
+
+### 3. SOS Alert Panel
+- If a citizen triggers an SOS, a persistent **red alert banner** will appear at the top of the admin screen.
+- Tap the banner to view the citizen's live GPS coordinates on the map.
+- Once police have responded, tap "Resolve Emergency".
+
+### 4. User Verification & Management
+- Go to the **Users Tab**.
+- Review newly registered citizens. Tap **"Verify"** to grant them full access (including SOS features).
+- If a user submits fake reports, tap **"Block"** to instantly revoke their access to the app.
+
+---
+
+*Next: [Part 16 — Academic Context & Conclusion](PART_16_Academic_Context.md)*
+# ShieldX — Full Project Documentation
+## Part 16: Academic Context & Conclusion
+
+This document outlines the academic motivation, scope, limitations, and future possibilities of the ShieldX project, as required for varsity defense evaluation.
+
+---
+
+## 16.1 Abstract
+
+Crime reporting in many developing regions relies heavily on manual, paper-based processes or physical visits to police stations. This creates friction, delays response times, and limits data-driven policing. **ShieldX** is a proposed digital solution—a mobile application designed specifically for the Sylhet Metropolitan Police (SMP). It empowers citizens to report crimes directly from their smartphones with geolocation and multimedia evidence. Simultaneously, it provides law enforcement with a real-time administrative dashboard to track incidents, manage officer assignments, and respond to SOS emergencies instantly.
+
+## 16.2 Problem Statement
+
+1. **Accessibility**: Citizens often hesitate to visit police stations due to fear, inconvenience, or lack of time.
+2. **Emergency Response**: Traditional phone calls to emergency numbers lack precise, instantaneous GPS location data.
+3. **Data Management**: Paper-based or fragmented digital records make it difficult for police administrators to analyze crime hotspots and trends.
+4. **Transparency**: Citizens lack visibility into the status of their submitted complaints.
+
+## 16.3 Project Objectives
+
+- **Primary Objective**: To develop a secure, real-time platform bridging the gap between the citizens of Sylhet and the local law enforcement agencies.
+- **Secondary Objectives**:
+  - Implement an automated classification system to categorize text-based crime descriptions.
+  - Provide a panic (SOS) feature that instantly transmits live location data to authorities.
+  - Equip police admins with a dashboard featuring data visualizations (charts, maps) for better resource allocation.
+
+## 16.4 Future Scope
+
+While ShieldX fulfills its primary objectives, several features can be implemented in future iterations to enhance the system:
+1. **Machine Learning Integrations**: Moving beyond keyword-based classification to NLP-based crime categorization and automated severity scoring.
+2. **Blockchain for Evidence**: Implementing immutable ledgers to ensure digital evidence (photos/videos) has not been tampered with before trial.
+3. **Multi-Language Support**: Full localization in Bengali to ensure maximum accessibility for all demographics in Bangladesh.
+4. **Integration with National Databases**: Direct API connections to the Bangladesh NID server for real-time identity verification.
+
+## 16.5 Conclusion
+
+ShieldX successfully demonstrates the feasibility and impact of modernizing law enforcement interactions. By leveraging real-time database technologies (Supabase) and a cross-platform framework (Flutter), the system provides a responsive, scalable, and user-friendly solution. It proves that digital portals can significantly reduce reporting friction for citizens while dramatically improving the situational awareness and data analytics capabilities of police administrators.
+
+---
+
+*Return to [Index — Table of Contents](INDEX.md)*
+# ShieldX — Full Project Documentation
+## Part 17: System Requirements Specification (SRS) & Use Cases
+
+---
+
+## 17.1 Introduction
+
+This document outlines the System Requirements Specification (SRS) and details the primary Use Cases for the ShieldX Crime Reporting Portal. This serves as a formal requirement analysis standard for academic defense and project evaluation.
+
+---
+
+## 17.2 Actor Definitions
+
+| Actor | Description |
+|-------|-------------|
+| **Citizen (User)** | A member of the public who uses the mobile application to report crimes, trigger emergencies, and track their case status. Must register with phone and NID. |
+| **Police Admin** | Law enforcement personnel who monitor incoming complaints, dispatch officers, analyze crime data, and manage citizen accounts. |
+| **System** | The automated backend infrastructure (Supabase) that processes location data, categorizes crimes, and dispatches real-time notifications. |
+
+---
+
+## 17.3 Functional Requirements (FR)
+
+### Citizen Functional Requirements
+- **FR1.1**: The system must allow users to register using Email, Phone Number, and National ID (NID).
+- **FR1.2**: Users must be able to submit a complaint with a description, crime category, location (GPS), and multimedia evidence (photos).
+- **FR1.3**: Users must be able to trigger an SOS alert that broadcasts their live GPS coordinates to the police dashboard.
+- **FR1.4**: Users must be able to view a history of their submitted complaints and check their real-time status.
+- **FR1.5**: Users must be able to locate nearby police stations on an interactive map.
+
+### Admin Functional Requirements
+- **FR2.1**: Admins must have access to a dashboard displaying real-time statistics, pie charts, and a geographical heatmap of crimes.
+- **FR2.2**: Admins must be able to view, update the status of, and assign field officers to incoming complaints.
+- **FR2.3**: Admins must receive instantaneous visual and auditory alerts when a citizen triggers an SOS.
+- **FR2.4**: Admins must be able to manage user accounts (verify, block, or delete).
+- **FR2.5**: Admins must be able to filter data by specific Police Stations (Thanas).
+
+---
+
+## 17.4 Non-Functional Requirements (NFR)
+
+- **NFR1 (Performance)**: The system must reflect new complaints and SOS alerts on the admin dashboard within 2 seconds of submission (real-time sync).
+- **NFR2 (Security)**: All database queries must be protected by Row Level Security (RLS). Citizens must never be able to access other citizens' complaints.
+- **NFR3 (Reliability/Offline)**: If a citizen loses internet connection while drafting a complaint, the system must queue the complaint locally and sync it automatically upon reconnection.
+- **NFR4 (Usability)**: The user interface must be accessible, following modern material design standards, with intuitive form steps for stressed users.
+
+---
+
+## 17.5 System Use Cases
+
+### UC1: Submit Crime Complaint
+- **Primary Actor**: Citizen
+- **Precondition**: User is authenticated.
+- **Main Flow**:
+  1. User navigates to "Submit Complaint".
+  2. User enters personal info (or chooses anonymous).
+  3. User enters incident details. System auto-categorizes based on keywords.
+  4. User captures or uploads evidence.
+  5. User submits. System saves data and alerts admin.
+- **Postcondition**: Complaint is stored in database with 'submitted' status.
+
+### UC2: Trigger SOS Emergency
+- **Primary Actor**: Citizen
+- **Precondition**: User is authenticated and grants GPS permissions.
+- **Main Flow**:
+  1. User long-presses the SOS button.
+  2. A 3-second cancellation countdown begins.
+  3. If not cancelled, system captures GPS coordinates and creates an `emergencies` record.
+  4. Admin dashboard instantly flags the alert and displays the live location.
+- **Postcondition**: Active emergency broadcast is initiated.
+
+### UC3: Manage Complaint Status
+- **Primary Actor**: Police Admin
+- **Precondition**: Admin is authenticated with `role = 'admin'`.
+- **Main Flow**:
+  1. Admin navigates to the Complaints Panel.
+  2. Admin selects a newly submitted complaint.
+  3. Admin reviews evidence and location.
+  4. Admin assigns an officer and updates status to `in_progress`.
+  5. System sends push notification to the citizen.
+- **Postcondition**: Complaint status is updated, and audit log (`status_history`) is created.
+
+### UC4: Review Analytics Dashboard
+- **Primary Actor**: Police Admin
+- **Precondition**: Admin is authenticated.
+- **Main Flow**:
+  1. Admin opens the app and lands on the Dashboard.
+  2. System fetches aggregated data for the current month.
+  3. Admin views breakdown by crime category (Pie Chart) and geographic heatmap.
+  4. Admin uses the Station Switcher to filter data for a specific Thana (e.g., Kotwali).
+- **Postcondition**: Admin gains situational awareness for resource deployment.
+
+---
+
+*Return to [Index — Table of Contents](INDEX.md)*
+# ShieldX — Full Project Documentation
+## Part 18: System Diagrams
+
+---
+
+## 18.1 Introduction
+
+Visual representations of system processes are essential for academic defense to demonstrate the flow of data and control. This section contains architectural and behavioral diagrams using standard modeling techniques.
+
+---
+
+## 18.2 System Architecture Diagram
+
+```mermaid
+graph TD
+    subgraph Client Application (Flutter)
+        UI[User Interface]
+        State[Riverpod State Management]
+        Local[SharedPreferences / Offline Queue]
+        
+        UI <--> State
+        State <--> Local
+    end
+
+    subgraph Backend Services (Supabase)
+        Auth[Supabase Auth]
+        DB[(PostgreSQL Database)]
+        Storage[Supabase Storage]
+        Realtime[Realtime Subscriptions]
+    end
+
+    State -- JWT Token --> Auth
+    State -- REST API --> DB
+    State -- WebSocket --> Realtime
+    State -- Multipart Upload --> Storage
+    
+    DB -. Change Events .-> Realtime
+```
+
+---
+
+## 18.3 Data Flow Diagram (DFD) - Level 0 (Context Diagram)
+
+```mermaid
+graph LR
+    Citizen((Citizen))
+    Admin((Police Admin))
+    System[ShieldX System]
+    
+    Citizen -- Submit Complaint / SOS --> System
+    Citizen -- Profile Updates --> System
+    System -- Status Notifications --> Citizen
+    System -- Auth Responses --> Citizen
+    
+    System -- Live Crime Data & SOS --> Admin
+    Admin -- Status Updates & Officer Assignment --> System
+    Admin -- User Management --> System
+```
+
+---
+
+## 18.4 Sequence Diagram: Submit a Complaint
+
+```mermaid
+sequenceDiagram
+    actor User as Citizen
+    participant App as Flutter App
+    participant Auth as Supabase Auth
+    participant DB as Supabase DB
+    participant Storage as Supabase Storage
+    participant Admin as Admin Dashboard
+
+    User->>App: Enter Complaint Details
+    App->>Auth: Check Authentication Status
+    Auth-->>App: Valid JWT
+    
+    opt Has Evidence Photos
+        App->>Storage: Upload Photos
+        Storage-->>App: Return Image URLs
+    end
+    
+    App->>DB: INSERT into 'complaints' table
+    DB-->>App: Return success
+    App-->>User: Show success message
+    
+    DB-->>Admin: Realtime Event (INSERT complaint)
+    Admin-->>Admin: Update Dashboard UI
+```
+
+---
+
+## 18.5 Sequence Diagram: SOS Emergency Alert
+
+```mermaid
+sequenceDiagram
+    actor Citizen
+    participant App as Flutter App
+    participant DB as Supabase DB
+    participant AdminApp as Admin Dashboard
+
+    Citizen->>App: Long Press SOS Button
+    App->>App: 3-Second Countdown
+    
+    opt Citizen does not cancel
+        App->>App: Fetch GPS Coordinates
+        App->>DB: INSERT into 'emergencies'
+        DB-->>AdminApp: Realtime Broadcast (SOS Alert)
+        AdminApp->>AdminApp: Trigger Alarm & Show Location
+        
+        loop Every 10 seconds
+            App->>DB: UPDATE 'emergencies' with new GPS
+            DB-->>AdminApp: Realtime Broadcast (Location Change)
+            AdminApp->>AdminApp: Move Marker on Map
+        end
+    end
+    
+    Citizen->>App: Tap "Mark as Safe"
+    App->>DB: UPDATE status to 'resolved'
+    DB-->>AdminApp: Realtime Broadcast (SOS Resolved)
+    AdminApp->>AdminApp: Remove Alert from Panel
+```
+
+---
+
+## 18.6 State Machine Diagram: Complaint Lifecycle
+
+```mermaid
+stateDiagram-v2
+    [*] --> Submitted: Citizen submits form
+    
+    Submitted --> InProgress: Admin assigns officer
+    Submitted --> Rejected: Admin finds report invalid
+    
+    InProgress --> UnderInvestigation: Officer begins field work
+    
+    UnderInvestigation --> Resolved: Case solved / Report filed
+    UnderInvestigation --> Closed: Insufficient evidence
+    
+    Resolved --> [*]
+    Closed --> [*]
+    Rejected --> [*]
+```
+
+---
+
+*Return to [Index — Table of Contents](INDEX.md)*
+# ShieldX — Full Project Documentation
+## Part 19: Methodology & Feasibility Study
+
+---
+
+## 19.1 Introduction
+
+A core component of an academic project defense is justifying the development approach and evaluating the project's viability. This document outlines the Software Development Life Cycle (SDLC) methodology utilized and presents a formal Feasibility Study for ShieldX.
+
+---
+
+## 19.2 Literature Review: Existing vs. Proposed System
+
+### 19.2.1 Existing System Limitations
+In the traditional framework of crime reporting in Bangladesh:
+- **Manual Logging**: Citizens must physically travel to a police station to file a General Diary (GD) or First Information Report (FIR).
+- **Lack of Transparency**: Complainants have no digital way to track the progress of their case.
+- **Emergency Inefficiency**: Phoning emergency hotlines (e.g., 999) requires verbal description of location, which is difficult under extreme duress or in unfamiliar areas.
+- **Data Fragmentation**: Paper-based records make it nearly impossible to quickly visualize crime hotspots or perform data analytics for resource allocation.
+
+### 19.2.2 Proposed System Advantages (ShieldX)
+ShieldX solves these issues by:
+- **Digital Convenience**: Complaints can be filed securely from anywhere.
+- **Real-Time GPS SOS**: Panic button immediately transmits precise location coordinates.
+- **Automated Transparency**: Push notifications inform citizens exactly when their complaint status changes.
+- **Centralized Admin Dashboard**: Police administrators get instant charts and heatmaps, dramatically improving data-driven decision-making.
+
+---
+
+## 19.3 Software Development Life Cycle (SDLC)
+
+The **Agile Methodology (Scrum framework)** was selected for the development of ShieldX. This allowed for iterative progress, continuous testing, and rapid adaptation to requirements.
+
+### Agile Phases Implemented:
+1. **Requirements Gathering**: Identifying the needs of both citizens (anonymity, ease of use, SOS) and police (data visualization, management tools).
+2. **Design & Prototyping**: Designing the UI/UX in Figma and establishing the database schema (ERD).
+3. **Sprints (Development)**:
+   - *Sprint 1*: Firebase/Supabase setup, Auth logic, and core UI scaffolding.
+   - *Sprint 2*: Citizen complaint submission, GPS integration, and offline queuing.
+   - *Sprint 3*: Admin dashboard, Realtime subscriptions, and SOS broadcast system.
+   - *Sprint 4*: Refactoring into `lib/admin` and `lib/user` modules, bug fixing, and polish.
+4. **Testing**: Unit testing the `ComplaintClassifier` and manual QA of the full application flow.
+5. **Deployment**: Generating release APKs and finalizing project documentation.
+
+---
+
+## 19.4 Feasibility Study
+
+A feasibility study was conducted prior to development to ensure the project was viable on all fronts.
+
+### 19.4.1 Technical Feasibility
+**Result: Highly Feasible**
+- **Framework**: Flutter provides a robust, cross-platform UI toolkit that compiles to native code, ensuring high performance on Android and iOS from a single codebase.
+- **Backend**: Supabase handles real-time WebSockets, PostgreSQL database management, and authentication out-of-the-box, significantly reducing backend development overhead.
+- **Hardware**: Modern smartphones possess the necessary hardware (GPS, Camera, Internet connectivity) to fully utilize the app.
+
+### 19.4.2 Economic Feasibility
+**Result: Highly Feasible**
+- **Development Costs**: Minimal. Flutter is open-source. Supabase offers a generous free tier for development, which can scale affordably in production.
+- **Hardware Costs**: Citizens and Police already possess smartphones; no specialized hardware (e.g., dispatch terminals) needs to be procured.
+- **Operational Savings**: Digitizing records reduces paper waste, physical storage costs, and administrative man-hours for law enforcement.
+
+### 19.4.3 Operational Feasibility
+**Result: Feasible**
+- **User Acceptance**: The app is designed with material design guidelines, making it intuitive for the average smartphone user. The SOS feature is a single long-press, requiring minimal cognitive load during stress.
+- **Police Adoption**: The centralized dashboard automatically visualizes data, requiring less manual data entry and spreadsheet management from officers.
+- **Challenge**: The primary operational challenge will be verifying user identities to prevent spam/false reports. This is mitigated by the NID and phone number requirements during registration.
+
+---
+
+*Return to [Index — Table of Contents](INDEX.md)*

@@ -1,0 +1,38 @@
+%% Level-1 Data Flow Diagram (DFD)
+flowchart TD
+    %% External Entities (Rectangles)
+    Citizen["Citizen\n(External Entity)"]
+    Admin["Admin Dashboard\n(External Entity)"]
+    
+    %% Processes (Rounded Rectangles)
+    P1(["1.0 SOSNotifier UI Layer"])
+    P2(["2.0 EmergencyService\nData Layer"])
+    
+    %% Data Stores (Styled as open-ended or clean database boxes)
+    D1["D1: emergencies"]
+    D2["D2: notifications"]
+    
+    %% Flows
+    Citizen -->|"Press SOS Button"| P1
+    P1 -->|"Fetch Coordinates"| P1
+    P1 -->|"triggerSOS(lat, lng)"| P2
+    
+    P2 -->|"Cancel old active"| D1
+    P2 -->|"Insert new emergency"| D1
+    P2 -->|"Insert alert"| D2
+    
+    D1 -.->|"Realtime Event"| Admin
+    D2 -.->|"Realtime Event"| Admin
+    
+    P1 -->|"updateEmergencyLocation"| P2
+    P2 -->|"Update stream"| D1
+
+    %% Styling (Clean, print-ready black-and-white theme)
+    classDef default fill:#ffffff,stroke:#333333,stroke-width:1.5px,color:#000000;
+    classDef entity fill:#ffffff,stroke:#333333,stroke-width:2px,color:#000000;
+    classDef process fill:#ffffff,stroke:#333333,stroke-width:1.5px,color:#000000;
+    classDef datastore fill:#ffffff,stroke:#333333,stroke-width:1.5px,color:#000000;
+    
+    class Citizen,Admin entity;
+    class P1,P2 process;
+    class D1,D2 datastore;

@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ShieldX: Project Defense Presentation</title>
+    <style>
+        /* Import a classic serif font */
+        @import url('https://fonts.googleapis.com/css2?family=Merriweather:ital,wght@0,300;0,400;0,700;1,400&display=swap');
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body, html {
+            height: 100%;
+            font-family: 'Merriweather', serif;
+            overflow: hidden;
+            /* Very light, subtle pale blue gradient background */
+            background: linear-gradient(135deg, #e6f0f5 0%, #ffffff 100%);
+            color: #1a1a1a;
+        }
+
+        /* Dark slate gray accent on the left */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 25px;
+            height: 100%;
+            background-color: #2F4F4F; /* Dark slate gray */
+            z-index: 10;
+        }
+
+        /* Elegant curved line decorations */
+        .decorations {
+            position: fixed;
+            top: 0;
+            left: 25px;
+            width: 300px;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+            overflow: hidden;
+        }
+        .line {
+            position: absolute;
+            border: 1px solid rgba(47, 79, 79, 0.4);
+            border-radius: 50%;
+        }
+        .line-1 {
+            width: 800px;
+            height: 800px;
+            top: -200px;
+            left: -600px;
+        }
+        .line-2 {
+            width: 1000px;
+            height: 1000px;
+            top: 100px;
+            left: -850px;
+        }
+        .line-3 {
+            width: 600px;
+            height: 1200px;
+            top: -100px;
+            left: -450px;
+        }
+
+        /* Arrow-shaped slide number indicator matching the PDF */
+        .slide-indicator {
+            position: fixed;
+            bottom: 25%;
+            left: 0;
+            height: 65px;
+            width: 130px;
+            background-color: #333333;
+            z-index: 20;
+            clip-path: polygon(0% 0%, 75% 0%, 100% 50%, 75% 100%, 0% 100%);
+            display: flex;
+            align-items: center;
+            padding-left: 55px;
+            color: white;
+            font-size: 26px;
+            transition: all 0.3s ease;
+        }
+
+        /* Slides container */
+        .slides-container {
+            position: relative;
+            height: 100%;
+            width: 100%;
+            z-index: 5;
+        }
+
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            padding: 80px 100px 80px 200px; /* Leave space for left decorations */
+            opacity: 0;
+            transition: opacity 0.4s ease-in-out;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+        }
+
+        .slide.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* Typography */
+        h1, h2, h3 {
+            font-weight: 400;
+        }
+        
+        /* Clean top-aligned titles */
+        h2.slide-title {
+            text-align: center;
+            font-size: 2.8rem;
+            margin-bottom: 50px;
+            color: #000;
+        }
+
+        /* Content alignment */
+        .content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Left-aligned bullet points */
+        ul {
+            list-style-position: outside;
+            font-size: 1.5rem;
+            line-height: 1.7;
+            margin-left: 40px;
+            color: #222;
+        }
+        li {
+            margin-bottom: 15px;
+            padding-left: 10px;
+        }
+
+        /* Slide 1 - Title Slide specifics */
+        .title-slide-container {
+            text-align: center;
+            margin-top: 50px;
+        }
+        .main-title {
+            font-size: 3.2rem;
+            margin-bottom: 15px;
+            color: #111;
+        }
+        .subtitle {
+            font-size: 1.6rem;
+            margin-bottom: 70px;
+            color: #444;
+            font-style: italic;
+        }
+        .team-boxes {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 60px;
+        }
+        .team-box {
+            border: 1px solid #000;
+            padding: 15px 30px;
+            font-size: 1.3rem;
+            background-color: transparent;
+        }
+        .team-box:not(:first-child) {
+            border-left: none;
+        }
+        .supervisor-text {
+            font-size: 1.4rem;
+            color: #222;
+            line-height: 1.6;
+        }
+
+        /* Slide 3 - Team Overview columns */
+        .columns-3 {
+            display: flex;
+            justify-content: space-between;
+            gap: 30px;
+            margin-top: 20px;
+        }
+        .column {
+            flex: 1;
+            padding: 0 10px;
+        }
+        .column h3 {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            font-weight: 700;
+            border-bottom: 1px solid #2F4F4F;
+            padding-bottom: 10px;
+        }
+        .column ul {
+            font-size: 1.2rem;
+            line-height: 1.6;
+            margin-left: 25px;
+            list-style-type: decimal;
+        }
+
+        /* Placeholders */
+        .placeholder {
+            border: 2px dashed #2F4F4F;
+            background: rgba(47, 79, 79, 0.03);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            margin-top: 20px;
+            font-size: 1.5rem;
+            color: #555;
+            min-height: 250px;
+            border-radius: 4px;
+        }
+
+        /* Navigation controls */
+        .controls {
+            position: fixed;
+            bottom: 30px;
+            right: 40px;
+            z-index: 100;
+        }
+        button {
+            background: #2F4F4F;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-family: inherit;
+            cursor: pointer;
+            margin-left: 10px;
+            font-size: 1rem;
+            border-radius: 4px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: background 0.2s;
+        }
+        button:hover {
+            background: #1a2c2c;
+        }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Aesthetic Decorations -->
+    <div class="sidebar"></div>
+    <div class="decorations">
+        <div class="line line-1"></div>
+        <div class="line line-2"></div>
+        <div class="line line-3"></div>
+    </div>
+    <div class="slide-indicator" id="slideIndicator">1</div>
+
+    <!-- Presentation Content -->
+    <div class="slides-container">
+
+        <!-- Slide 1: Project Title -->
+        <div class="slide active">
+            <div class="title-slide-container">
+                <h1 class="main-title">ShieldX: Crime Reporting & Emergency Management System</h1>
+                <div class="subtitle">Project Defense Presentation</div>
+
+                <div class="team-boxes">
+                    <div class="team-box">Jogonnath Das Talukder</div>
+                    <div class="team-box">Shrestta Das</div>
+                    <div class="team-box">Khandoker Syed Shovon</div>
+                </div>
+
+                <div class="supervisor-text">
+                    <p>Supervisor</p>
+                    <p style="margin-top: 5px; font-size: 1.6rem;"><strong>Shahriar Arefin Zummon</strong></p>
+                    <p style="font-size: 1.2rem; margin-top: 5px;">(Lecturer, Dept. of CSE, Leading University)</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 2: Presentation Outline -->
+        <div class="slide">
+            <h2 class="slide-title">Presentation Outline</h2>
+            <div class="content">
+                <ul style="list-style-type: disc;">
+                    <li>Team Overview</li>
+                    <li>Project Overview & Goal</li>
+                    <li>Functional Requirements</li>
+                    <li>Non-Functional Requirements</li>
+                    <li>Use Case Diagram</li>
+                    <li>Entity-Relationship Diagram</li>
+                    <li>Data Flow Diagrams (DFD)</li>
+                    <li>Project Demonstration</li>
+                    <li>Discussion / Conclusion</li>
+                    <li>Thank You</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 3: Team Overview -->
+        <div class="slide">
+            <h2 class="slide-title">Team Overview</h2>
+            <div class="content columns-3">
+                <div class="column">
+                    <h3>Jogonnath Das Talukder</h3>
+                    <ul>
+                        <li>Admin Portal Development</li>
+                        <li>Command Dashboard Creation</li>
+                        <li>Officer Dispatch System</li>
+                        <li>Complaint Management Integration</li>
+                    </ul>
+                </div>
+                <div class="column">
+                    <h3>Shrestta Das</h3>
+                    <ul>
+                        <li>User Portal Development</li>
+                        <li>Citizen Onboarding Flow</li>
+                        <li>Complaint Submission Interface</li>
+                        <li>SOS Emergency Button Implementation</li>
+                    </ul>
+                </div>
+                <div class="column">
+                    <h3>Khandoker Syed Shovon</h3>
+                    <ul>
+                        <li>Database Design & Implementation</li>
+                        <li>Supabase PostgreSQL Setup</li>
+                        <li>Schema Architecture Design</li>
+                        <li>Row Level Security Configuration</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 4: Project Overview & Goal -->
+        <div class="slide">
+            <h2 class="slide-title">Project Overview & Goal</h2>
+            <div class="content">
+                <ul style="list-style-type: disc;">
+                    <li><strong>Description:</strong> ShieldX is a comprehensive mobile application bridging the gap between citizens and law enforcement (Sylhet Metropolitan Police).</li>
+                    <li><strong>Goals:</strong> Empower citizens to report crimes, track complaints in real-time, and trigger SOS alerts. Provide police with a powerful command dashboard.</li>
+                    <li><strong>Motivation:</strong> Enhance response times, ensure transparency in crime reporting, and improve citizen safety during emergencies.</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 5: Functional Requirements -->
+        <div class="slide">
+            <h2 class="slide-title">Functional Requirements</h2>
+            <div class="content">
+                <ul style="list-style-type: disc;">
+                    <li><strong>Citizen Portal:</strong> Secure Onboarding, Smart Complaint Submission with Evidence Upload, Real-time Tracking, SOS Emergency Button, Interactive Police Map.</li>
+                    <li><strong>Admin Portal:</strong> Command Dashboard with Live Analytics, Complaint Management, Officer Dispatch, Live SOS Panel.</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 6: Non-Functional Requirements -->
+        <div class="slide">
+            <h2 class="slide-title">Non-Functional Requirements</h2>
+            <div class="content">
+                <ul style="list-style-type: disc;">
+                    <li><strong>Operating System Environment:</strong> Cross-platform mobile environment (Android and iOS).</li>
+                    <li><strong>Frameworks and Tools:</strong>
+                        <ul style="list-style-type: circle; margin-top: 15px;">
+                            <li><strong>UI Framework:</strong> Flutter (Dart)</li>
+                            <li><strong>Backend & Database:</strong> Supabase (PostgreSQL with Row Level Security)</li>
+                            <li><strong>State Management & Routing:</strong> Riverpod, GoRouter</li>
+                            <li><strong>Mapping Services:</strong> flutter_map with OpenStreetMap Tiles</li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 7: Use Case Diagram -->
+        <div class="slide">
+            <h2 class="slide-title">Use Case Diagram</h2>
+            <div class="content">
+                <ul style="list-style-type: disc;">
+                    <li>System Interaction Overview</li>
+                </ul>
+                <div class="placeholder">[Placeholder: Space for Use Case Diagram]</div>
+            </div>
+        </div>
+
+        <!-- Slide 8: Entity-Relationship (ER) Diagram -->
+        <div class="slide">
+            <h2 class="slide-title">Entity-Relationship (ER) Diagram</h2>
+            <div class="content">
+                <ul style="list-style-type: disc;">
+                    <li>Database Entities and Relationships</li>
+                </ul>
+                <div class="placeholder">[Placeholder: Space for Entity-Relationship (ER) Diagram]</div>
+            </div>
+        </div>
+
+        <!-- Slide 9: Data Flow Diagram (DFD Level 0 & Level 1) -->
+        <div class="slide">
+            <h2 class="slide-title">Data Flow Diagram</h2>
+            <div class="content">
+                <ul style="list-style-type: disc;">
+                    <li>Data Movement and Process Flow (Level 0 & Level 1)</li>
+                </ul>
+                <div style="display: flex; gap: 30px; flex: 1; margin-top: 10px;">
+                    <div class="placeholder">[Placeholder: Space for DFD Level 0 Diagram]</div>
+                    <div class="placeholder">[Placeholder: Space for DFD Level 1 Diagram]</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 10: Project Demonstration -->
+        <div class="slide">
+            <h2 class="slide-title">Project Demonstration</h2>
+            <div class="content">
+                <ul style="list-style-type: disc;">
+                    <li>1-minute overview</li>
+                </ul>
+                <div class="placeholder">[Blank space to manually insert video or slideshow of project demo later]</div>
+            </div>
+        </div>
+
+        <!-- Slide 11: Discussion / Conclusion -->
+        <div class="slide">
+            <h2 class="slide-title">Discussion / Conclusion</h2>
+            <div class="content">
+                <ul style="list-style-type: disc;">
+                    <li><strong>Limitations:</strong> Requires an active internet connection for real-time tracking; relies heavily on device GPS accuracy.</li>
+                    <li><strong>Restrictions:</strong> Currently customized and localized specifically for the Sylhet Metropolitan Police jurisdiction.</li>
+                    <li><strong>Future scope and improvements:</strong> Implementation of AI-based predictive crime mapping, integration with national emergency hotline (999), and offline SOS via SMS fallback.</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Slide 12: Thank You -->
+        <div class="slide">
+            <h2 class="slide-title" style="margin-bottom: 20px;">Thank You</h2>
+            <div class="content" style="align-items: center; justify-content: center;">
+                <div class="placeholder" style="width: 70%; min-height: 350px; flex: none; margin-bottom: 30px;">[Placeholder: Space for Thank You Image]</div>
+                <h3 style="font-size: 2.5rem; color: #111; font-weight: 700;">Any Questions?</h3>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Interactive slide navigation -->
+    <div class="controls">
+        <button id="prevBtn" onclick="prevSlide()" disabled>Previous</button>
+        <button id="nextBtn" onclick="nextSlide()">Next</button>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const indicator = document.getElementById('slideIndicator');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+
+        function updateSlides() {
+            slides.forEach((slide, index) => {
+                if (index === currentSlide) {
+                    slide.classList.add('active');
+                } else {
+                    slide.classList.remove('active');
+                }
+            });
+            // Update the slide indicator number
+            indicator.textContent = currentSlide + 1;
+            
+            // Toggle button states
+            prevBtn.disabled = currentSlide === 0;
+            nextBtn.disabled = currentSlide === slides.length - 1;
+        }
+
+        function nextSlide() {
+            if (currentSlide < slides.length - 1) {
+                currentSlide++;
+                updateSlides();
+            }
+        }
+
+        function prevSlide() {
+            if (currentSlide > 0) {
+                currentSlide--;
+                updateSlides();
+            }
+        }
+
+        // Add keyboard navigation (Arrow keys and Spacebar)
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === 'Space' || e.key === 'Enter') {
+                nextSlide();
+            } else if (e.key === 'ArrowLeft') {
+                prevSlide();
+            }
+        });
+    </script>
+</body>
+</html>

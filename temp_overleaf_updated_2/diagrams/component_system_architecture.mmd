@@ -1,0 +1,15 @@
+%% UML 2.5 Component Diagram
+flowchart LR
+    %% Components
+    C_Pres["«Component»\nPresentation Layer\n(lib/presentation/)"]
+    C_Prov["«Component»\nProvider Layer\n(lib/providers/)"]
+    C_Data["«Component»\nData Layer\n(lib/data/)"]
+    C_Supabase["«Component»\nSupabase Backend"]
+
+    %% Dependency Arrows (Dashed, open arrowhead)
+    C_Pres -.-> C_Prov
+    C_Prov -.-> C_Data
+    C_Data -.-> C_Supabase
+
+    %% Styling (Clean, print-ready black-and-white theme)
+    classDef default fill:#ffffff,stroke:#333333,stroke-width:1.5px,color:#000000;
